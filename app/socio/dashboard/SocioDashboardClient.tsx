@@ -1,0 +1,278 @@
+'use client';
+
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import Image from 'next/image';
+import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
+import {
+  Leaf, ShoppingBag, AlertTriangle, ArrowRight, Newspaper,
+  FileText, Shield, CheckCircle2, Clock, XCircle, UserRound, ChevronDown,
+} from 'lucide-react';
+import type { Profile, Newsletter } from '@/lib/types/database';
+import { formatFecha, diasHasta, cn } from '@/lib/utils';
+
+const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.08 } } };
+const fadeUp  = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
+
+interface Props {
+  profile:    Profile;
+  newsletter: Newsletter | null;
+}
+
+function perfilCompleto(p: Profile) {
+  return Boolean(p.dni && p.telefono);
+}
+
+/* Config visual por estado REPROCANN */
+const estadoConfig = {
+  aprobado:  {
+    border:  'border-emerald-500/40',
+    label:   'Aprobado',
+    badge:   'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+    icon:    CheckCircle2,
+    iconCls: 'text-emerald-400',
+    desc:    'Podés hacer pedidos. Tu acceso está activo.',
+  },
+  pendiente: {
+    border:  'border-amber-500/40',
+    label:   'En revisión',
+    badge:   'bg-amber-500/15 text-amber-400 border border-amber-500/30',
+    icon:    Clock,
+    iconCls: 'text-amber-400',
+    desc:    'Tu documentación está siendo revisada por el equipo.',
+  },
+  rechazado: {
+    border:  'border-red-500/40',
+    label:   'Rechazado',
+    badge:   'bg-red-500/15 text-red-400 border border-red-500/30',
+    icon:    XCircle,
+    iconCls: 'text-red-400',
+    desc:    'Tu certificado fue rechazado. Subí uno nuevo.',
+  },
+  vencido: {
+    border:  'border-gray-500/40',
+    label:   'Vencido',
+    badge:   'bg-gray-500/15 text-gray-400 border border-gray-500/30',
+    icon:    AlertTriangle,
+    iconCls: 'text-gray-400',
+    desc:    'Tu certificado venció. Renovalo para seguir haciendo pedidos.',
+  },
+};
+
+export function SocioDashboardClient({ profile, newsletter }: Props) {
+  // Newsletter colapsado por defecto; "Ver más" muestra el texto completo
+  const [newsExpandido, setNewsExpandido] = useState(false);
+  const datosCompletos = perfilCompleto(profile);
+  const certCargado    = Boolean(profile.reprocann_certificado_path);
+  const aprobado       = profile.reprocann_estado === 'aprobado';
+
+  const alertas = [
+    !datosCompletos && {
+      key:   'datos',
+      Icon:  UserRound,
+      texto: 'Completá tu DNI y teléfono para poder hacer pedidos.',
+      cta:   'Ir a mi perfil',
+      href:  '/socio/perfil',
+    },
+    datosCompletos && !certCargado && {
+      key:   'cert',
+      Icon:  FileText,
+      texto: 'Subí tu certificado REPROCANN para que el equipo lo revise.',
+      cta:   'Subir certificado',
+      href:  '/socio/perfil',
+    },
+    datosCompletos && certCargado && !aprobado && {
+      key:   'revision',
+      Icon:  Clock,
+      texto: 'Tu documentación está pendiente de aprobación.',
+      cta:   'Ver estado',
+      href:  '/socio/perfil',
+    },
+  ].filter(Boolean) as { key: string; Icon: React.ElementType; texto: string; cta: string; href: string }[];
+
+  const estado  = estadoConfig[profile.reprocann_estado] ?? estadoConfig.pendiente;
+  const EstIcon = estado.icon;
+
+  // Alerta de vencimiento del REPROCANN
+  const diasParaVencer = profile.reprocann_vencimiento ? diasHasta(profile.reprocann_vencimiento) : null;
+  const reprocannVencido  = profile.reprocann_estado === 'vencido' || (diasParaVencer !== null && diasParaVencer < 0);
+  const reprocannPorVencer = aprobado && diasParaVencer !== null && diasParaVencer >= 0 && diasParaVencer <= 90;
+
+  return (
+    <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-5">
+
+      {/* Bienvenida */}
+      <motion.div variants={fadeUp}>
+        <p className="text-muted-foreground text-xs uppercase tracking-widest mb-1">Bienvenido</p>
+        <h1 className="font-avigea text-4xl text-foreground leading-tight">
+          Hola, <span className="text-gradient-dorado">{profile.nombre.split(' ')[0]}</span>
+        </h1>
+        <div className="divider-dorado mt-3" />
+      </motion.div>
+
+      {/* Alertas contextuales — estilo barra izquierda */}
+      {alertas.map(({ key, Icon, texto, cta, href }) => (
+        <motion.div
+          key={key}
+          variants={fadeUp}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/20 border-l-[3px] border-l-amber-400"
+        >
+          <Icon className="w-4 h-4 text-amber-400 shrink-0" />
+          <p className="text-amber-200/80 text-sm flex-1">{texto}</p>
+          <Link
+            href={href}
+            className="text-club-dorado text-xs font-semibold hover:text-club-dorado/70 transition-colors shrink-0 flex items-center gap-1"
+          >
+            {cta} <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </motion.div>
+      ))}
+
+      {/* Banner de vencimiento REPROCANN */}
+      {reprocannVencido && (
+        <motion.div
+          variants={fadeUp}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/25 border-l-[3px] border-l-red-400"
+        >
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+          <p className="text-red-200/90 text-sm flex-1">
+            Tu REPROCANN está <span className="font-semibold">vencido</span>. No vas a poder hacer pedidos hasta renovarlo.
+          </p>
+          <Link href="/socio/perfil" className="text-club-dorado text-xs font-semibold hover:text-club-dorado/70 transition-colors shrink-0 flex items-center gap-1">
+            Renovar <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </motion.div>
+      )}
+      {reprocannPorVencer && (
+        <motion.div
+          variants={fadeUp}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/25 border-l-[3px] border-l-amber-400"
+        >
+          <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+          <p className="text-amber-200/90 text-sm flex-1">
+            Tu REPROCANN vence en <span className="font-semibold">{diasParaVencer} {diasParaVencer === 1 ? 'día' : 'días'}</span>. Renovalo para seguir haciendo pedidos.
+          </p>
+          <Link href="/socio/perfil" className="text-club-dorado text-xs font-semibold hover:text-club-dorado/70 transition-colors shrink-0 flex items-center gap-1">
+            Renovar <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </motion.div>
+      )}
+
+      {/* Grid principal: estado + acciones rápidas */}
+      <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+        {/* Card REPROCANN */}
+        <div className={cn('glass-card p-5 flex flex-col gap-4 border', estado.border)}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-club-dorado" />
+              <span className="text-sm font-semibold text-foreground/80">REPROCANN</span>
+            </div>
+            <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold', estado.badge)}>
+              <EstIcon className="w-3.5 h-3.5" />
+              {estado.label}
+            </span>
+          </div>
+
+          <p className="text-xs text-muted-foreground leading-relaxed flex-1">{estado.desc}</p>
+
+          {profile.reprocann_vencimiento && (
+            <p className="text-xs text-muted-foreground">
+              Vence: <span className="text-foreground font-medium">{formatFecha(profile.reprocann_vencimiento)}</span>
+            </p>
+          )}
+
+          <Link
+            href="/socio/perfil"
+            className="text-xs text-club-dorado hover:text-club-dorado/70 transition-colors flex items-center gap-1 mt-auto w-fit"
+          >
+            Mi perfil <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        {/* Acceso rápido — Tienda */}
+        <Link
+          href="/socio/tienda"
+          className="glass-card p-5 flex flex-col gap-4 border border-transparent hover:border-club-dorado/30 hover:shadow-dorado-sm transition-all group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-club-dorado/15 border border-club-dorado/20 flex items-center justify-center text-club-dorado group-hover:bg-club-dorado/25 transition-colors">
+            <Leaf className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-foreground font-semibold text-sm">Tienda</p>
+            <p className="text-muted-foreground text-xs mt-0.5">Flores y productos</p>
+          </div>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-club-dorado transition-colors mt-auto">
+            Explorar <ArrowRight className="w-3.5 h-3.5" />
+          </span>
+        </Link>
+
+        {/* Acceso rápido — Pedidos */}
+        <Link
+          href="/socio/pedidos"
+          className="glass-card p-5 flex flex-col gap-4 border border-transparent hover:border-club-dorado/30 hover:shadow-dorado-sm transition-all group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-club-dorado/15 border border-club-dorado/20 flex items-center justify-center text-club-dorado group-hover:bg-club-dorado/25 transition-colors">
+            <ShoppingBag className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-foreground font-semibold text-sm">Mis pedidos</p>
+            <p className="text-muted-foreground text-xs mt-0.5">Historial y estados</p>
+          </div>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-club-dorado transition-colors mt-auto">
+            Ver historial <ArrowRight className="w-3.5 h-3.5" />
+          </span>
+        </Link>
+
+      </motion.div>
+
+      {/* Newsletter destacado */}
+      {newsletter && (
+        <motion.div variants={fadeUp} className="glass-card overflow-hidden">
+          {/* Franja superior dorada */}
+          <div className="h-1 bg-gradient-to-r from-club-dorado/60 via-club-dorado to-club-dorado/60" />
+
+          {/* Imagen de portada */}
+          {newsletter.imagen_url && (
+            <div className="relative h-48 sm:h-56">
+              <Image src={newsletter.imagen_url} alt={newsletter.titulo} fill className="object-cover" />
+            </div>
+          )}
+
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-3 text-club-dorado">
+              <Newspaper className="w-4 h-4" />
+              <span className="text-xs font-semibold uppercase tracking-widest">Novedades del club</span>
+            </div>
+
+            <h2 className="font-avigea text-2xl text-foreground mb-2">{newsletter.titulo}</h2>
+
+            {newsletter.fecha_publicacion && (
+              <p className="text-muted-foreground text-xs mb-4">
+                {formatFecha(newsletter.fecha_publicacion, "dd 'de' MMMM 'de' yyyy")}
+              </p>
+            )}
+
+            <div className={cn(
+              'prose prose-sm prose-invert max-w-none text-muted-foreground prose-headings:text-foreground prose-strong:text-foreground',
+              !newsExpandido && 'line-clamp-4'
+            )}>
+              <ReactMarkdown remarkPlugins={[remarkBreaks]}>{newsletter.contenido}</ReactMarkdown>
+            </div>
+
+            <button
+              onClick={() => setNewsExpandido(v => !v)}
+              className="mt-3 flex items-center gap-1 text-club-dorado text-xs font-semibold hover:text-club-dorado/80 transition-colors"
+            >
+              {newsExpandido ? 'Ver menos' : 'Ver más'}
+              <ChevronDown className={cn('w-3.5 h-3.5 transition-transform duration-200', newsExpandido && 'rotate-180')} />
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+    </motion.div>
+  );
+}

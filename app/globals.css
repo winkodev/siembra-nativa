@@ -1,0 +1,261 @@
+/* ============================================================
+   SIEMBRA NATIVA CLUB - Estilos globales
+   Paleta: #083D3A (verde) / #F3A707 (dorado)
+   ============================================================ */
+
+/* -------------------------------------------------------
+   FUENTES PERSONALIZADAS
+   Colocar archivos en /public/fonts/
+   Avigea: fuente display del logo (https://www.dafont.com/avigea.font)
+   Century Gothic Stretched: sans-serif de marca
+   ------------------------------------------------------- */
+@font-face {
+  font-family: 'Avigea';
+  src: url('/fonts/Avigea.woff2') format('woff2'),
+       url('/fonts/Avigea.woff') format('woff');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'CenturyGothicStretched';
+  src: url('/fonts/CenturyGothic.woff2') format('woff2'),
+       url('/fonts/CenturyGothic.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  /* Estirado vertical como en el branding */
+}
+
+@font-face {
+  font-family: 'CenturyGothicStretched';
+  src: url('/fonts/CenturyGothic-Bold.woff2') format('woff2'),
+       url('/fonts/CenturyGothic-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -------------------------------------------------------
+   VARIABLES CSS - Sistema de diseño centralizado
+   Paleta oscura basada en #083D3A y #F3A707
+   ------------------------------------------------------- */
+@layer base {
+  :root {
+    /* --- MODO OSCURO (default para este proyecto) --- */
+    --background:           168 82% 8%;    /* #083D3A */
+    --foreground:           45 100% 97%;   /* casi blanco cálido */
+
+    --card:                 168 82% 10%;   /* verde muy oscuro */
+    --card-foreground:      45 100% 95%;
+
+    --popover:              168 82% 9%;
+    --popover-foreground:   45 100% 95%;
+
+    /* Primary = dorado #F3A707 */
+    --primary:              42 97% 49%;
+    --primary-foreground:   168 82% 8%;
+
+    /* Secondary = verde medio */
+    --secondary:            168 70% 14%;
+    --secondary-foreground: 45 100% 90%;
+
+    --muted:                168 60% 12%;
+    --muted-foreground:     168 20% 60%;
+
+    /* Accent = dorado más suave */
+    --accent:               42 80% 40%;
+    --accent-foreground:    45 100% 95%;
+
+    --destructive:          0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border:               168 50% 18%;
+    --input:                168 50% 15%;
+    --ring:                 42 97% 49%;    /* dorado */
+
+    --radius:               0.75rem;
+
+    /* Glassmorphism tokens */
+    --glass-bg:             rgba(8, 61, 58, 0.6);
+    --glass-border:         rgba(243, 167, 7, 0.12);
+    --glass-blur:           12px;
+  }
+
+  /* Si en el futuro se agrega modo claro, agregar aquí */
+  .light {
+    --background:           0 0% 100%;
+    --foreground:           168 82% 10%;
+    /* ... resto de variables claras */
+  }
+}
+
+/* -------------------------------------------------------
+   ESTILOS BASE
+   ------------------------------------------------------- */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+    /* Estirado vertical sutil para Century Gothic */
+    font-stretch: condensed;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background-color: #083D3A;
+    /* Textura de ruido sutil */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
+    min-height: 100vh;
+  }
+
+  h1, h2, h3 {
+    @apply font-avigea tracking-wide;
+  }
+
+  /* Scrollbar personalizada */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #041e1c;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #F3A707;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #f5b82e;
+  }
+}
+
+/* -------------------------------------------------------
+   COMPONENTES REUTILIZABLES
+   ------------------------------------------------------- */
+@layer components {
+
+  /* Glass card - glassmorphism con paleta del club */
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    @apply rounded-xl shadow-glass;
+  }
+
+  /* Borde dorado animado para hover */
+  .border-dorado-hover {
+    @apply border border-transparent transition-colors duration-300;
+  }
+  .border-dorado-hover:hover {
+    border-color: rgba(243, 167, 7, 0.4);
+    @apply shadow-dorado-sm;
+  }
+
+  /* Badge de estado REPROCANN */
+  .badge-reprocann-pendiente  { @apply bg-yellow-500/20 text-yellow-400 border border-yellow-500/30; }
+  .badge-reprocann-aprobado   { @apply bg-emerald-500/20 text-emerald-400 border border-emerald-500/30; }
+  .badge-reprocann-rechazado  { @apply bg-red-500/20 text-red-400 border border-red-500/30; }
+  .badge-reprocann-vencido    { @apply bg-gray-500/20 text-gray-400 border border-gray-500/30; }
+
+  /* Badge de estado pedido */
+  .badge-pedido-pendiente  { @apply bg-amber-500/20 text-amber-400 border border-amber-500/30; }
+  .badge-pedido-aprobado   { @apply bg-blue-500/20 text-blue-400 border border-blue-500/30; }
+  .badge-pedido-entregado  { @apply bg-emerald-500/20 text-emerald-400 border border-emerald-500/30; }
+  .badge-pedido-cancelado  { @apply bg-red-500/20 text-red-400 border border-red-500/30; }
+
+  /* Input con estilo del club */
+  .input-club {
+    @apply bg-club-verde-medio border border-club-verde-claro text-foreground
+           placeholder:text-muted-foreground rounded-lg px-4 py-3
+           focus:outline-none focus:border-club-dorado focus:ring-1 focus:ring-club-dorado/50
+           transition-all duration-200;
+  }
+
+  /* Botón primario con gradiente dorado */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-gradient-dorado text-club-verde font-bold
+           rounded-lg px-6 py-3 transition-all duration-200
+           hover:brightness-110 hover:shadow-dorado-md hover:-translate-y-0.5
+           active:translate-y-0 active:brightness-95
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+  }
+
+  /* Botón secundario (outline dorado) */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2
+           border border-club-dorado/60 text-club-dorado font-semibold
+           rounded-lg px-6 py-3 transition-all duration-200
+           hover:bg-club-dorado/10 hover:border-club-dorado
+           active:bg-club-dorado/20;
+  }
+
+  /* Skeleton loader */
+  .skeleton {
+    @apply rounded-md bg-club-verde-claro/30;
+    background: linear-gradient(
+      90deg,
+      rgba(13, 92, 86, 0.3) 0%,
+      rgba(13, 92, 86, 0.5) 50%,
+      rgba(13, 92, 86, 0.3) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Separador dorado */
+  .divider-dorado {
+    @apply w-12 h-0.5 bg-gradient-dorado rounded-full;
+  }
+
+  /* Título de sección */
+  .section-title {
+    @apply font-avigea text-3xl text-foreground tracking-wide;
+  }
+
+  .section-subtitle {
+    @apply text-muted-foreground text-base mt-2;
+  }
+}
+
+/* -------------------------------------------------------
+   UTILIDADES
+   ------------------------------------------------------- */
+@layer utilities {
+  /* Texto con gradiente dorado */
+  .text-gradient-dorado {
+    background: linear-gradient(135deg, #d4920a, #F3A707, #f5b82e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Efecto de brillo sutil */
+  .glow-dorado {
+    box-shadow: 0 0 20px rgba(243, 167, 7, 0.3), 0 0 60px rgba(243, 167, 7, 0.1);
+  }
+
+  /* Backdrop oscuro para modales */
+  .backdrop-club {
+    @apply backdrop-blur-md bg-black/60;
+  }
+
+  /* Estirado vertical para Century Gothic (como en el logo) */
+  .font-stretched {
+    transform: scaleY(1.15);
+    display: inline-block;
+  }
+}
