@@ -302,6 +302,9 @@ const ACCION_LABEL: Record<string, string> = {
   desactivar_franja:     'Desactivó una franja horaria',
   eliminar_franja:       'Eliminó una franja horaria',
   imprimir_pedido:       'Imprimió un pedido',
+  crear_usuario:         'Creó un usuario',
+  promover_admin:        'Promovió a administrador',
+  degradar_admin:        'Quitó rol de administrador',
 };
 
 const RECURSO_LABEL: Record<string, string> = {
@@ -318,6 +321,7 @@ const RECURSO_LABEL: Record<string, string> = {
   reprocann_certificado:  'Certificados',
   comprobante_pago:       'Comprobantes',
   franjas:                'Horarios',
+  usuarios:               'Usuarios',
 };
 
 // Resumen compacto del metadata (omite ids, que no le dicen nada al admin)

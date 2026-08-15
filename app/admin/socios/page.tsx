@@ -10,10 +10,10 @@ export default async function AdminSociosPage() {
   if (!profile || profile.rol !== 'admin') redirect('/socio/dashboard');
 
   const supabase = createClient();
+  // Todos los perfiles: socios y admins (el client los separa por rol)
   const { data: socios } = await supabase
     .from('profiles')
     .select('*')
-    .eq('rol', 'socio')
     .order('fecha_alta', { ascending: false });
 
   return <AdminSociosClient socios={(socios as Profile[]) ?? []} />;

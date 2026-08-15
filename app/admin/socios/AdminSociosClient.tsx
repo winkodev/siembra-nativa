@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   User, Phone, MapPin, FileText, ShieldCheck, ShieldOff,
   UserCheck, UserX, Store, X, ChevronRight, ExternalLink,
   Loader2, AlertCircle, Clock, Search, Users,
   ShoppingBag, Leaf, Scale, CalendarDays, Plus, Trash2, NotebookPen,
+  UserPlus, Mail, KeyRound, Copy, Check, Shield,
 } from 'lucide-react';
-import type { Profile, FichaSocio, TipoNotaSocio } from '@/lib/types/database';
+import type { Profile, FichaSocio, TipoNotaSocio, RolUsuario } from '@/lib/types/database';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { cn, formatFecha, formatGramos } from '@/lib/utils';
 import {
@@ -20,8 +21,9 @@ import {
   agregarNotaSocio,
   eliminarNotaSocio,
 } from '@/app/actions/socios';
+import { crearUsuario, cambiarRolUsuario, type ModoAlta } from '@/app/actions/usuarios';
 
-type LoadingKey = `reprocann-${string}` | `estado-${string}` | `notas-${string}` | `cert-${string}`;
+type LoadingKey = `reprocann-${string}` | `estado-${string}` | `notas-${string}` | `cert-${string}` | `rol-${string}`;
 
 // Tipos de nota del log interno
 const TIPO_NOTA: Record<TipoNotaSocio, { label: string; color: string }> = {
@@ -56,6 +58,7 @@ const filtrosReprocann = [
   { label: 'Pendiente', value: 'pendiente' },
   { label: 'Aprobado',  value: 'aprobado'  },
   { label: 'Rechazado', value: 'rechazado' },
+  { label: 'Admins',    value: 'admins'    },
 ];
 
 function Badge({ text, color }: { text: string; color: string }) {
@@ -122,6 +125,15 @@ function SocioDrawer({
     await run(`reprocann-${socio.id}`, async () => {
       const res = await rechazarReprocann(socio.id);
       if (res.ok) setSocio(s => ({ ...s, reprocann_estado: 'rechazado', compra_habilitada: false }));
+      return res;
+    });
+  }
+
+  async function handleToggleRol() {
+    const nuevo: RolUsuario = socio.rol === 'admin' ? 'socio' : 'admin';
+    await run(`rol-${socio.id}`, async () => {
+      const res = await cambiarRolUsuario(socio.id, nuevo);
+      if (res.ok) setSocio(s => ({ ...s, rol: nuevo }));
       return res;
     });
   }
@@ -332,7 +344,9 @@ function SocioDrawer({
           <section className="grid grid-cols-2 gap-3">
             {/* Estado */}
             <div className="rounded-xl bg-white/5 p-3 space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Socio</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+                {socio.rol === 'admin' ? 'Administrador' : 'Socio'}
+              </p>
               <Badge text={est.label} color={est.color} />
               <button
                 onClick={handleToggleEstado}
@@ -351,6 +365,17 @@ function SocioDrawer({
                   <UserCheck className="w-3.5 h-3.5" />
                 )}
                 {socio.estado === 'activo' ? 'Desactivar' : 'Activar'}
+              </button>
+              {/* Promover / degradar admin */}
+              <button
+                onClick={handleToggleRol}
+                disabled={busy(`rol-${socio.id}` as LoadingKey)}
+                className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded-lg border border-club-dorado/30 text-club-dorado hover:bg-club-dorado/10 transition-colors disabled:opacity-50"
+              >
+                {busy(`rol-${socio.id}` as LoadingKey)
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Shield className="w-3.5 h-3.5" />}
+                {socio.rol === 'admin' ? 'Quitar admin' : 'Hacer admin'}
               </button>
             </div>
 
@@ -493,6 +518,10 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
   const [selected, setSelected] = useState<Profile | null>(null);
   const [search, setSearch] = useState('');
   const [filtroRep, setFiltroRep] = useState('todos');
+  const [modalCrear, setModalCrear] = useState(false);
+
+  // Sincronizar con los datos frescos del servidor tras crear un usuario
+  useEffect(() => { setSocios(initialSocios); }, [initialSocios]);
 
   // Abrir el drawer del socio si se llega con ?socio=<id> (deep-link desde el dashboard)
   const searchParams = useSearchParams();
@@ -512,7 +541,13 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return socios.filter(s => {
-      if (filtroRep !== 'todos' && s.reprocann_estado !== filtroRep) return false;
+      // El chip "Admins" lista administradores; el resto filtra socios
+      if (filtroRep === 'admins') {
+        if (s.rol !== 'admin') return false;
+      } else {
+        if (s.rol !== 'socio') return false;
+        if (filtroRep !== 'todos' && s.reprocann_estado !== filtroRep) return false;
+      }
       return !q
         || s.nombre.toLowerCase().includes(q)
         || (s.email ?? '').toLowerCase().includes(q)
@@ -520,12 +555,19 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
     });
   }, [socios, search, filtroRep]);
 
+  const totalSocios = socios.filter(s => s.rol === 'socio').length;
+
   return (
     <div className="space-y-5">
       <PageHeader
         icon={<Users className="w-5 h-5" />}
         title="Socios"
-        subtitle={`${socios.length} socio${socios.length !== 1 ? 's' : ''} registrado${socios.length !== 1 ? 's' : ''}`}
+        subtitle={`${totalSocios} socio${totalSocios !== 1 ? 's' : ''} registrado${totalSocios !== 1 ? 's' : ''}`}
+        action={
+          <button onClick={() => setModalCrear(true)} className="btn-primary text-sm px-5 py-2.5">
+            <UserPlus className="w-4 h-4" /> Crear usuario
+          </button>
+        }
       />
 
       {/* Toolbar: búsqueda + filtro REPROCANN */}
@@ -542,9 +584,11 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
         </div>
         <div className="flex gap-1 p-1 glass-card rounded-xl w-fit overflow-x-auto">
           {filtrosReprocann.map(f => {
-            const count = f.value === 'todos'
-              ? socios.length
-              : socios.filter(s => s.reprocann_estado === f.value).length;
+            const count = f.value === 'admins'
+              ? socios.filter(s => s.rol === 'admin').length
+              : f.value === 'todos'
+              ? socios.filter(s => s.rol === 'socio').length
+              : socios.filter(s => s.rol === 'socio' && s.reprocann_estado === f.value).length;
             return (
               <button
                 key={f.value}
@@ -593,9 +637,15 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
                 </div>
 
                 <div className="hidden sm:flex items-center gap-2 shrink-0">
-                  <Badge text={rep.label} color={rep.color} />
-                  <Badge text={est.label} color={est.color} />
-                  {socio.compra_habilitada && <Store className="w-3.5 h-3.5 text-green-400" />}
+                  {socio.rol === 'admin' ? (
+                    <Badge text="Admin" color="text-club-dorado bg-club-dorado/10 border-club-dorado/30" />
+                  ) : (
+                    <>
+                      <Badge text={rep.label} color={rep.color} />
+                      <Badge text={est.label} color={est.color} />
+                      {socio.compra_habilitada && <Store className="w-3.5 h-3.5 text-green-400" />}
+                    </>
+                  )}
                 </div>
 
                 <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-club-dorado transition-colors shrink-0" />
@@ -606,6 +656,177 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
       )}
 
       {selected && <SocioDrawer socio={selected} onClose={handleClose} />}
+      {modalCrear && <CrearUsuarioModal onClose={() => setModalCrear(false)} />}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// Modal: crear usuario (socio o admin) por invitación o contraseña
+// ------------------------------------------------------------------
+function CrearUsuarioModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const [nombre, setNombre]   = useState('');
+  const [email, setEmail]     = useState('');
+  const [rol, setRol]         = useState<RolUsuario>('socio');
+  const [modo, setModo]       = useState<ModoAlta>('invitacion');
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+  // Resultado del alta: password temporal generada, o null si fue invitación
+  const [resultado, setResultado] = useState<{ password: string | null } | null>(null);
+  const [copiado, setCopiado] = useState(false);
+
+  const handleCrear = async () => {
+    setLoading(true);
+    setError(null);
+    const res = await crearUsuario(nombre, email, rol, modo);
+    setLoading(false);
+    if (!res.ok) { setError(res.error); return; }
+    setResultado(res.data);
+    router.refresh();
+  };
+
+  const handleCopiar = () => {
+    if (!resultado?.password) return;
+    navigator.clipboard.writeText(resultado.password);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 1500);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="glass-card w-full max-w-md p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-avigea text-xl text-foreground">
+            {resultado ? 'Usuario creado' : 'Crear usuario'}
+          </h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {resultado ? (
+          /* Pantalla de éxito */
+          <div className="space-y-4">
+            {resultado.password ? (
+              <>
+                <p className="text-muted-foreground text-sm">
+                  Compartile esta contraseña temporal a <span className="text-foreground font-semibold">{email}</span>.
+                  Es la única vez que se muestra.
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-4 py-3 rounded-xl bg-club-verde-claro/20 border border-club-dorado/30 text-club-dorado font-mono text-lg text-center tracking-wider">
+                    {resultado.password}
+                  </code>
+                  <button
+                    onClick={handleCopiar}
+                    className="p-3 rounded-xl border border-club-verde-claro/40 text-muted-foreground hover:text-club-dorado hover:border-club-dorado/40 transition-all"
+                    aria-label="Copiar contraseña"
+                  >
+                    {copiado ? <Check className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5" />}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-sm">
+                <Mail className="w-5 h-5 shrink-0 mt-0.5" />
+                <p>
+                  Invitación enviada a <span className="font-semibold">{email}</span>.
+                  Al abrir el link del correo va a definir su contraseña y entrar directo.
+                </p>
+              </div>
+            )}
+            <button onClick={onClose} className="btn-primary w-full py-3">Listo</button>
+          </div>
+        ) : (
+          /* Formulario de alta */
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Nombre *</label>
+              <input value={nombre} onChange={e => setNombre(e.target.value)}
+                className="input-club w-full" placeholder="Nombre y apellido" />
+            </div>
+            <div>
+              <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Email *</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                className="input-club w-full" placeholder="persona@email.com" />
+            </div>
+
+            {/* Rol */}
+            <div>
+              <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Rol</label>
+              <div className="grid grid-cols-2 gap-2">
+                {([['socio', 'Socio', User], ['admin', 'Administrador', Shield]] as const).map(([valor, label, Icono]) => (
+                  <button
+                    key={valor}
+                    onClick={() => setRol(valor)}
+                    className={cn(
+                      'flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-all',
+                      rol === valor
+                        ? 'bg-club-dorado text-club-verde border-club-dorado shadow-dorado-sm'
+                        : 'bg-club-verde-claro/15 text-muted-foreground border-white/10 hover:border-club-dorado/40'
+                    )}
+                  >
+                    <Icono className="w-4 h-4" /> {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Modo de alta */}
+            <div>
+              <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Acceso</label>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setModo('invitacion')}
+                  className={cn(
+                    'w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all',
+                    modo === 'invitacion'
+                      ? 'border-club-dorado/50 bg-club-dorado/10'
+                      : 'border-white/10 bg-club-verde-claro/10 hover:border-club-dorado/30'
+                  )}
+                >
+                  <Mail className={cn('w-4 h-4 mt-0.5 shrink-0', modo === 'invitacion' ? 'text-club-dorado' : 'text-muted-foreground')} />
+                  <span>
+                    <span className="block text-sm font-medium text-foreground">Invitación por email</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      Recibe un correo con un link para definir su contraseña.
+                    </span>
+                  </span>
+                </button>
+                <button
+                  onClick={() => setModo('password')}
+                  className={cn(
+                    'w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all',
+                    modo === 'password'
+                      ? 'border-club-dorado/50 bg-club-dorado/10'
+                      : 'border-white/10 bg-club-verde-claro/10 hover:border-club-dorado/30'
+                  )}
+                >
+                  <KeyRound className={cn('w-4 h-4 mt-0.5 shrink-0', modo === 'password' ? 'text-club-dorado' : 'text-muted-foreground')} />
+                  <span>
+                    <span className="block text-sm font-medium text-foreground">Contraseña temporal</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      Se genera una clave y se la compartís vos (WhatsApp, etc.).
+                    </span>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="px-3 py-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-sm">{error}</div>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={onClose} className="btn-secondary flex-1 py-3">Cancelar</button>
+              <button onClick={handleCrear} disabled={loading || !nombre.trim() || !email.trim()} className="btn-primary flex-1 py-3">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><UserPlus className="w-4 h-4" /> Crear</>}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

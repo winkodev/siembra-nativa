@@ -12,6 +12,11 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
+      // Destino explícito (ej: invitados van a definir su contraseña)
+      if (next.startsWith('/') && next !== '/') {
+        return NextResponse.redirect(`${origin}${next}`);
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
