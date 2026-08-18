@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getProfile } from '@/lib/supabase/server';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { FondoClub } from '@/components/layout/FondoClub';
 import { PageTransition } from '@/components/layout/PageTransition';
 import type { Metadata } from 'next';
 
@@ -15,7 +16,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (profile.rol !== 'admin') redirect('/socio/dashboard');
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
+      <FondoClub />
       <Sidebar rol="admin" nombre={profile.nombre} />
 
       <main className="lg:pl-64">

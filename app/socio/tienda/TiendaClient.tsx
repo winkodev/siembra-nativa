@@ -22,6 +22,29 @@ function labelPredominancia(tipo: string): string {
   return tipo === 'hibrida' ? 'Híbrida' : `Predominancia ${labelTipo(tipo).toLowerCase()}`;
 }
 
+// Barra visual de cannabinoide (THC/CBD) con punto deslizado, estilo carta
+function BarraCannabinoide({ label, valor, max }: { label: string; valor: number; max: number }) {
+  const pct = Math.min(Math.max((valor / max) * 100, 0), 100);
+  return (
+    <div>
+      <div className="flex justify-between items-baseline mb-1.5">
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
+        <span className="text-xs font-bold text-foreground/80">{valor}%</span>
+      </div>
+      <div className="relative h-1.5 rounded-full bg-white/10">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-club-dorado/30 to-club-dorado"
+          style={{ width: `${pct}%` }}
+        />
+        <span
+          className="absolute top-1/2 -translate-y-1/2 -ml-1.5 w-3 h-3 rounded-full bg-white shadow-md"
+          style={{ left: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // Filtro unificado: flores secas + aceites + otros productos
 type Filtro = 'todos' | 'flores' | 'aceite' | 'otros';
 
@@ -230,14 +253,20 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
           )}
         </div>
 
-        {/* Datos técnicos y precio */}
-        <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground">
-          {flor.thc != null && <span>THC {flor.thc}%</span>}
-          {flor.cbd != null && <span>CBD {flor.cbd}%</span>}
-          {flor.precio_gramo != null && (
-            <span className="text-club-dorado font-bold">{formatPrecio(flor.precio_gramo)}/g</span>
-          )}
-        </div>
+        {/* Barras de cannabinoides estilo carta */}
+        {(flor.thc != null || flor.cbd != null) && (
+          <div className="grid grid-cols-2 gap-5 pt-1.5 pb-0.5">
+            {flor.thc != null && <BarraCannabinoide label="THC" valor={flor.thc} max={30} />}
+            {flor.cbd != null && <BarraCannabinoide label="CBD" valor={flor.cbd} max={15} />}
+          </div>
+        )}
+
+        {/* Precio */}
+        {flor.precio_gramo != null && (
+          <p className="text-club-dorado font-bold text-sm">
+            {formatPrecio(flor.precio_gramo)} <span className="text-xs font-normal text-muted-foreground">por gramo</span>
+          </p>
+        )}
 
         {/* Etiquetas unificadas (solo Premium lleva acento) */}
         {(flor.calidad || flor.cultivo) && (

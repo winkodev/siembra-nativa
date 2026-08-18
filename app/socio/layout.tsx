@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getProfile } from '@/lib/supabase/server';
 import { getAppConfig } from '@/lib/supabase/config';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { FondoClub } from '@/components/layout/FondoClub';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { CarritoProvider } from '@/lib/context/CarritoContext';
 import { CarritoDrawer } from '@/components/layout/CarritoDrawer';
@@ -24,7 +25,8 @@ export default async function SocioLayout({ children }: { children: React.ReactN
       descuento20={config.descuento_20}
       descuento40={config.descuento_40}
     >
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
+        <FondoClub />
         <Sidebar rol="socio" nombre={profile.nombre} />
 
         <main className="lg:pl-64">
