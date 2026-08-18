@@ -193,17 +193,17 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
         {/* Card REPROCANN: credencial de fondo fundida con el verde */}
         <div className={cn('relative overflow-hidden glass-card !bg-[#04231f]/95 border group', estado.border)}>
           {credencialOk && (
-            <>
+            /* Credencial en la mitad derecha, fundida en su borde izquierdo */
+            <div className="absolute inset-y-0 right-0 w-1/2 overflow-hidden">
               <Image
-                src="/images/reprocann.png"
+                src="/images/reprocann.jpg"
                 alt=""
                 fill
-                className="object-cover object-right opacity-90 group-hover:scale-105 transition-transform duration-700 ease-out"
+                className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                 onError={() => setCredencialOk(false)}
               />
-              {/* Fundido con el verde para que el texto respire */}
-              <div className="absolute inset-0 bg-gradient-to-r from-[#04231f] from-40% via-[#04231f]/85 via-60% to-[#04231f]/25" />
-            </>
+              <div className="absolute inset-0 bg-gradient-to-r from-[#04231f] via-[#04231f]/30 via-45% to-transparent" />
+            </div>
           )}
 
           <div className="relative z-10 p-5 flex flex-col gap-4 h-full">
@@ -238,16 +238,18 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
         {/* Acceso rápido — Catálogo: el verde se funde con la foto */}
         <Link
           href="/socio/tienda"
-          className="relative overflow-hidden rounded-xl border border-white/5 hover:border-club-dorado/40 hover:shadow-dorado-sm transition-all duration-300 group min-h-[11rem] flex"
+          className="relative overflow-hidden rounded-xl border border-white/5 bg-[#04231f]/95 hover:border-club-dorado/40 hover:shadow-dorado-sm transition-all duration-300 group min-h-[11rem] flex"
         >
-          <Image
-            src="/images/fondo-boton-catalogo.jpg"
-            alt=""
-            fill
-            className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-          />
-          {/* Fundido: verde sólido a la izquierda → foto limpia a la derecha */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#04231f] from-30% via-[#04231f]/80 via-55% to-transparent" />
+          {/* Foto en la mitad derecha, fundida en su borde izquierdo */}
+          <div className="absolute inset-y-0 right-0 w-1/2 overflow-hidden">
+            <Image
+              src="/images/fondo-boton-catalogo.png"
+              alt=""
+              fill
+              className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#04231f] via-[#04231f]/30 via-45% to-transparent" />
+          </div>
 
           <div className="relative z-10 p-5 flex flex-col gap-3 w-3/5">
             <div className="w-10 h-10 rounded-xl bg-club-dorado/15 border border-club-dorado/25 backdrop-blur-sm flex items-center justify-center text-club-dorado group-hover:bg-club-dorado/30 transition-colors">

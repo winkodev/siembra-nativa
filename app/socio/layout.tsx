@@ -30,8 +30,9 @@ export default async function SocioLayout({ children }: { children: React.ReactN
         <Sidebar rol="socio" nombre={profile.nombre} />
 
         <main className="lg:pl-64">
-          {/* Carrito flotante (sin franja: no rompe la inmersión del fondo) */}
-          <div className="sticky top-0 z-30 flex justify-end px-4 sm:px-6 lg:px-8 py-3 pointer-events-none [&>*]:pointer-events-auto">
+          {/* Carrito flotante de verdad (fixed): no ocupa lugar en el flujo,
+              así el contenido arranca arriba */}
+          <div className="fixed top-3 right-4 sm:right-6 lg:right-8 z-30">
             <CarritoDrawer />
           </div>
 
