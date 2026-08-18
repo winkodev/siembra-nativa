@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, ChevronDown, Clock, Loader2, Search, Receipt, ExternalLink, Printer, CalendarClock } from 'lucide-react';
-import { cn, formatFecha, formatGramos, formatNumeroPedido, labelTipo, labelCategoriaProducto, badgePedido } from '@/lib/utils';
+import { cn, formatFecha, formatGramos, formatNumeroPedido, formatPrecio, labelTipo, labelCategoriaProducto, badgePedido } from '@/lib/utils';
 import { cambiarEstadoPedido, verComprobante } from '@/app/actions/pedidos';
 import { PageHeader } from '@/components/layout/PageHeader';
 import type { EstadoPedido } from '@/lib/types/database';
@@ -44,6 +44,8 @@ interface PedidoAdmin {
   comprobante_path: string | null;
   comprobante_subido_at: string | null;
   entrega_franja: string | null;
+  monto_total: number | null;
+  monto_envio: number | null;
   pedido_items: PedidoItemAdmin[];
   profiles: { nombre: string; dni: string | null } | null;
 }
@@ -338,6 +340,16 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales }: { pedidos: Ped
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground">Total de flores</span>
                               <span className="text-club-dorado font-bold text-sm">{formatGramos(totalGramos)}</span>
+                            </div>
+                          )}
+
+                          {pedido.monto_total != null && pedido.monto_total > 0 && (
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                Total a abonar
+                                {(pedido.monto_envio ?? 0) > 0 && ` (envío ${formatPrecio(pedido.monto_envio!)})`}
+                              </span>
+                              <span className="text-club-dorado font-bold text-sm">{formatPrecio(pedido.monto_total)}</span>
                             </div>
                           )}
 

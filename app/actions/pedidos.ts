@@ -60,7 +60,7 @@ export async function cambiarEstadoPedido(
 
   const { data: pedido } = await supabase
     .from('pedidos')
-    .select('estado, comprobante_path, socio_id')
+    .select('estado, comprobante_path, socio_id, numero, entrega_franja')
     .eq('id', pedidoId)
     .single();
 
@@ -118,6 +118,27 @@ export async function cambiarEstadoPedido(
     if (restError) {
       return { ok: false, error: 'Pedido cancelado, pero falló la devolución de stock: ' + restError.message };
     }
+  }
+
+  // Notificación in-app para el socio (confirmado / entregado)
+  if (nuevoEstado === 'aprobado' || nuevoEstado === 'entregado') {
+    const numeroTxt = pedido.numero != null ? `#${String(pedido.numero).padStart(4, '0')}` : '';
+    await supabase.from('notificaciones').insert(
+      nuevoEstado === 'aprobado'
+        ? {
+            socio_id: pedido.socio_id,
+            titulo: `Tu pedido ${numeroTxt} fue confirmado`,
+            mensaje: pedido.entrega_franja
+              ? `El club confirmó tu pedido. Entrega: ${pedido.entrega_franja}.`
+              : 'El club confirmó tu pedido y lo está preparando.',
+          }
+        : {
+            socio_id: pedido.socio_id,
+            titulo: `Tu pedido ${numeroTxt} fue entregado`,
+            mensaje: '¡Gracias! Cualquier consulta, escribile al club.',
+          }
+    );
+    revalidatePath('/socio/dashboard');
   }
 
   await registrarAccion(supabase, `pedido_${nuevoEstado}`, 'pedidos', { pedido_id: pedidoId }, pedido.socio_id);

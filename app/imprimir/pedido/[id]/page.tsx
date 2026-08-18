@@ -1,7 +1,7 @@
 import { createClient, getProfile } from '@/lib/supabase/server';
 import { redirect, notFound } from 'next/navigation';
 import { registrarAccion } from '@/lib/audit';
-import { formatFecha, formatGramos, formatNumeroPedido, labelTipo, labelCategoriaProducto } from '@/lib/utils';
+import { formatFecha, formatGramos, formatNumeroPedido, formatPrecio, labelTipo, labelCategoriaProducto } from '@/lib/utils';
 import { PrintControls } from './PrintControls';
 import type { EstadoPedido } from '@/lib/types/database';
 
@@ -140,6 +140,20 @@ export default async function ImprimirPedidoPage({ params }: Props) {
                   ].filter(Boolean).join(' + ') || '—'}
                 </td>
               </tr>
+              {p.monto_total != null && p.monto_total > 0 && (
+                <>
+                  {(p.monto_envio ?? 0) > 0 && (
+                    <tr>
+                      <td colSpan={3} className="py-1 text-right text-[11px] uppercase tracking-widest text-neutral-500">Envío</td>
+                      <td className="py-1 text-right font-semibold">{formatPrecio(p.monto_envio)}</td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td colSpan={3} className="py-2 text-right font-bold uppercase text-[11px] tracking-widest text-neutral-500">Total a abonar</td>
+                    <td className="py-2 text-right font-bold text-base">{formatPrecio(p.monto_total)}</td>
+                  </tr>
+                </>
+              )}
             </tbody>
           </table>
         </section>

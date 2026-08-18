@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Leaf, Package, Search, ShoppingBag, AlertTriangle, Plus, Minus, CheckCircle2 } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
-import { cn, labelTipo, labelCategoriaProducto, labelCalidad, labelCultivo } from '@/lib/utils';
+import { cn, labelTipo, labelCategoriaProducto, labelCalidad, labelCultivo, formatPrecio } from '@/lib/utils';
 import type { StockPublico, Producto } from '@/lib/types/database';
 
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
@@ -216,6 +216,9 @@ function FlorCard({ flor }: { flor: StockPublico }) {
           </div>
           {flor.descripcion && (
             <p className="text-muted-foreground text-xs line-clamp-2">{flor.descripcion}</p>
+          )}
+          {flor.precio_gramo != null && (
+            <p className="text-club-dorado font-bold text-sm mt-2">{formatPrecio(flor.precio_gramo)} <span className="text-xs font-normal text-muted-foreground">por gramo</span></p>
           )}
         </div>
       </Link>

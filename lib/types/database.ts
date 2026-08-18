@@ -56,6 +56,7 @@ export interface Genetica {
   imagen_url: string | null;
   calidad: CalidadGenetica | null;
   cultivo: CultivoGenetica | null;
+  precio_gramo: number | null;
   activa: boolean;
   created_at: string;
   updated_at: string;
@@ -84,6 +85,7 @@ export interface StockPublico {
   stock_total_gramos: number;
   calidad: CalidadGenetica | null;
   cultivo: CultivoGenetica | null;
+  precio_gramo: number | null;
 }
 
 export interface Pedido {
@@ -101,6 +103,9 @@ export interface Pedido {
   fecha_entregado: string | null;
   // Foto del horario de entrega elegido (ej: "Sábados · 09:00–18:00 hs")
   entrega_franja: string | null;
+  // Foto de los montos al confirmar (precios de ese momento)
+  monto_total: number | null;
+  monto_envio: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -168,6 +173,16 @@ export interface Newsletter {
   updated_at: string;
 }
 
+// Notificación in-app para el socio (pedido confirmado/entregado, avisos)
+export interface Notificacion {
+  id: string;
+  socio_id: string;
+  titulo: string;
+  mensaje: string | null;
+  leida: boolean;
+  created_at: string;
+}
+
 // Log de notas internas por socio (solo admin; puede contener datos de salud)
 export type TipoNotaSocio = 'general' | 'consulta_medica' | 'reprocann' | 'pago';
 
@@ -210,6 +225,7 @@ export interface CarritoItemGenetica {
   tipo: TipoGenetica;
   cantidad_gramos: number;
   stock_disponible: number;   // en gramos
+  precio_gramo?: number | null;
 }
 
 export interface CarritoItemProducto {
@@ -343,6 +359,12 @@ export interface Database {
         Row: SocioNota;
         Insert: Partial<Omit<SocioNota, 'id' | 'created_at'>> & { socio_id: string; contenido: string };
         Update: Partial<Omit<SocioNota, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      notificaciones: {
+        Row: Notificacion;
+        Insert: Partial<Omit<Notificacion, 'id' | 'created_at'>> & { socio_id: string; titulo: string };
+        Update: Partial<Omit<Notificacion, 'id' | 'created_at'>>;
         Relationships: [];
       };
     };

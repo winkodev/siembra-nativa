@@ -9,7 +9,7 @@ import {
   X, Loader2, CheckCircle2, Upload, ImageIcon, Leaf, Search,
 } from 'lucide-react';
 import { crearGenetica, editarGenetica, eliminarGenetica, toggleGeneticaActiva } from '@/app/actions/inventario';
-import { cn, labelTipo, formatGramos, labelCalidad, labelCultivo } from '@/lib/utils';
+import { cn, labelTipo, formatGramos, formatPrecio, labelCalidad, labelCultivo } from '@/lib/utils';
 import type { Genetica, ActionResponse } from '@/lib/types/database';
 
 const initial: ActionResponse = { ok: true, data: undefined };
@@ -129,8 +129,8 @@ function GeneticaModal({ genetica, onClose }: ModalProps) {
             </div>
           </div>
 
-          {/* THC + CBD */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* THC + CBD + Precio */}
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm text-foreground/80 font-medium">THC %</label>
               <input name="thc" type="number" step="0.1" min="0" max="100" defaultValue={genetica?.thc ?? ''} className="input-club w-full" placeholder="22.5" />
@@ -138,6 +138,10 @@ function GeneticaModal({ genetica, onClose }: ModalProps) {
             <div className="space-y-1.5">
               <label className="text-sm text-foreground/80 font-medium">CBD %</label>
               <input name="cbd" type="number" step="0.1" min="0" max="100" defaultValue={genetica?.cbd ?? ''} className="input-club w-full" placeholder="0.5" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm text-foreground/80 font-medium">Precio $/g</label>
+              <input name="precio_gramo" type="number" step="0.01" min="0" defaultValue={genetica?.precio_gramo ?? ''} className="input-club w-full" placeholder="1500" />
             </div>
           </div>
 
@@ -306,6 +310,9 @@ export function GeneticasTab({ geneticas }: { geneticas: Genetica[] }) {
                 <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground mb-3">
                   {g.thc != null && <span>THC {g.thc}%</span>}
                   {g.cbd != null && <span>CBD {g.cbd}%</span>}
+                  {g.precio_gramo != null && (
+                    <span className="text-club-dorado font-bold">{formatPrecio(g.precio_gramo)}/g</span>
+                  )}
                   {g.calidad && (
                     <span className={cn('px-2 py-0.5 rounded-full font-medium', calidadBadge[g.calidad])}>
                       {labelCalidad(g.calidad)}

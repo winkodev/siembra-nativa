@@ -104,6 +104,11 @@ export function formatGramos(gramos: number): string {
   return `${gramos.toFixed(0)} g`;
 }
 
+// Formatear montos en pesos: "$ 1.500"
+export function formatPrecio(monto: number): string {
+  return '$ ' + monto.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
 // Número de orden con ceros a la izquierda: "#0012"
 export function formatNumeroPedido(numero: number | null | undefined): string {
   return numero != null ? `#${String(numero).padStart(4, '0')}` : '#—';

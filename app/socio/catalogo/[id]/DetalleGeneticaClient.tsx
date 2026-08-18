@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, Leaf, ShoppingBag, AlertTriangle, CheckCircle2, Plus } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
-import { cn, labelTipo, labelCalidad, labelCultivo } from '@/lib/utils';
+import { cn, labelTipo, labelCalidad, labelCultivo, formatPrecio } from '@/lib/utils';
 import type { StockPublico } from '@/lib/types/database';
 
 const tipoBadge: Record<string, string> = {
@@ -38,6 +38,7 @@ export function DetalleGeneticaClient({ genetica, puedeHacerPedidos }: Props) {
       tipo:             genetica.tipo,
       cantidad_gramos:  cantidad,
       stock_disponible: genetica.stock_total_gramos,
+      precio_gramo:     genetica.precio_gramo,
     });
     setFeedback(cantidad);
     setTimeout(() => setFeedback(null), 1400);
@@ -100,6 +101,12 @@ export function DetalleGeneticaClient({ genetica, puedeHacerPedidos }: Props) {
                   <p className="text-muted-foreground text-xs">CBD</p>
                 </div>
               )}
+              {genetica.precio_gramo != null && (
+                <div className="glass-card px-4 py-2 text-center">
+                  <p className="text-club-dorado font-bold text-xl">{formatPrecio(genetica.precio_gramo)}</p>
+                  <p className="text-muted-foreground text-xs">por gramo</p>
+                </div>
+              )}
               {genetica.calidad && (
                 <div className="glass-card px-4 py-2 text-center">
                   <p className={cn('font-bold text-xl', genetica.calidad === 'premium' ? 'text-club-dorado' : 'text-foreground/80')}>
@@ -154,6 +161,11 @@ export function DetalleGeneticaClient({ genetica, puedeHacerPedidos }: Props) {
                     </button>
                   ))}
                 </div>
+                {genetica.precio_gramo != null && (
+                  <p className="text-center text-sm text-muted-foreground">
+                    {cantidad}g = <span className="text-club-dorado font-bold">{formatPrecio(cantidad * genetica.precio_gramo)}</span>
+                  </p>
+                )}
               </div>
 
               {/* Botón agregar — siempre acumula */}

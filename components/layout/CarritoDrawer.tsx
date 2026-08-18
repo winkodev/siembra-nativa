@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import Link from 'next/link';
 import { ShoppingBag, X, Trash2, ArrowRight, AlertTriangle, Minus, Plus } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
-import { cn, labelTipo, labelCategoriaProducto } from '@/lib/utils';
+import { cn, labelTipo, labelCategoriaProducto, formatPrecio } from '@/lib/utils';
 
 const GRAMOS = [10, 20, 30, 40];
 
@@ -14,6 +14,14 @@ export function CarritoDrawer() {
   const total    = totalGramos; // el límite por pedido aplica solo a las flores
   const excede   = total > maxGramos;
   const porciento = Math.min((total / maxGramos) * 100, 100);
+
+  // Total estimado en $ (items con precio cargado; el envío se calcula al confirmar)
+  const totalMonto = items.reduce((acc, i) =>
+    acc + (i.tipo_item === 'genetica'
+      ? (i.precio_gramo ?? 0) * i.cantidad_gramos
+      : (i.precio ?? 0) * i.cantidad_unidades),
+    0
+  );
 
   /* Animación squeezy del ícono cuando se agrega algo */
   const iconControls = useAnimation();
@@ -144,6 +152,11 @@ export function CarritoDrawer() {
                                 {item.cantidad_gramos}g en pedido
                               </p>
                             )}
+                            {item.precio_gramo != null && (
+                              <p className="text-right text-club-dorado font-bold text-sm mt-2">
+                                {formatPrecio(item.precio_gramo * item.cantidad_gramos)}
+                              </p>
+                            )}
                           </>
                         ) : (
                           /* Stepper de unidades para productos */
@@ -167,7 +180,7 @@ export function CarritoDrawer() {
                             </div>
                             {item.precio != null && (
                               <span className="text-club-dorado font-bold text-sm">
-                                ${(item.precio * item.cantidad_unidades).toFixed(2)}
+                                {formatPrecio(item.precio * item.cantidad_unidades)}
                               </span>
                             )}
                           </div>
@@ -180,6 +193,14 @@ export function CarritoDrawer() {
                 {/* Footer */}
                 {items.length > 0 && (
                   <div className="px-5 py-4 border-t border-club-verde-claro/30 space-y-3">
+                    {/* Total estimado */}
+                    {totalMonto > 0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Total estimado <span className="text-xs">(sin envío)</span></span>
+                        <span className="text-club-dorado font-bold text-base">{formatPrecio(totalMonto)}</span>
+                      </div>
+                    )}
+
                     {/* Barra de límite */}
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs text-muted-foreground">

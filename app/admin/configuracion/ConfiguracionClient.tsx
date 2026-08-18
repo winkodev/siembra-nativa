@@ -406,6 +406,8 @@ function GeneralTab({ config }: { config: AppConfig }) {
   const [stockMin,   setStockMin]   = useState(config.stock_minimo_visible.toString());
   const [maxGramos,  setMaxGramos]  = useState(config.max_gramos_pedido.toString());
   const [comprobante, setComprobante] = useState(config.comprobante_obligatorio);
+  const [costoEnvio, setCostoEnvio]   = useState(config.costo_envio.toString());
+  const [gratisDesde, setGratisDesde] = useState(config.envio_gratis_desde.toString());
   const [pending, startTransition]  = useTransition();
   const [saved, setSaved]           = useState(false);
 
@@ -415,6 +417,8 @@ function GeneralTab({ config }: { config: AppConfig }) {
         guardarConfigApp('stock_minimo_visible',    stockMin),
         guardarConfigApp('max_gramos_pedido',       maxGramos),
         guardarConfigApp('comprobante_obligatorio', comprobante ? 'true' : 'false'),
+        guardarConfigApp('costo_envio',             costoEnvio || '0'),
+        guardarConfigApp('envio_gratis_desde',      gratisDesde || '0'),
       ]);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -460,13 +464,43 @@ function GeneralTab({ config }: { config: AppConfig }) {
         </div>
       </motion.div>
 
+      {/* Envío a domicilio */}
+      <motion.div variants={fadeUp} className="glass-card p-5 space-y-4">
+        <div>
+          <p className="text-foreground font-medium text-sm">Envío a domicilio</p>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            El monto se suma al pedido y el socio lo ve antes de confirmar.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground font-medium">Costo del envío ($)</label>
+            <input
+              type="number" min="0" step="50" value={costoEnvio}
+              onChange={e => setCostoEnvio(e.target.value)}
+              className="input-club w-full text-center text-lg font-bold text-club-dorado"
+            />
+            <p className="text-muted-foreground text-[11px]">0 = no se cobra envío</p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground font-medium">Gratis desde (gramos)</label>
+            <input
+              type="number" min="0" step="10" value={gratisDesde}
+              onChange={e => setGratisDesde(e.target.value)}
+              className="input-club w-full text-center text-lg font-bold text-club-dorado"
+            />
+            <p className="text-muted-foreground text-[11px]">0 = se cobra siempre · ej: 40 = gratis desde 40g</p>
+          </div>
+        </div>
+      </motion.div>
+
       {/* Comprobante obligatorio */}
       <motion.div variants={fadeUp} className="glass-card p-5 space-y-3">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-foreground font-medium text-sm">Comprobante de pago obligatorio</p>
             <p className="text-muted-foreground text-xs mt-0.5">
-              Si está activo, un pedido no se puede aprobar hasta que el socio suba el comprobante.
+              Si está activo, el socio debe adjuntarlo al confirmar el pedido, y no se puede aprobar sin él.
             </p>
           </div>
           <button

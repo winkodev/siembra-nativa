@@ -18,6 +18,7 @@ const geneticaSchema = z.object({
   descripcion: z.string().optional().transform(v => v || null),
   calidad:     z.string().optional().transform(v => v === 'regular' || v === 'premium' ? v : null),
   cultivo:     z.string().optional().transform(v => v === 'indoor' || v === 'outdoor' ? v : null),
+  precio_gramo: z.string().optional().transform(v => v ? parseFloat(v) : null),
 });
 
 export async function crearGenetica(
