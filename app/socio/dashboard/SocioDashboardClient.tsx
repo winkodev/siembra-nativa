@@ -85,15 +85,6 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
   const certCargado    = Boolean(profile.reprocann_certificado_path);
   const aprobado       = profile.reprocann_estado === 'aprobado';
 
-  const fondoInicio = (
-    /* Fondo fotográfico del Inicio (prueba): pisa al FondoClub por orden
-       de DOM y lleva velo verde para mantener la legibilidad */
-    <div className="fixed inset-0 -z-10 pointer-events-none" aria-hidden>
-      <Image src="/images/fondo-inicio.jpg" alt="" fill className="object-cover" priority />
-      <div className="absolute inset-0 bg-gradient-to-b from-club-verde/80 via-club-verde/70 to-[#041e1c]/95" />
-    </div>
-  );
-
   const alertas = [
     !datosCompletos && {
       key:   'datos',
@@ -128,7 +119,6 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-5">
-      {fondoInicio}
 
       {/* Bienvenida */}
       <motion.div variants={fadeUp}>
@@ -207,7 +197,7 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
           )}
 
           <div className="relative z-10 p-5 flex flex-col gap-4 h-full">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col items-start gap-2">
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-club-dorado" />
                 <span className="text-sm font-semibold text-foreground/80">REPROCANN</span>
