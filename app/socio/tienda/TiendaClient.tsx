@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Leaf, Package, Search, ShoppingBag, AlertTriangle, Plus, Minus, CheckCircle2 } from 'lucide-react';
@@ -83,7 +83,7 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos }: Props) {
       <div>
         <h1 className="font-avigea text-3xl text-foreground flex items-center gap-3">
           <ShoppingBag className="w-7 h-7 text-club-dorado" />
-          Tienda
+          Catálogo
         </h1>
         <div className="divider-dorado mt-2" />
       </div>
@@ -96,7 +96,7 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos }: Props) {
         >
           <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <p className="text-sm">
-            Tu documentación aún no fue aprobada. Podés explorar la tienda, pero para hacer pedidos necesitás aprobación del club.{' '}
+            Tu documentación aún no fue aprobada. Podés explorar el catálogo, pero para hacer pedidos necesitás aprobación del club.{' '}
             <Link href="/socio/perfil" className="text-club-dorado underline underline-offset-2">
               Subir documentación →
             </Link>
@@ -110,7 +110,7 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos }: Props) {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Buscar en la tienda..."
+            placeholder="Buscar en el catálogo..."
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
             className="input-club w-full pl-10"
@@ -153,13 +153,11 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos }: Props) {
           animate="visible"
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
         >
-          <AnimatePresence mode="popLayout">
-            {filtradas.map(e =>
-              e.kind === 'flor'
-                ? <FlorCard key={`flor:${e.data.genetica_id}`} flor={e.data} puedeHacerPedidos={puedeHacerPedidos} />
-                : <ProductoCard key={`prod:${e.data.id}`} producto={e.data} puedeHacerPedidos={puedeHacerPedidos} />
-            )}
-          </AnimatePresence>
+          {filtradas.map(e =>
+            e.kind === 'flor'
+              ? <FlorCard key={`flor:${e.data.genetica_id}`} flor={e.data} puedeHacerPedidos={puedeHacerPedidos} />
+              : <ProductoCard key={`prod:${e.data.id}`} producto={e.data} puedeHacerPedidos={puedeHacerPedidos} />
+          )}
         </motion.div>
       )}
     </div>
@@ -179,8 +177,6 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
 
   const [cantidad, setCantidad] = useState(10);
   const [feedback, setFeedback] = useState(false);
-  // Descripción colapsada a 2 líneas; "Ver más" la expande en la misma card
-  const [descExpandida, setDescExpandida] = useState(false);
 
   const handleAgregar = () => {
     agregar({
@@ -207,12 +203,14 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
     >
       <Link href={`/socio/catalogo/${flor.genetica_id}`} className="block relative h-48 bg-club-verde-claro/20 overflow-hidden shrink-0">
         {flor.imagen_url ? (
-          <Image src={flor.imagen_url} alt={flor.nombre} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+          <Image src={flor.imagen_url} alt={flor.nombre} fill className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground/20">
             <Leaf className="w-20 h-20" />
           </div>
         )}
+        {/* Degradado inferior: da profundidad y legibilidad a los badges */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 opacity-70 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none" />
         <span className={cn('absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium', tipoBadge[flor.tipo])}>
           {labelTipo(flor.tipo)}
         </span>
@@ -254,21 +252,9 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
           </div>
         )}
 
-        {/* Descripción: extracto de 2 líneas, expandible en la card */}
+        {/* Descripción completa, siempre visible */}
         {flor.descripcion && (
-          <div>
-            <p className={cn('text-muted-foreground text-xs leading-relaxed', !descExpandida && 'line-clamp-2')}>
-              {flor.descripcion}
-            </p>
-            {flor.descripcion.length > 90 && (
-              <button
-                onClick={() => setDescExpandida(v => !v)}
-                className="text-club-dorado text-xs font-semibold mt-0.5 hover:text-club-dorado/80 transition-colors"
-              >
-                {descExpandida ? 'Ver menos' : 'Ver más'}
-              </button>
-            )}
-          </div>
+          <p className="text-muted-foreground text-xs leading-relaxed">{flor.descripcion}</p>
         )}
 
         {/* Selector de gramos + agregar (igual que productos) */}
@@ -364,12 +350,14 @@ function ProductoCard({ producto, puedeHacerPedidos }: { producto: Producto; pue
     >
       <Link href={`/socio/producto/${producto.id}`} className="block relative h-48 bg-club-verde-claro/20 overflow-hidden shrink-0">
         {producto.imagen_url ? (
-          <Image src={producto.imagen_url} alt={producto.nombre} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+          <Image src={producto.imagen_url} alt={producto.nombre} fill className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground/20">
             <Package className="w-20 h-20" />
           </div>
         )}
+        {/* Degradado inferior: da profundidad y legibilidad a los badges */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 opacity-70 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none" />
         <span className={cn('absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium border backdrop-blur-sm', categoriaBadge[producto.categoria])}>
           {labelCategoriaProducto(producto.categoria)}
         </span>

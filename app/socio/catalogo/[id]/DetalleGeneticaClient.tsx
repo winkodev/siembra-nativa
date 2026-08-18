@@ -52,7 +52,7 @@ export function DetalleGeneticaClient({ genetica, puedeHacerPedidos }: Props) {
       className="max-w-3xl mx-auto space-y-6"
     >
       <Link href="/socio/tienda" className="inline-flex items-center gap-2 text-muted-foreground hover:text-club-dorado transition-colors text-sm">
-        <ArrowLeft className="w-4 h-4" /> Volver a la tienda
+        <ArrowLeft className="w-4 h-4" /> Volver al catálogo
       </Link>
 
       <div className="glass-card overflow-hidden">

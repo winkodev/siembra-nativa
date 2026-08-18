@@ -216,7 +216,7 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
             <Leaf className="w-5 h-5" />
           </div>
           <div className="flex-1">
-            <p className="text-foreground font-semibold text-sm">Tienda</p>
+            <p className="text-foreground font-semibold text-sm">Catálogo</p>
             <p className="text-muted-foreground text-xs mt-0.5">Flores y productos</p>
           </div>
           <span className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-club-dorado transition-colors mt-auto">

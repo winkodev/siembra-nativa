@@ -63,7 +63,7 @@ export function HistorialPedidosClient({ pedidos: iniciales }: { pedidos: Pedido
         <ShoppingBag className="w-16 h-16 text-muted-foreground/30" />
         <p className="text-muted-foreground">Todavía no hiciste ningún pedido.</p>
         <Link href="/socio/tienda" className="btn-primary text-sm px-6 py-2.5">
-          Ver tienda
+          Ver catálogo
         </Link>
       </div>
     );

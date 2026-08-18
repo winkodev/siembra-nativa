@@ -4,7 +4,7 @@ import { TiendaClient } from './TiendaClient';
 import { getAppConfig } from '@/lib/supabase/config';
 import type { Producto, StockPublico } from '@/lib/types/database';
 
-export const metadata = { title: 'Tienda' };
+export const metadata = { title: 'Catálogo' };
 
 export default async function TiendaPage() {
   const profile = await getProfile();

@@ -133,7 +133,7 @@ export default function NuevoPedidoPage() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
         <ShoppingBag className="w-16 h-16 text-muted-foreground/30" />
         <p className="text-muted-foreground">Tu pedido está vacío.</p>
-        <Link href="/socio/tienda" className="btn-primary text-sm px-6 py-2.5">Ver tienda</Link>
+        <Link href="/socio/tienda" className="btn-primary text-sm px-6 py-2.5">Ver catálogo</Link>
       </div>
     );
   }
