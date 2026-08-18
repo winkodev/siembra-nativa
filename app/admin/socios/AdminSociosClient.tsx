@@ -672,8 +672,9 @@ function CrearUsuarioModal({ onClose }: { onClose: () => void }) {
   const [modo, setModo]       = useState<ModoAlta>('invitacion');
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
-  // Resultado del alta: password temporal generada, o null si fue invitación
-  const [resultado, setResultado] = useState<{ password: string | null } | null>(null);
+  // Resultado del alta: password temporal generada (null si fue invitación)
+  // y si el email salió automáticamente
+  const [resultado, setResultado] = useState<{ password: string | null; email_enviado: boolean } | null>(null);
   const [copiado, setCopiado] = useState(false);
 
   const handleCrear = async () => {
@@ -710,10 +711,17 @@ function CrearUsuarioModal({ onClose }: { onClose: () => void }) {
           <div className="space-y-4">
             {resultado.password ? (
               <>
-                <p className="text-muted-foreground text-sm">
-                  Compartile esta contraseña temporal a <span className="text-foreground font-semibold">{email}</span>.
-                  Es la única vez que se muestra.
-                </p>
+                {resultado.email_enviado ? (
+                  <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-sm">
+                    <Mail className="w-5 h-5 shrink-0 mt-0.5" />
+                    <p>Le enviamos la contraseña temporal por email a <span className="font-semibold">{email}</span>. Acá la tenés de respaldo:</p>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    Compartile esta contraseña temporal a <span className="text-foreground font-semibold">{email}</span>.
+                    Es la única vez que se muestra.
+                  </p>
+                )}
                 <div className="flex items-center gap-2">
                   <code className="flex-1 px-4 py-3 rounded-xl bg-club-verde-claro/20 border border-club-dorado/30 text-club-dorado font-mono text-lg text-center tracking-wider">
                     {resultado.password}

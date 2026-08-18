@@ -11,6 +11,7 @@ import {
   crearUbicacion, actualizarUbicacion, eliminarUbicacion, toggleUbicacionActiva, guardarConfigApp,
   crearFranja, actualizarFranja, eliminarFranja, toggleFranjaActiva,
 } from '@/app/actions/configuracion';
+import { CambiarPassword } from '@/components/auth/CambiarPassword';
 import type { Ubicacion, AuditLog, FranjaHoraria } from '@/lib/types/database';
 import type { AppConfig } from '@/lib/supabase/config';
 
@@ -491,6 +492,11 @@ function GeneralTab({ config }: { config: AppConfig }) {
             : 'Guardar cambios'
           }
         </button>
+      </motion.div>
+
+      {/* Seguridad de la cuenta admin */}
+      <motion.div variants={fadeUp}>
+        <CambiarPassword />
       </motion.div>
 
     </motion.div>

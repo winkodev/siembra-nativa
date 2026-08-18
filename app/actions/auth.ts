@@ -10,16 +10,6 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Mínimo 6 caracteres'),
 });
 
-const registroSchema = z.object({
-  nombre:          z.string().min(2, 'El nombre es requerido'),
-  email:           z.string().email('Email inválido'),
-  password:        z.string().min(8, 'Mínimo 8 caracteres'),
-  confirmPassword: z.string(),
-}).refine(d => d.password === d.confirmPassword, {
-  message: 'Las contraseñas no coinciden',
-  path: ['confirmPassword'],
-});
-
 export async function login(prevState: ActionResponse, formData: FormData): Promise<ActionResponse> {
   const raw = Object.fromEntries(formData);
   const parsed = loginSchema.safeParse(raw);
@@ -61,33 +51,8 @@ export async function login(prevState: ActionResponse, formData: FormData): Prom
   redirect('/socio/dashboard');
 }
 
-export async function registro(prevState: ActionResponse, formData: FormData): Promise<ActionResponse> {
-  const raw = Object.fromEntries(formData);
-  const parsed = registroSchema.safeParse(raw);
-
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.errors[0].message };
-  }
-
-  const supabase = createClient();
-  const { error } = await supabase.auth.signUp({
-    email:    parsed.data.email,
-    password: parsed.data.password,
-    options: {
-      data: { nombre: parsed.data.nombre },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
-    },
-  });
-
-  if (error) {
-    if (error.message.includes('already registered')) {
-      return { ok: false, error: 'Ese email ya está registrado. ¿Querés iniciar sesión?' };
-    }
-    return { ok: false, error: error.message };
-  }
-
-  return { ok: true, data: undefined };
-}
+// Nota: el registro público fue deshabilitado — las altas las hace el
+// club desde /admin/socios (ver app/actions/usuarios.ts)
 
 export async function logout() {
   const supabase = createClient();

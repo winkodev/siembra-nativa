@@ -22,6 +22,54 @@ function generarPasswordTemporal(): string {
   return 'SN-' + Array.from(bytes, b => chars[b % chars.length]).join('');
 }
 
+// Envía la contraseña temporal por email vía Resend.
+// Devuelve false si no hay RESEND_API_KEY configurada o si falla el envío
+// (en ese caso el admin la comparte a mano — el modal se la muestra igual).
+async function enviarEmailPasswordTemporal(
+  email: string,
+  nombre: string,
+  password: string
+): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: process.env.EMAIL_FROM ?? 'Siembra Nativa Club <onboarding@resend.dev>',
+        to: [email],
+        subject: 'Tu acceso a Siembra Nativa Club',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
+            <h2 style="color: #083D3A; margin-bottom: 4px;">Siembra Nativa Club</h2>
+            <p>Hola ${nombre},</p>
+            <p>Te dimos de alta en la plataforma del club. Entrá con este acceso:</p>
+            <p style="margin: 20px 0;">
+              <strong>Usuario:</strong> ${email}<br/>
+              <strong>Contraseña temporal:</strong>
+              <code style="display:inline-block; background:#f3f3f3; border:1px solid #ddd; border-radius:6px; padding:4px 10px; font-size:16px; letter-spacing:1px;">${password}</code>
+            </p>
+            <p>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/login"
+                 style="display:inline-block; background:#F3A707; color:#083D3A; font-weight:bold; padding:10px 22px; border-radius:8px; text-decoration:none;">
+                Entrar al club
+              </a>
+            </p>
+            <p style="font-size: 13px; color: #666;">
+              Por seguridad, cambiá tu contraseña desde tu perfil al entrar.
+            </p>
+          </div>
+        `,
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export type ModoAlta = 'invitacion' | 'password';
 
 export async function crearUsuario(
@@ -29,7 +77,7 @@ export async function crearUsuario(
   email: string,
   rol: RolUsuario,
   modo: ModoAlta
-): Promise<ActionResponse<{ password: string | null }>> {
+): Promise<ActionResponse<{ password: string | null; email_enviado: boolean }>> {
   const adminId = await verificarAdmin();
   if (!adminId) return { ok: false, error: 'No autorizado' };
 
@@ -81,9 +129,15 @@ export async function crearUsuario(
 
   if (perfilError) return { ok: false, error: 'Usuario creado, pero falló la asignación de rol' };
 
+  // Con contraseña temporal: intentar enviarla por email (Resend)
+  let emailEnviado = modo === 'invitacion';
+  if (modo === 'password' && password) {
+    emailEnviado = await enviarEmailPasswordTemporal(emailLimpio, nombre.trim(), password);
+  }
+
   await registrarAccion(createClient(), 'crear_usuario', 'usuarios', { email: emailLimpio, rol, modo }, userId);
   revalidatePath('/admin/socios');
-  return { ok: true, data: { password } };
+  return { ok: true, data: { password, email_enviado: emailEnviado } };
 }
 
 export async function cambiarRolUsuario(userId: string, rol: RolUsuario): Promise<ActionResponse> {

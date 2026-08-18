@@ -54,18 +54,6 @@ export default function LandingPage() {
         />
       </div>
 
-      {/* ---- BOTÓN ACCESO (esquina superior derecha) ---- */}
-      <motion.div
-        className="relative z-10 flex justify-end px-6 pt-6"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.6 }}
-      >
-        <Link href="/login" className="btn-secondary text-sm">
-          Acceso socios
-        </Link>
-      </motion.div>
-
       {/* ---- HERO CENTRADO ---- */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12">
         <motion.div
@@ -118,14 +106,11 @@ export default function LandingPage() {
             Gestioná tu habilitación REPROCANN, explorá genéticas y realizá tus pedidos.
           </motion.p>
 
-          {/* CTAs */}
-          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
+          {/* CTA único: el alta de socios es solo por invitación del club */}
+          <motion.div variants={fadeUp}>
             <Link href="/login" className="btn-primary text-base px-8 py-4">
               Acceso socios
               <ArrowRight className="w-5 h-5" />
-            </Link>
-            <Link href="/registro" className="btn-secondary text-base px-8 py-4">
-              Registrarme
             </Link>
           </motion.div>
 

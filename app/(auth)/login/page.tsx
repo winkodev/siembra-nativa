@@ -98,12 +98,9 @@ export default function LoginPage() {
 
       </form>
 
-      {/* Registro */}
+      {/* El alta de socios es solo por invitación del club */}
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        ¿No tenés cuenta?{' '}
-        <Link href="/registro" className="text-club-dorado hover:text-club-dorado-claro underline underline-offset-2 transition-colors">
-          Registrate
-        </Link>
+        ¿No tenés cuenta? El acceso es por invitación: contactá al club.
       </p>
 
     </motion.div>
