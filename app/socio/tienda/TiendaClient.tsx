@@ -201,7 +201,7 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
         sinStock && 'opacity-70'
       )}
     >
-      <Link href={`/socio/catalogo/${flor.genetica_id}`} className="block relative h-48 bg-club-verde-claro/20 overflow-hidden shrink-0">
+      <div className="relative h-48 bg-club-verde-claro/20 overflow-hidden shrink-0">
         {flor.imagen_url ? (
           <Image src={flor.imagen_url} alt={flor.nombre} fill className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
         ) : (
@@ -219,14 +219,12 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
             <ShoppingBag className="w-3 h-3" /> En pedido
           </span>
         )}
-      </Link>
+      </div>
 
       <div className="p-4 space-y-2 flex flex-col flex-1">
-        <Link href={`/socio/catalogo/${flor.genetica_id}`} className="block">
-          <h3 className="font-avigea text-lg text-foreground leading-tight hover:text-club-dorado transition-colors">
-            {flor.nombre}
-          </h3>
-        </Link>
+        <h3 className="font-avigea text-lg text-foreground leading-tight">
+          {flor.nombre}
+        </h3>
         {/* Fila 1: datos técnicos y precio */}
         <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground">
           {flor.thc != null && <span>THC {flor.thc}%</span>}

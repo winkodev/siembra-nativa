@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { VideoFondo } from '@/components/brand/VideoFondo';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* Panel izquierdo - Solo visible en desktop */}
       <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-16 overflow-hidden">
 
-        {/* Fondo decorativo */}
+        {/* Fondo decorativo (fallback si no hay video) */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden>
           <div className="absolute top-[10%] left-[20%] w-80 h-80 rounded-full bg-club-dorado/8 blur-[80px]" />
           <div className="absolute bottom-[15%] right-[10%] w-60 h-60 rounded-full bg-club-verde-claro/25 blur-[60px]" />
@@ -25,6 +26,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             }}
           />
         </div>
+
+        {/* Video en loop (colocar el archivo en public/videos/login.mp4) */}
+        <VideoFondo src="/videos/login.mp4" />
+        {/* Velo verde para que el logo y el texto sigan legibles sobre el video */}
+        <div className="absolute inset-0 bg-gradient-to-r from-club-verde/70 via-club-verde/40 to-club-verde/70 pointer-events-none" aria-hidden />
 
         {/* Contenido del panel */}
         <div className="relative z-10 flex flex-col items-center text-center gap-10">
