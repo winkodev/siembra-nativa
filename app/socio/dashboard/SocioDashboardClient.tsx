@@ -210,7 +210,7 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
         {/* Acceso rápido — Catálogo: el verde se funde con la foto */}
         <Link
           href="/socio/tienda"
-          className="relative overflow-hidden rounded-xl border border-white/5 hover:border-club-dorado/40 hover:shadow-dorado-sm hover:-translate-y-0.5 transition-all duration-300 group min-h-[11rem] flex"
+          className="relative overflow-hidden rounded-xl border border-white/5 hover:border-club-dorado/40 hover:shadow-dorado-sm transition-all duration-300 group min-h-[11rem] flex"
         >
           <Image
             src="/images/fondo-boton-catalogo.jpg"
@@ -230,8 +230,7 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
               <p className="text-muted-foreground text-xs mt-0.5">Flores y productos</p>
             </div>
             <span className="flex items-center gap-1 text-xs font-semibold text-club-dorado mt-auto">
-              Explorar
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300" />
+              Explorar <ArrowRight className="w-3.5 h-3.5" />
             </span>
           </div>
         </Link>
@@ -239,7 +238,7 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
         {/* Acceso rápido — Pedidos: mismo lenguaje, ícono gigante fantasma */}
         <Link
           href="/socio/pedidos"
-          className="relative overflow-hidden rounded-xl border border-white/5 bg-[#04231f]/95 hover:border-club-dorado/40 hover:shadow-dorado-sm hover:-translate-y-0.5 transition-all duration-300 group min-h-[11rem] flex"
+          className="relative overflow-hidden rounded-xl border border-white/5 bg-[#04231f]/95 hover:border-club-dorado/40 hover:shadow-dorado-sm transition-all duration-300 group min-h-[11rem] flex"
         >
           {/* Ícono gigante de fondo */}
           <ShoppingBag
@@ -256,8 +255,7 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
               <p className="text-muted-foreground text-xs mt-0.5">Historial y estados</p>
             </div>
             <span className="flex items-center gap-1 text-xs font-semibold text-club-dorado mt-auto">
-              Ver historial
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300" />
+              Ver historial <ArrowRight className="w-3.5 h-3.5" />
             </span>
           </div>
         </Link>
