@@ -4,9 +4,8 @@ import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { getAppConfig } from '@/lib/supabase/config';
 import { revalidatePath } from 'next/cache';
 import { registrarAccion } from '@/lib/audit';
-import { formatFranja } from '@/lib/utils';
 import type {
-  ActionResponse, CarritoItem, CarritoItemGenetica, CarritoItemProducto, EstadoPedido,
+  ActionResponse, CarritoItem, EstadoPedido,
 } from '@/lib/types/database';
 
 export async function crearPedido(
@@ -20,104 +19,30 @@ export async function crearPedido(
 
   if (items.length === 0) return { ok: false, error: 'El pedido está vacío' };
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('compra_habilitada')
-    .eq('id', user.id)
-    .single();
+  // Toda la validación (habilitación, límite, stock neto de reservas,
+  // franja) y la creación ocurren en UNA función SQL con lock:
+  // dos confirmaciones simultáneas ya no pueden reservar el mismo stock
+  const payload = items.map(i =>
+    i.tipo_item === 'genetica'
+      ? { tipo: 'genetica', id: i.id, cantidad: i.cantidad_gramos }
+      : { tipo: 'producto', id: i.id, cantidad: i.cantidad_unidades }
+  );
 
-  if (!profile?.compra_habilitada) {
-    return { ok: false, error: 'Tu acceso a pedidos no está habilitado. Contactá al club.' };
-  }
+  const { data, error } = await supabase.rpc('crear_pedido', {
+    p_items: payload,
+    p_notas: notas || null,
+    p_franja_id: franjaId ?? null,
+  });
 
-  // Separar flores (gramos) de productos (unidades)
-  const flores    = items.filter((i): i is CarritoItemGenetica => i.tipo_item === 'genetica');
-  const productos = items.filter((i): i is CarritoItemProducto => i.tipo_item === 'producto');
-
-  // Validar límite de gramos por pedido (solo aplica a flores)
-  const config = await getAppConfig();
-  const totalGramos = flores.reduce((sum, i) => sum + i.cantidad_gramos, 0);
-  if (totalGramos > config.max_gramos_pedido) {
-    return { ok: false, error: `El pedido supera el límite de ${config.max_gramos_pedido}g de flores.` };
-  }
-
-  // Verificar disponibilidad de cada flor.
-  // stock_publico ya descuenta lo reservado por otros pedidos pendientes.
-  for (const item of flores) {
-    const { data: stockData } = await supabase
-      .from('stock_publico')
-      .select('stock_total_gramos')
-      .eq('genetica_id', item.id)
-      .single();
-
-    if (!stockData || stockData.stock_total_gramos < item.cantidad_gramos) {
-      return { ok: false, error: `Stock insuficiente para ${item.nombre}` };
-    }
-  }
-
-  // Verificar disponibilidad de cada producto (también neta de reservas)
-  for (const item of productos) {
-    const { data: prodData } = await supabase
-      .from('productos_publico')
-      .select('stock, activo')
-      .eq('id', item.id)
-      .single();
-
-    if (!prodData || !prodData.activo || prodData.stock < item.cantidad_unidades) {
-      return { ok: false, error: `Stock insuficiente para ${item.nombre}` };
-    }
-  }
-
-  // Horario de entrega: obligatorio si el club definió franjas activas.
-  // Se guarda una foto del texto para que ediciones posteriores no
-  // alteren pedidos ya hechos.
-  let entrega_franja: string | null = null;
-  const { data: franjas } = await supabase
-    .from('franjas_horarias')
-    .select('*')
-    .eq('activa', true);
-
-  if (franjas && franjas.length > 0) {
-    const franja = franjas.find(f => f.id === franjaId);
-    if (!franja) return { ok: false, error: 'Elegí un horario de entrega' };
-    entrega_franja = formatFranja(franja);
-  }
-
-  // Crear pedido
-  const { data: pedido, error: pedidoError } = await supabase
-    .from('pedidos')
-    .insert({ socio_id: user.id, notas: notas || null, entrega_franja })
-    .select('id')
-    .single();
-
-  if (pedidoError || !pedido) return { ok: false, error: 'Error al crear el pedido' };
-
-  // Crear items del pedido (genéticas con gramos, productos con unidades)
-  const itemsInsert = [
-    ...flores.map(i => ({
-      pedido_id:       pedido.id,
-      genetica_id:     i.id,
-      cantidad_gramos: i.cantidad_gramos,
-    })),
-    ...productos.map(i => ({
-      pedido_id:         pedido.id,
-      producto_id:       i.id,
-      cantidad_unidades: i.cantidad_unidades,
-    })),
-  ];
-
-  const { error: itemsError } = await supabase.from('pedido_items').insert(itemsInsert);
-
-  if (itemsError) {
-    // Revertir el pedido si fallan los items
-    await supabase.from('pedidos').delete().eq('id', pedido.id);
-    return { ok: false, error: 'Error al registrar los items del pedido' };
+  if (error || !data) {
+    // Los RAISE EXCEPTION de la función llegan con el mensaje ya legible
+    return { ok: false, error: error?.message ?? 'Error al crear el pedido' };
   }
 
   revalidatePath('/socio/pedidos');
   // El pedido pendiente reserva stock: la tienda debe reflejarlo
   revalidatePath('/socio/tienda');
-  return { ok: true, data: { pedido_id: pedido.id } };
+  return { ok: true, data: { pedido_id: data.pedido_id } };
 }
 
 // Desde qué estados se puede pasar a cada estado destino

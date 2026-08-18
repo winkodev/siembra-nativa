@@ -374,6 +374,14 @@ export interface Database {
         Args: { p_desde: string; p_hasta: string; p_agrupacion: string };
         Returns: EstadisticasClub;
       };
+      crear_pedido: {
+        Args: {
+          p_items: { tipo: string; id: string; cantidad: number }[];
+          p_notas: string | null;
+          p_franja_id: string | null;
+        };
+        Returns: { pedido_id: string; numero: number };
+      };
     };
   };
 }
