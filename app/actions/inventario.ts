@@ -20,6 +20,8 @@ const geneticaSchema = z.object({
   cultivo:     z.string().optional().transform(v => v === 'indoor' || v === 'outdoor' ? v : null),
   precio_gramo: z.string().optional().transform(v => v ? parseFloat(v) : null),
   banco:       z.string().optional().transform(v => v?.trim() || null),
+  // Checkbox: llega 'on' si está tildado, ausente si no
+  novedad:     z.string().optional().transform(v => v === 'on'),
 });
 
 export async function crearGenetica(

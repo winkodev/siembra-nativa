@@ -176,6 +176,20 @@ function GeneticaModal({ genetica, onClose }: ModalProps) {
               className="input-club w-full resize-none" placeholder="Efectos, aromas, notas de cultivo..." />
           </div>
 
+          {/* Novedad */}
+          <label className="flex items-center gap-3 p-3 rounded-xl border border-club-verde-claro/30 bg-club-verde-claro/10 cursor-pointer hover:border-club-dorado/40 transition-colors">
+            <input
+              type="checkbox"
+              name="novedad"
+              defaultChecked={genetica?.novedad ?? false}
+              className="w-4 h-4 accent-club-dorado"
+            />
+            <span className="text-sm text-foreground">
+              Marcar como <span className="text-club-dorado font-semibold">novedad</span>
+              <span className="block text-xs text-muted-foreground">Muestra la cinta NOVEDAD en el catálogo</span>
+            </span>
+          </label>
+
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary px-5 py-2.5 text-sm">Cancelar</button>
             <SubmitButton label={isEdit ? 'Guardar cambios' : 'Crear genética'} />
@@ -300,6 +314,12 @@ export function GeneticasTab({ geneticas }: { geneticas: Genetica[] }) {
                 <span className={cn('absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium', tipoBadge[g.tipo])}>
                   {labelTipo(g.tipo)}
                 </span>
+                {/* Cinta novedad */}
+                {g.novedad && g.activa && (
+                  <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold bg-club-dorado text-club-verde">
+                    Novedad
+                  </span>
+                )}
                 {/* Badge inactiva */}
                 {!g.activa && (
                   <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-medium border border-white/20 text-white/70 backdrop-blur-sm">

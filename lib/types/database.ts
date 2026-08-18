@@ -58,6 +58,7 @@ export interface Genetica {
   cultivo: CultivoGenetica | null;
   precio_gramo: number | null;
   banco: string | null;   // semillera (se muestra "Nombre by Banco")
+  novedad: boolean;       // cinta "NOVEDAD" en el catálogo
   activa: boolean;
   created_at: string;
   updated_at: string;
@@ -88,6 +89,7 @@ export interface StockPublico {
   cultivo: CultivoGenetica | null;
   precio_gramo: number | null;
   banco: string | null;
+  novedad: boolean;
 }
 
 export interface Pedido {

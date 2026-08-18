@@ -12,27 +12,15 @@ import type { StockPublico, Producto } from '@/lib/types/database';
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
 const fadeUp  = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
-const tipoBadge: Record<string, string> = {
-  indica:  'bg-purple-900/80 text-purple-200 border border-purple-400/40 backdrop-blur-sm',
-  sativa:  'bg-amber-900/80 text-amber-200 border border-amber-400/40 backdrop-blur-sm',
-  hibrida: 'bg-emerald-900/80 text-emerald-200 border border-emerald-400/40 backdrop-blur-sm',
-};
+// Paleta de etiquetas unificada: chips neutros, solo Premium lleva el
+// acento dorado de la marca (evita la ensalada de colores)
+const chipNeutro  = 'px-2.5 py-0.5 rounded-full font-medium border border-white/15 bg-white/5 text-foreground/70';
+const chipPremium = 'px-2.5 py-0.5 rounded-full font-semibold border border-club-dorado/40 bg-club-dorado/10 text-club-dorado';
 
-const categoriaBadge: Record<string, string> = {
-  aceite:        'bg-amber-900/80 text-amber-200 border-amber-400/40',
-  merchandising: 'bg-blue-900/80 text-blue-200 border-blue-400/40',
-  otro:          'bg-gray-800/80 text-gray-300 border-gray-500/40',
-};
-
-const calidadBadge: Record<string, string> = {
-  regular: 'bg-gray-800/80 text-gray-300 border border-gray-500/40',
-  premium: 'bg-club-dorado/15 text-club-dorado border border-club-dorado/40',
-};
-
-const cultivoBadge: Record<string, string> = {
-  indoor:  'bg-sky-900/80 text-sky-200 border border-sky-400/40',
-  outdoor: 'bg-lime-900/80 text-lime-200 border border-lime-400/40',
-};
+// Línea de predominancia estilo carta: "Predominancia sativa" / "Híbrida"
+function labelPredominancia(tipo: string): string {
+  return tipo === 'hibrida' ? 'Híbrida' : `Predominancia ${labelTipo(tipo).toLowerCase()}`;
+}
 
 // Filtro unificado: flores secas + aceites + otros productos
 type Filtro = 'todos' | 'flores' | 'aceite' | 'otros';
@@ -211,19 +199,38 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
         )}
         {/* Degradado inferior: da profundidad a la foto */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 opacity-70 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none" />
+
+        {/* Cinta diagonal NOVEDAD */}
+        {flor.novedad && (
+          <div className="absolute top-0 right-0 w-32 h-32 overflow-hidden pointer-events-none" aria-hidden>
+            <span className="absolute top-[22px] right-[-38px] rotate-45 bg-club-dorado text-club-verde text-[11px] font-bold uppercase tracking-[0.25em] px-12 py-1.5 shadow-dorado-sm">
+              Novedad
+            </span>
+          </div>
+        )}
+
         {enCarrito && (
-          <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm border bg-club-dorado/90 text-club-verde border-club-dorado/40 flex items-center gap-1">
+          <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm border bg-club-dorado/90 text-club-verde border-club-dorado/40 flex items-center gap-1">
             <ShoppingBag className="w-3 h-3" /> En pedido
           </span>
         )}
       </div>
 
-      <div className="p-4 space-y-2 flex flex-col flex-1">
-        <h3 className="font-avigea text-xl text-foreground leading-tight">
-          {flor.nombre}
-          {flor.banco && <span className="text-muted-foreground text-sm font-sans font-normal"> by {flor.banco}</span>}
-        </h3>
-        {/* Fila 1: datos técnicos y precio */}
+      <div className="p-4 space-y-2.5 flex flex-col flex-1">
+        <div>
+          <h3 className="font-avigea text-2xl text-foreground leading-tight">{flor.nombre}</h3>
+          {/* Jerarquía tipo carta: predominancia + banco en líneas propias */}
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-club-dorado mt-1.5">
+            {labelPredominancia(flor.tipo)}
+          </p>
+          {flor.banco && (
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mt-0.5">
+              {flor.banco}
+            </p>
+          )}
+        </div>
+
+        {/* Datos técnicos y precio */}
         <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground">
           {flor.thc != null && <span>THC {flor.thc}%</span>}
           {flor.cbd != null && <span>CBD {flor.cbd}%</span>}
@@ -232,22 +239,19 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
           )}
         </div>
 
-        {/* Fila 2: todas las etiquetas juntas (tipo, calidad, cultivo) */}
-        <div className="flex items-center flex-wrap gap-1.5 text-xs">
-          <span className={cn('px-2 py-0.5 rounded-full font-medium', tipoBadge[flor.tipo])}>
-            {labelTipo(flor.tipo)}
-          </span>
-          {flor.calidad && (
-            <span className={cn('px-2 py-0.5 rounded-full font-medium', calidadBadge[flor.calidad])}>
-              {labelCalidad(flor.calidad)}
-            </span>
-          )}
-          {flor.cultivo && (
-            <span className={cn('px-2 py-0.5 rounded-full font-medium', cultivoBadge[flor.cultivo])}>
-              {labelCultivo(flor.cultivo)}
-            </span>
-          )}
-        </div>
+        {/* Etiquetas unificadas (solo Premium lleva acento) */}
+        {(flor.calidad || flor.cultivo) && (
+          <div className="flex items-center flex-wrap gap-1.5 text-xs">
+            {flor.calidad && (
+              <span className={flor.calidad === 'premium' ? chipPremium : chipNeutro}>
+                {labelCalidad(flor.calidad)}
+              </span>
+            )}
+            {flor.cultivo && (
+              <span className={chipNeutro}>{labelCultivo(flor.cultivo)}</span>
+            )}
+          </div>
+        )}
 
         {/* Descripción completa, siempre visible */}
         {flor.descripcion && (
@@ -355,7 +359,7 @@ function ProductoCard({ producto, puedeHacerPedidos }: { producto: Producto; pue
         )}
         {/* Degradado inferior: da profundidad y legibilidad a los badges */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 opacity-70 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none" />
-        <span className={cn('absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium border backdrop-blur-sm', categoriaBadge[producto.categoria])}>
+        <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium border border-white/20 bg-black/40 text-white/90 backdrop-blur-sm">
           {labelCategoriaProducto(producto.categoria)}
         </span>
         {sinStock && (
