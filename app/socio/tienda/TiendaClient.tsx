@@ -179,6 +179,8 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
 
   const [cantidad, setCantidad] = useState(10);
   const [feedback, setFeedback] = useState(false);
+  // Descripción colapsada a 2 líneas; "Ver más" la expande en la misma card
+  const [descExpandida, setDescExpandida] = useState(false);
 
   const handleAgregar = () => {
     agregar({
@@ -244,6 +246,23 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
             </span>
           )}
         </div>
+
+        {/* Descripción: extracto de 2 líneas, expandible en la card */}
+        {flor.descripcion && (
+          <div>
+            <p className={cn('text-muted-foreground text-xs leading-relaxed', !descExpandida && 'line-clamp-2')}>
+              {flor.descripcion}
+            </p>
+            {flor.descripcion.length > 90 && (
+              <button
+                onClick={() => setDescExpandida(v => !v)}
+                className="text-club-dorado text-xs font-semibold mt-0.5 hover:text-club-dorado/80 transition-colors"
+              >
+                {descExpandida ? 'Ver menos' : 'Ver más'}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Selector de gramos + agregar (igual que productos) */}
         <div className="mt-auto pt-2 space-y-2">
