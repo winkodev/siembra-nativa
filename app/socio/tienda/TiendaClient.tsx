@@ -156,7 +156,7 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos }: Props) {
           <AnimatePresence mode="popLayout">
             {filtradas.map(e =>
               e.kind === 'flor'
-                ? <FlorCard key={`flor:${e.data.genetica_id}`} flor={e.data} />
+                ? <FlorCard key={`flor:${e.data.genetica_id}`} flor={e.data} puedeHacerPedidos={puedeHacerPedidos} />
                 : <ProductoCard key={`prod:${e.data.id}`} producto={e.data} puedeHacerPedidos={puedeHacerPedidos} />
             )}
           </AnimatePresence>
@@ -167,61 +167,138 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos }: Props) {
 }
 
 // ============================================================
-// Card de flor (genética) — enlaza al detalle para elegir gramos
+// Card de flor (genética) — se agrega directo desde la tienda,
+// igual que los productos; el detalle queda en la imagen/nombre
 // ============================================================
-function FlorCard({ flor }: { flor: StockPublico }) {
-  const { tieneItem } = useCarrito();
+const GRAMOS_FLOR = [10, 20, 30, 40];
+
+function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerPedidos: boolean }) {
+  const { agregar, tieneItem } = useCarrito();
   const enCarrito = tieneItem({ tipo_item: 'genetica', id: flor.genetica_id });
+  const sinStock  = flor.stock_total_gramos < Math.min(...GRAMOS_FLOR);
+
+  const [cantidad, setCantidad] = useState(10);
+  const [feedback, setFeedback] = useState(false);
+
+  const handleAgregar = () => {
+    agregar({
+      tipo_item:        'genetica',
+      id:               flor.genetica_id,
+      nombre:           flor.nombre,
+      tipo:             flor.tipo,
+      cantidad_gramos:  cantidad,
+      stock_disponible: flor.stock_total_gramos,
+      precio_gramo:     flor.precio_gramo,
+    });
+    setFeedback(true);
+    setTimeout(() => setFeedback(false), 1400);
+  };
 
   return (
-    <motion.div variants={fadeUp} layout>
-      <Link
-        href={`/socio/catalogo/${flor.genetica_id}`}
-        className="glass-card overflow-hidden group block border border-transparent transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm h-full"
-      >
-        <div className="relative h-48 bg-club-verde-claro/20 overflow-hidden">
-          {flor.imagen_url ? (
-            <Image src={flor.imagen_url} alt={flor.nombre} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground/20">
-              <Leaf className="w-20 h-20" />
-            </div>
-          )}
-          <span className={cn('absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium', tipoBadge[flor.tipo])}>
-            {labelTipo(flor.tipo)}
+    <motion.div
+      variants={fadeUp}
+      layout
+      className={cn(
+        'glass-card overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-transparent flex flex-col',
+        sinStock && 'opacity-70'
+      )}
+    >
+      <Link href={`/socio/catalogo/${flor.genetica_id}`} className="block relative h-48 bg-club-verde-claro/20 overflow-hidden">
+        {flor.imagen_url ? (
+          <Image src={flor.imagen_url} alt={flor.nombre} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground/20">
+            <Leaf className="w-20 h-20" />
+          </div>
+        )}
+        <span className={cn('absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium', tipoBadge[flor.tipo])}>
+          {labelTipo(flor.tipo)}
+        </span>
+        {enCarrito && (
+          <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm border bg-club-dorado/90 text-club-verde border-club-dorado/40 flex items-center gap-1">
+            <ShoppingBag className="w-3 h-3" /> En pedido
           </span>
-          {enCarrito && (
-            <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm border bg-club-dorado/90 text-club-verde border-club-dorado/40 flex items-center gap-1">
-              <ShoppingBag className="w-3 h-3" /> En pedido
+        )}
+      </Link>
+
+      <div className="p-4 space-y-2 flex flex-col flex-1">
+        <Link href={`/socio/catalogo/${flor.genetica_id}`} className="block">
+          <h3 className="font-avigea text-lg text-foreground leading-tight hover:text-club-dorado transition-colors">
+            {flor.nombre}
+          </h3>
+        </Link>
+        <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground">
+          {flor.thc != null && <span>THC {flor.thc}%</span>}
+          {flor.cbd != null && <span>CBD {flor.cbd}%</span>}
+          {flor.precio_gramo != null && (
+            <span className="text-club-dorado font-bold">{formatPrecio(flor.precio_gramo)}/g</span>
+          )}
+          {flor.calidad && (
+            <span className={cn('px-2 py-0.5 rounded-full font-medium', calidadBadge[flor.calidad])}>
+              {labelCalidad(flor.calidad)}
+            </span>
+          )}
+          {flor.cultivo && (
+            <span className={cn('px-2 py-0.5 rounded-full font-medium', cultivoBadge[flor.cultivo])}>
+              {labelCultivo(flor.cultivo)}
             </span>
           )}
         </div>
-        <div className="p-4">
-          <h3 className="font-avigea text-lg text-foreground mb-1 group-hover:text-club-dorado transition-colors">
-            {flor.nombre}
-          </h3>
-          <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground mb-2">
-            {flor.thc != null && <span>THC {flor.thc}%</span>}
-            {flor.cbd != null && <span>CBD {flor.cbd}%</span>}
-            {flor.calidad && (
-              <span className={cn('px-2 py-0.5 rounded-full font-medium', calidadBadge[flor.calidad])}>
-                {labelCalidad(flor.calidad)}
-              </span>
-            )}
-            {flor.cultivo && (
-              <span className={cn('px-2 py-0.5 rounded-full font-medium', cultivoBadge[flor.cultivo])}>
-                {labelCultivo(flor.cultivo)}
-              </span>
-            )}
-          </div>
-          {flor.descripcion && (
-            <p className="text-muted-foreground text-xs line-clamp-2">{flor.descripcion}</p>
-          )}
-          {flor.precio_gramo != null && (
-            <p className="text-club-dorado font-bold text-sm mt-2">{formatPrecio(flor.precio_gramo)} <span className="text-xs font-normal text-muted-foreground">por gramo</span></p>
+
+        {/* Selector de gramos + agregar (igual que productos) */}
+        <div className="mt-auto pt-2 space-y-2">
+          {sinStock ? (
+            <button disabled className="w-full py-2.5 rounded-xl text-sm font-semibold bg-club-verde-claro/10 text-muted-foreground cursor-not-allowed border border-club-verde-claro/20">
+              Sin stock
+            </button>
+          ) : !puedeHacerPedidos ? (
+            <button disabled className="w-full py-2.5 rounded-xl text-sm font-semibold bg-club-verde-claro/10 text-muted-foreground cursor-not-allowed border border-club-verde-claro/20">
+              Documentación pendiente
+            </button>
+          ) : (
+            <>
+              <div className="flex gap-1.5">
+                {GRAMOS_FLOR.map(g => (
+                  <button
+                    key={g}
+                    onClick={() => setCantidad(g)}
+                    disabled={g > flor.stock_total_gramos}
+                    className={cn(
+                      'flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all disabled:opacity-30 disabled:cursor-not-allowed',
+                      cantidad === g
+                        ? 'bg-club-dorado text-club-verde border-club-dorado'
+                        : 'bg-transparent text-muted-foreground border-club-verde-claro/40 hover:border-club-dorado/50 hover:text-foreground'
+                    )}
+                  >
+                    {g}g
+                  </button>
+                ))}
+              </div>
+
+              <motion.button
+                onClick={handleAgregar}
+                whileTap={{ scale: 0.97 }}
+                className={cn(
+                  'w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all duration-200',
+                  feedback
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-club-dorado/15 text-club-dorado border border-club-dorado/30 hover:bg-club-dorado/25'
+                )}
+              >
+                {feedback
+                  ? <><CheckCircle2 className="w-4 h-4" /> Agregado</>
+                  : <>
+                      <Plus className="w-4 h-4" /> Agregar {cantidad}g
+                      {flor.precio_gramo != null && (
+                        <span className="font-bold">· {formatPrecio(cantidad * flor.precio_gramo)}</span>
+                      )}
+                    </>
+                }
+              </motion.button>
+            </>
           )}
         </div>
-      </Link>
+      </div>
     </motion.div>
   );
 }
