@@ -67,6 +67,8 @@ const estadoConfig = {
 export function SocioDashboardClient({ profile, newsletter, notificaciones: notifInicial }: Props) {
   // Newsletter colapsado por defecto; "Ver más" muestra el texto completo
   const [newsExpandido, setNewsExpandido] = useState(false);
+  // Credencial REPROCANN de fondo (se oculta sola si el archivo no existe)
+  const [credencialOk, setCredencialOk] = useState(true);
   // Notificaciones in-app (pedido confirmado / entregado)
   const [notificaciones, setNotificaciones] = useState(notifInicial);
   const [marcando, startMarcar] = useTransition();
@@ -178,33 +180,49 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
       {/* Grid principal: estado + acciones rápidas */}
       <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-        {/* Card REPROCANN */}
-        <div className={cn('glass-card p-5 flex flex-col gap-4 border', estado.border)}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-club-dorado" />
-              <span className="text-sm font-semibold text-foreground/80">REPROCANN</span>
-            </div>
-            <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold', estado.badge)}>
-              <EstIcon className="w-3.5 h-3.5" />
-              {estado.label}
-            </span>
-          </div>
-
-          <p className="text-xs text-muted-foreground leading-relaxed flex-1">{estado.desc}</p>
-
-          {profile.reprocann_vencimiento && (
-            <p className="text-xs text-muted-foreground">
-              Vence: <span className="text-foreground font-medium">{formatFecha(profile.reprocann_vencimiento)}</span>
-            </p>
+        {/* Card REPROCANN: credencial de fondo fundida con el verde */}
+        <div className={cn('relative overflow-hidden glass-card !bg-[#04231f]/95 border group', estado.border)}>
+          {credencialOk && (
+            <>
+              <Image
+                src="/images/reprocann.png"
+                alt=""
+                fill
+                className="object-cover object-right opacity-90 group-hover:scale-105 transition-transform duration-700 ease-out"
+                onError={() => setCredencialOk(false)}
+              />
+              {/* Fundido con el verde para que el texto respire */}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#04231f] from-40% via-[#04231f]/85 via-60% to-[#04231f]/25" />
+            </>
           )}
 
-          <Link
-            href="/socio/perfil"
-            className="text-xs text-club-dorado hover:text-club-dorado/70 transition-colors flex items-center gap-1 mt-auto w-fit"
-          >
-            Mi perfil <ArrowRight className="w-3 h-3" />
-          </Link>
+          <div className="relative z-10 p-5 flex flex-col gap-4 h-full">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-club-dorado" />
+                <span className="text-sm font-semibold text-foreground/80">REPROCANN</span>
+              </div>
+              <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold', estado.badge)}>
+                <EstIcon className="w-3.5 h-3.5" />
+                {estado.label}
+              </span>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed flex-1">{estado.desc}</p>
+
+            {profile.reprocann_vencimiento && (
+              <p className="text-xs text-muted-foreground">
+                Vence: <span className="text-foreground font-medium">{formatFecha(profile.reprocann_vencimiento)}</span>
+              </p>
+            )}
+
+            <Link
+              href="/socio/perfil"
+              className="text-xs text-club-dorado hover:text-club-dorado/70 transition-colors flex items-center gap-1 mt-auto w-fit"
+            >
+              Mi perfil <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
         </div>
 
         {/* Acceso rápido — Catálogo: el verde se funde con la foto */}
@@ -226,8 +244,8 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
               <Leaf className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <p className="font-avigea text-2xl text-foreground">Catálogo</p>
-              <p className="text-muted-foreground text-xs mt-0.5">Flores y productos</p>
+              <p className="font-avigea text-2xl text-foreground">Catálogo 2026</p>
+              <p className="text-muted-foreground text-xs mt-0.5">Visitá nuestra selección de genéticas</p>
             </div>
             <span className="flex items-center gap-1 text-xs font-semibold text-club-dorado mt-auto">
               Explorar <ArrowRight className="w-3.5 h-3.5" />
