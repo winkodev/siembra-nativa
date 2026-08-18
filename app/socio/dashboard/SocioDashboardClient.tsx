@@ -270,7 +270,8 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
             )}
           </div>
 
-          <div className="space-y-2">
+          {/* Altura de ~2 notificaciones; el resto se scrollea */}
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
             {notificaciones.map(n => (
               <div
                 key={n.id}
