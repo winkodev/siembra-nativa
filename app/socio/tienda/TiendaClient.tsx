@@ -199,13 +199,13 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
   return (
     <motion.div
       variants={fadeUp}
-      layout
       className={cn(
-        'glass-card overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-transparent flex flex-col',
+        // h-full: todas las cards de la fila estiran a la misma altura
+        'glass-card overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-transparent flex flex-col h-full',
         sinStock && 'opacity-70'
       )}
     >
-      <Link href={`/socio/catalogo/${flor.genetica_id}`} className="block relative h-48 bg-club-verde-claro/20 overflow-hidden">
+      <Link href={`/socio/catalogo/${flor.genetica_id}`} className="block relative h-48 bg-club-verde-claro/20 overflow-hidden shrink-0">
         {flor.imagen_url ? (
           <Image src={flor.imagen_url} alt={flor.nombre} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
@@ -229,23 +229,30 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
             {flor.nombre}
           </h3>
         </Link>
+        {/* Fila 1: datos técnicos y precio */}
         <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground">
           {flor.thc != null && <span>THC {flor.thc}%</span>}
           {flor.cbd != null && <span>CBD {flor.cbd}%</span>}
           {flor.precio_gramo != null && (
             <span className="text-club-dorado font-bold">{formatPrecio(flor.precio_gramo)}/g</span>
           )}
-          {flor.calidad && (
-            <span className={cn('px-2 py-0.5 rounded-full font-medium', calidadBadge[flor.calidad])}>
-              {labelCalidad(flor.calidad)}
-            </span>
-          )}
-          {flor.cultivo && (
-            <span className={cn('px-2 py-0.5 rounded-full font-medium', cultivoBadge[flor.cultivo])}>
-              {labelCultivo(flor.cultivo)}
-            </span>
-          )}
         </div>
+
+        {/* Fila 2: etiquetas de calidad y cultivo juntas */}
+        {(flor.calidad || flor.cultivo) && (
+          <div className="flex items-center gap-1.5 text-xs">
+            {flor.calidad && (
+              <span className={cn('px-2 py-0.5 rounded-full font-medium', calidadBadge[flor.calidad])}>
+                {labelCalidad(flor.calidad)}
+              </span>
+            )}
+            {flor.cultivo && (
+              <span className={cn('px-2 py-0.5 rounded-full font-medium', cultivoBadge[flor.cultivo])}>
+                {labelCultivo(flor.cultivo)}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Descripción: extracto de 2 líneas, expandible en la card */}
         {flor.descripcion && (
@@ -350,13 +357,12 @@ function ProductoCard({ producto, puedeHacerPedidos }: { producto: Producto; pue
   return (
     <motion.div
       variants={fadeUp}
-      layout
       className={cn(
-        'glass-card overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-transparent flex flex-col',
+        'glass-card overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-transparent flex flex-col h-full',
         sinStock && 'opacity-70'
       )}
     >
-      <Link href={`/socio/producto/${producto.id}`} className="block relative h-48 bg-club-verde-claro/20 overflow-hidden">
+      <Link href={`/socio/producto/${producto.id}`} className="block relative h-48 bg-club-verde-claro/20 overflow-hidden shrink-0">
         {producto.imagen_url ? (
           <Image src={producto.imagen_url} alt={producto.nombre} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
