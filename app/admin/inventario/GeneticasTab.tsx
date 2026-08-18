@@ -112,21 +112,25 @@ function GeneticaModal({ genetica, onClose }: ModalProps) {
             <input id="imagen-input" name="imagen" type="file" accept=".jpg,.jpeg,.png,.webp" className="sr-only" onChange={handleImage} />
           </div>
 
-          {/* Nombre + Tipo */}
+          {/* Nombre + Banco + Tipo */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm text-foreground/80 font-medium">Nombre *</label>
               <input name="nombre" type="text" required defaultValue={genetica?.nombre ?? ''} className="input-club w-full" placeholder="OG Kush" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm text-foreground/80 font-medium">Tipo *</label>
-              <select name="tipo" required defaultValue={genetica?.tipo ?? ''} className="input-club w-full bg-club-verde-medio appearance-none cursor-pointer">
-                <option value="" disabled>Seleccioná</option>
-                <option value="indica">Índica</option>
-                <option value="sativa">Sativa</option>
-                <option value="hibrida">Híbrida</option>
-              </select>
+              <label className="text-sm text-foreground/80 font-medium">Banco (semillera)</label>
+              <input name="banco" type="text" defaultValue={genetica?.banco ?? ''} className="input-club w-full" placeholder="R-Kiem Seeds" />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm text-foreground/80 font-medium">Tipo *</label>
+            <select name="tipo" required defaultValue={genetica?.tipo ?? ''} className="input-club w-full bg-club-verde-medio appearance-none cursor-pointer">
+              <option value="" disabled>Seleccioná</option>
+              <option value="indica">Índica</option>
+              <option value="sativa">Sativa</option>
+              <option value="hibrida">Híbrida</option>
+            </select>
           </div>
 
           {/* THC + CBD + Precio */}
@@ -306,7 +310,10 @@ export function GeneticasTab({ geneticas }: { geneticas: Genetica[] }) {
 
               {/* Info */}
               <div className="p-4">
-                <h3 className="font-avigea text-lg text-foreground mb-1">{g.nombre}</h3>
+                <h3 className="font-avigea text-lg text-foreground mb-1">
+                  {g.nombre}
+                  {g.banco && <span className="text-muted-foreground text-xs font-sans font-normal"> by {g.banco}</span>}
+                </h3>
                 <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground mb-3">
                   {g.thc != null && <span>THC {g.thc}%</span>}
                   {g.cbd != null && <span>CBD {g.cbd}%</span>}

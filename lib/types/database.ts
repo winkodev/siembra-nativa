@@ -57,6 +57,7 @@ export interface Genetica {
   calidad: CalidadGenetica | null;
   cultivo: CultivoGenetica | null;
   precio_gramo: number | null;
+  banco: string | null;   // semillera (se muestra "Nombre by Banco")
   activa: boolean;
   created_at: string;
   updated_at: string;
@@ -86,6 +87,7 @@ export interface StockPublico {
   calidad: CalidadGenetica | null;
   cultivo: CultivoGenetica | null;
   precio_gramo: number | null;
+  banco: string | null;
 }
 
 export interface Pedido {

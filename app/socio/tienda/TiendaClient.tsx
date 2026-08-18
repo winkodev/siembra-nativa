@@ -151,7 +151,7 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos }: Props) {
           variants={stagger}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+          className="grid grid-cols-1 md:grid-cols-2 gap-6"
         >
           {filtradas.map(e =>
             e.kind === 'flor'
@@ -196,12 +196,12 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
     <motion.div
       variants={fadeUp}
       className={cn(
-        // h-full: todas las cards de la fila estiran a la misma altura
-        'glass-card overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-transparent flex flex-col h-full',
+        // Sin altura propia: la grilla estira las cards de cada fila por igual
+        'glass-card overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-transparent flex flex-col',
         sinStock && 'opacity-70'
       )}
     >
-      <div className="relative h-48 bg-club-verde-claro/20 overflow-hidden shrink-0">
+      <div className="relative h-64 sm:h-72 bg-club-verde-claro/20 overflow-hidden shrink-0">
         {flor.imagen_url ? (
           <Image src={flor.imagen_url} alt={flor.nombre} fill className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
         ) : (
@@ -209,11 +209,8 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
             <Leaf className="w-20 h-20" />
           </div>
         )}
-        {/* Degradado inferior: da profundidad y legibilidad a los badges */}
+        {/* Degradado inferior: da profundidad a la foto */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 opacity-70 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none" />
-        <span className={cn('absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium', tipoBadge[flor.tipo])}>
-          {labelTipo(flor.tipo)}
-        </span>
         {enCarrito && (
           <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm border bg-club-dorado/90 text-club-verde border-club-dorado/40 flex items-center gap-1">
             <ShoppingBag className="w-3 h-3" /> En pedido
@@ -222,8 +219,9 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
       </div>
 
       <div className="p-4 space-y-2 flex flex-col flex-1">
-        <h3 className="font-avigea text-lg text-foreground leading-tight">
+        <h3 className="font-avigea text-xl text-foreground leading-tight">
           {flor.nombre}
+          {flor.banco && <span className="text-muted-foreground text-sm font-sans font-normal"> by {flor.banco}</span>}
         </h3>
         {/* Fila 1: datos técnicos y precio */}
         <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground">
@@ -234,21 +232,22 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
           )}
         </div>
 
-        {/* Fila 2: etiquetas de calidad y cultivo juntas */}
-        {(flor.calidad || flor.cultivo) && (
-          <div className="flex items-center gap-1.5 text-xs">
-            {flor.calidad && (
-              <span className={cn('px-2 py-0.5 rounded-full font-medium', calidadBadge[flor.calidad])}>
-                {labelCalidad(flor.calidad)}
-              </span>
-            )}
-            {flor.cultivo && (
-              <span className={cn('px-2 py-0.5 rounded-full font-medium', cultivoBadge[flor.cultivo])}>
-                {labelCultivo(flor.cultivo)}
-              </span>
-            )}
-          </div>
-        )}
+        {/* Fila 2: todas las etiquetas juntas (tipo, calidad, cultivo) */}
+        <div className="flex items-center flex-wrap gap-1.5 text-xs">
+          <span className={cn('px-2 py-0.5 rounded-full font-medium', tipoBadge[flor.tipo])}>
+            {labelTipo(flor.tipo)}
+          </span>
+          {flor.calidad && (
+            <span className={cn('px-2 py-0.5 rounded-full font-medium', calidadBadge[flor.calidad])}>
+              {labelCalidad(flor.calidad)}
+            </span>
+          )}
+          {flor.cultivo && (
+            <span className={cn('px-2 py-0.5 rounded-full font-medium', cultivoBadge[flor.cultivo])}>
+              {labelCultivo(flor.cultivo)}
+            </span>
+          )}
+        </div>
 
         {/* Descripción completa, siempre visible */}
         {flor.descripcion && (
@@ -342,11 +341,11 @@ function ProductoCard({ producto, puedeHacerPedidos }: { producto: Producto; pue
     <motion.div
       variants={fadeUp}
       className={cn(
-        'glass-card overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-transparent flex flex-col h-full',
+        'glass-card overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-transparent flex flex-col',
         sinStock && 'opacity-70'
       )}
     >
-      <Link href={`/socio/producto/${producto.id}`} className="block relative h-48 bg-club-verde-claro/20 overflow-hidden shrink-0">
+      <Link href={`/socio/producto/${producto.id}`} className="block relative h-64 sm:h-72 bg-club-verde-claro/20 overflow-hidden shrink-0">
         {producto.imagen_url ? (
           <Image src={producto.imagen_url} alt={producto.nombre} fill className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
         ) : (
