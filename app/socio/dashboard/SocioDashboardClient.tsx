@@ -207,38 +207,59 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
           </Link>
         </div>
 
-        {/* Acceso rápido — Tienda */}
+        {/* Acceso rápido — Catálogo: el verde se funde con la foto */}
         <Link
           href="/socio/tienda"
-          className="glass-card p-5 flex flex-col gap-4 border border-transparent hover:border-club-dorado/30 hover:shadow-dorado-sm transition-all group"
+          className="relative overflow-hidden rounded-xl border border-white/5 hover:border-club-dorado/40 hover:shadow-dorado-sm hover:-translate-y-0.5 transition-all duration-300 group min-h-[11rem] flex"
         >
-          <div className="w-10 h-10 rounded-xl bg-club-dorado/15 border border-club-dorado/20 flex items-center justify-center text-club-dorado group-hover:bg-club-dorado/25 transition-colors">
-            <Leaf className="w-5 h-5" />
+          <Image
+            src="/images/fondo-boton-catalogo.jpg"
+            alt=""
+            fill
+            className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+          />
+          {/* Fundido: verde sólido a la izquierda → foto limpia a la derecha */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#04231f] from-30% via-[#04231f]/80 via-55% to-transparent" />
+
+          <div className="relative z-10 p-5 flex flex-col gap-3 w-3/5">
+            <div className="w-10 h-10 rounded-xl bg-club-dorado/15 border border-club-dorado/25 backdrop-blur-sm flex items-center justify-center text-club-dorado group-hover:bg-club-dorado/30 transition-colors">
+              <Leaf className="w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <p className="font-avigea text-2xl text-foreground">Catálogo</p>
+              <p className="text-muted-foreground text-xs mt-0.5">Flores y productos</p>
+            </div>
+            <span className="flex items-center gap-1 text-xs font-semibold text-club-dorado mt-auto">
+              Explorar
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300" />
+            </span>
           </div>
-          <div className="flex-1">
-            <p className="text-foreground font-semibold text-sm">Catálogo</p>
-            <p className="text-muted-foreground text-xs mt-0.5">Flores y productos</p>
-          </div>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-club-dorado transition-colors mt-auto">
-            Explorar <ArrowRight className="w-3.5 h-3.5" />
-          </span>
         </Link>
 
-        {/* Acceso rápido — Pedidos */}
+        {/* Acceso rápido — Pedidos: mismo lenguaje, ícono gigante fantasma */}
         <Link
           href="/socio/pedidos"
-          className="glass-card p-5 flex flex-col gap-4 border border-transparent hover:border-club-dorado/30 hover:shadow-dorado-sm transition-all group"
+          className="relative overflow-hidden rounded-xl border border-white/5 bg-[#04231f]/95 hover:border-club-dorado/40 hover:shadow-dorado-sm hover:-translate-y-0.5 transition-all duration-300 group min-h-[11rem] flex"
         >
-          <div className="w-10 h-10 rounded-xl bg-club-dorado/15 border border-club-dorado/20 flex items-center justify-center text-club-dorado group-hover:bg-club-dorado/25 transition-colors">
-            <ShoppingBag className="w-5 h-5" />
+          {/* Ícono gigante de fondo */}
+          <ShoppingBag
+            className="absolute -right-6 -bottom-8 w-44 h-44 text-club-dorado/[0.06] group-hover:text-club-dorado/[0.12] group-hover:scale-110 transition-all duration-700 ease-out"
+            aria-hidden
+          />
+
+          <div className="relative z-10 p-5 flex flex-col gap-3 w-3/5">
+            <div className="w-10 h-10 rounded-xl bg-club-dorado/15 border border-club-dorado/25 flex items-center justify-center text-club-dorado group-hover:bg-club-dorado/30 transition-colors">
+              <ShoppingBag className="w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <p className="font-avigea text-2xl text-foreground">Mis pedidos</p>
+              <p className="text-muted-foreground text-xs mt-0.5">Historial y estados</p>
+            </div>
+            <span className="flex items-center gap-1 text-xs font-semibold text-club-dorado mt-auto">
+              Ver historial
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300" />
+            </span>
           </div>
-          <div className="flex-1">
-            <p className="text-foreground font-semibold text-sm">Mis pedidos</p>
-            <p className="text-muted-foreground text-xs mt-0.5">Historial y estados</p>
-          </div>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-club-dorado transition-colors mt-auto">
-            Ver historial <ArrowRight className="w-3.5 h-3.5" />
-          </span>
         </Link>
 
       </motion.div>

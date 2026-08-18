@@ -270,7 +270,7 @@ export default function NuevoPedidoPage() {
                 {direccionOk && <Check className="w-3.5 h-3.5 text-club-verde" />}
               </span>
               <span className="text-sm text-foreground">
-                Confirmo que la entrega es en esta dirección
+                Confirmo la dirección de entrega
               </span>
             </button>
             <p className="text-muted-foreground text-xs">
