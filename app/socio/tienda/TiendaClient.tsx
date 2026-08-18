@@ -12,10 +12,11 @@ import type { StockPublico, Producto } from '@/lib/types/database';
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
 const fadeUp  = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
-// Paleta de etiquetas unificada: chips neutros, solo Premium lleva el
-// acento dorado de la marca (evita la ensalada de colores)
-const chipNeutro  = 'px-2.5 py-0.5 rounded-full font-medium border border-white/15 bg-white/5 text-foreground/70';
-const chipPremium = 'px-2.5 py-0.5 rounded-full font-semibold border border-club-dorado/40 bg-club-dorado/10 text-club-dorado';
+// Paleta de etiquetas: dos acentos máximo. Calidad en dorado (Premium
+// fuerte, Regular neutro visible) y cultivo en esmeralda suave.
+const chipNeutro   = 'px-3 py-1 rounded-full font-semibold border border-white/25 bg-white/10 text-foreground/90';
+const chipPremium  = 'px-3 py-1 rounded-full font-bold border border-club-dorado/60 bg-club-dorado/15 text-club-dorado shadow-dorado-sm';
+const chipCultivo  = 'px-3 py-1 rounded-full font-semibold border border-emerald-400/35 bg-emerald-500/10 text-emerald-300';
 
 // Línea de predominancia estilo carta: "Predominancia sativa" / "Híbrida"
 function labelPredominancia(tipo: string): string {
@@ -31,13 +32,13 @@ function BarraCannabinoide({ label, valor, max }: { label: string; valor: number
         <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
         <span className="text-xs font-bold text-foreground/80">{valor}%</span>
       </div>
-      <div className="relative h-1.5 rounded-full bg-white/10">
+      <div className="relative h-2.5 rounded-full bg-white/10">
         <div
           className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-club-dorado/30 to-club-dorado"
           style={{ width: `${pct}%` }}
         />
         <span
-          className="absolute top-1/2 -translate-y-1/2 -ml-1.5 w-3 h-3 rounded-full bg-white shadow-md"
+          className="absolute top-1/2 -translate-y-1/2 -ml-2 w-4 h-4 rounded-full bg-white shadow-md ring-2 ring-black/20"
           style={{ left: `${pct}%` }}
         />
       </div>
@@ -207,8 +208,9 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
     <motion.div
       variants={fadeUp}
       className={cn(
-        // Sin altura propia: la grilla estira las cards de cada fila por igual
-        'glass-card overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-transparent flex flex-col',
+        // Fondo verde profundo (familia del degradado del fondo): hace
+        // saltar el contenido. Sin altura propia: la grilla estira parejo.
+        'glass-card !bg-[#04231f]/95 overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-white/5 flex flex-col',
         sinStock && 'opacity-70'
       )}
     >
@@ -225,8 +227,8 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
 
         {/* Cinta diagonal NOVEDAD */}
         {flor.novedad && (
-          <div className="absolute top-0 right-0 w-32 h-32 overflow-hidden pointer-events-none" aria-hidden>
-            <span className="absolute top-[22px] right-[-38px] rotate-45 bg-club-dorado text-club-verde text-[11px] font-bold uppercase tracking-[0.25em] px-12 py-1.5 shadow-dorado-sm">
+          <div className="absolute top-0 right-0 w-44 h-44 overflow-hidden pointer-events-none" aria-hidden>
+            <span className="absolute top-[34px] right-[-46px] rotate-45 bg-gradient-to-r from-club-dorado-oscuro via-club-dorado to-club-dorado-claro text-club-verde text-sm font-bold uppercase tracking-[0.3em] px-14 py-2 border-y-2 border-white/30 shadow-dorado-md">
               Novedad
             </span>
           </div>
@@ -239,18 +241,17 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
         )}
       </div>
 
-      <div className="p-4 space-y-2.5 flex flex-col flex-1">
+      {/* gap (no space-y): space-y pisa el mt-auto del bloque de agregar */}
+      <div className="p-4 flex flex-col flex-1 gap-2.5">
         <div>
-          <h3 className="font-avigea text-2xl text-foreground leading-tight">{flor.nombre}</h3>
-          {/* Jerarquía tipo carta: predominancia + banco en líneas propias */}
+          <h3 className="font-avigea text-2xl text-foreground leading-tight">
+            {flor.nombre}
+            {flor.banco && <span className="text-muted-foreground text-sm font-sans font-normal"> by {flor.banco}</span>}
+          </h3>
+          {/* Línea de predominancia estilo carta */}
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-club-dorado mt-1.5">
             {labelPredominancia(flor.tipo)}
           </p>
-          {flor.banco && (
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mt-0.5">
-              {flor.banco}
-            </p>
-          )}
         </div>
 
         {/* Barras de cannabinoides estilo carta */}
@@ -277,7 +278,7 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
               </span>
             )}
             {flor.cultivo && (
-              <span className={chipNeutro}>{labelCultivo(flor.cultivo)}</span>
+              <span className={chipCultivo}>{labelCultivo(flor.cultivo)}</span>
             )}
           </div>
         )}
@@ -374,7 +375,7 @@ function ProductoCard({ producto, puedeHacerPedidos }: { producto: Producto; pue
     <motion.div
       variants={fadeUp}
       className={cn(
-        'glass-card overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-transparent flex flex-col',
+        'glass-card !bg-[#04231f]/95 overflow-hidden group transition-all duration-300 hover:border-club-dorado/30 hover:-translate-y-1 hover:shadow-dorado-sm border border-white/5 flex flex-col',
         sinStock && 'opacity-70'
       )}
     >
@@ -403,7 +404,7 @@ function ProductoCard({ producto, puedeHacerPedidos }: { producto: Producto; pue
         )}
       </Link>
 
-      <div className="p-4 space-y-2 flex flex-col flex-1">
+      <div className="p-4 flex flex-col flex-1 gap-2">
         <Link href={`/socio/producto/${producto.id}`} className="block">
           <h3 className="font-avigea text-lg text-foreground leading-tight hover:text-club-dorado transition-colors">{producto.nombre}</h3>
         </Link>
