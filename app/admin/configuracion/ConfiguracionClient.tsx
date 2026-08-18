@@ -11,7 +11,6 @@ import {
   crearUbicacion, actualizarUbicacion, eliminarUbicacion, toggleUbicacionActiva, guardarConfigApp,
   crearFranja, actualizarFranja, eliminarFranja, toggleFranjaActiva,
 } from '@/app/actions/configuracion';
-import { CambiarPassword } from '@/components/auth/CambiarPassword';
 import type { Ubicacion, AuditLog, FranjaHoraria } from '@/lib/types/database';
 import type { AppConfig } from '@/lib/supabase/config';
 
@@ -408,6 +407,9 @@ function GeneralTab({ config }: { config: AppConfig }) {
   const [comprobante, setComprobante] = useState(config.comprobante_obligatorio);
   const [costoEnvio, setCostoEnvio]   = useState(config.costo_envio.toString());
   const [gratisDesde, setGratisDesde] = useState(config.envio_gratis_desde.toString());
+  const [avisoDias, setAvisoDias]     = useState(config.reprocann_aviso_dias.toString());
+  const [desc20, setDesc20]           = useState(config.descuento_20.toString());
+  const [desc40, setDesc40]           = useState(config.descuento_40.toString());
   const [pending, startTransition]  = useTransition();
   const [saved, setSaved]           = useState(false);
 
@@ -419,6 +421,9 @@ function GeneralTab({ config }: { config: AppConfig }) {
         guardarConfigApp('comprobante_obligatorio', comprobante ? 'true' : 'false'),
         guardarConfigApp('costo_envio',             costoEnvio || '0'),
         guardarConfigApp('envio_gratis_desde',      gratisDesde || '0'),
+        guardarConfigApp('reprocann_aviso_dias',    avisoDias || '30'),
+        guardarConfigApp('descuento_20',            desc20 || '0'),
+        guardarConfigApp('descuento_40',            desc40 || '0'),
       ]);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -494,6 +499,53 @@ function GeneralTab({ config }: { config: AppConfig }) {
         </div>
       </motion.div>
 
+      {/* Descuento por cantidad */}
+      <motion.div variants={fadeUp} className="glass-card p-5 space-y-4">
+        <div>
+          <p className="text-foreground font-medium text-sm">Descuento por cantidad</p>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            Se aplica sobre el precio de las flores. Al alcanzar 40g gana el descuento mayor.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground font-medium">Al pedir 20g o más (%)</label>
+            <input
+              type="number" min="0" max="100" step="1" value={desc20}
+              onChange={e => setDesc20(e.target.value)}
+              className="input-club w-full text-center text-lg font-bold text-club-dorado"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground font-medium">Al pedir 40g o más (%)</label>
+            <input
+              type="number" min="0" max="100" step="1" value={desc40}
+              onChange={e => setDesc40(e.target.value)}
+              className="input-club w-full text-center text-lg font-bold text-club-dorado"
+            />
+          </div>
+        </div>
+        <p className="text-muted-foreground text-[11px]">0 = sin descuento</p>
+      </motion.div>
+
+      {/* Aviso de vencimiento REPROCANN */}
+      <motion.div variants={fadeUp} className="glass-card p-5 space-y-3">
+        <div>
+          <p className="text-foreground font-medium text-sm">Aviso de vencimiento REPROCANN</p>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            Con cuántos días de anticipación se le avisa al socio (notificación in-app) que su REPROCANN vence.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="number" min="1" max="180" step="1" value={avisoDias}
+            onChange={e => setAvisoDias(e.target.value)}
+            className="input-club w-32 text-center text-lg font-bold text-club-dorado"
+          />
+          <span className="text-muted-foreground text-sm">días antes</span>
+        </div>
+      </motion.div>
+
       {/* Comprobante obligatorio */}
       <motion.div variants={fadeUp} className="glass-card p-5 space-y-3">
         <div className="flex items-center justify-between gap-4">
@@ -526,11 +578,6 @@ function GeneralTab({ config }: { config: AppConfig }) {
             : 'Guardar cambios'
           }
         </button>
-      </motion.div>
-
-      {/* Seguridad de la cuenta admin */}
-      <motion.div variants={fadeUp}>
-        <CambiarPassword />
       </motion.div>
 
     </motion.div>

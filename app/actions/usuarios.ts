@@ -140,36 +140,23 @@ export async function crearUsuario(
   return { ok: true, data: { password, email_enviado: emailEnviado } };
 }
 
-export async function cambiarRolUsuario(userId: string, rol: RolUsuario): Promise<ActionResponse> {
+// Cambia la contraseña de OTRO usuario admin (el rol se define solo al
+// crear el usuario; no hay promoción/degradación desde la app)
+export async function cambiarPasswordAdmin(userId: string, nueva: string): Promise<ActionResponse> {
   const adminId = await verificarAdmin();
   if (!adminId) return { ok: false, error: 'No autorizado' };
-
-  // Protecciones: no auto-degradarse ni dejar el club sin admins
-  if (rol === 'socio') {
-    if (userId === adminId) {
-      return { ok: false, error: 'No podés quitarte el rol de admin a vos mismo' };
-    }
-    const service = createServiceClient();
-    const { count } = await service
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('rol', 'admin');
-    if ((count ?? 0) <= 1) {
-      return { ok: false, error: 'No se puede quitar: es el único administrador' };
-    }
-  }
+  if (nueva.length < 8) return { ok: false, error: 'La contraseña debe tener al menos 8 caracteres' };
 
   const service = createServiceClient();
-  const { error } = await service.from('profiles').update({ rol }).eq('id', userId);
-  if (error) return { ok: false, error: 'Error al cambiar el rol' };
 
-  await registrarAccion(
-    createClient(),
-    rol === 'admin' ? 'promover_admin' : 'degradar_admin',
-    'usuarios',
-    undefined,
-    userId
-  );
+  // Solo aplica a cuentas admin (los socios cambian la suya desde su perfil)
+  const { data: perfil } = await service.from('profiles').select('rol').eq('id', userId).single();
+  if (perfil?.rol !== 'admin') return { ok: false, error: 'Esta acción es solo para cuentas admin' };
+
+  const { error } = await service.auth.admin.updateUserById(userId, { password: nueva });
+  if (error) return { ok: false, error: 'Error al cambiar la contraseña' };
+
+  await registrarAccion(createClient(), 'cambiar_password_admin', 'usuarios', undefined, userId);
   revalidatePath('/admin/socios');
   return { ok: true, data: undefined };
 }

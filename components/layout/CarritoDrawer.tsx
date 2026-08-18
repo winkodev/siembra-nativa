@@ -10,18 +10,21 @@ import { cn, labelTipo, labelCategoriaProducto, formatPrecio } from '@/lib/utils
 const GRAMOS = [10, 20, 30, 40];
 
 export function CarritoDrawer() {
-  const { items, totalItems, totalGramos, quitar, actualizar, vaciar, abierto, setAbierto, maxGramos, contadorAgregados } = useCarrito();
+  const { items, totalItems, totalGramos, quitar, actualizar, vaciar, abierto, setAbierto, maxGramos, descuento20, descuento40, contadorAgregados } = useCarrito();
   const total    = totalGramos; // el límite por pedido aplica solo a las flores
   const excede   = total > maxGramos;
   const porciento = Math.min((total / maxGramos) * 100, 100);
 
-  // Total estimado en $ (items con precio cargado; el envío se calcula al confirmar)
-  const totalMonto = items.reduce((acc, i) =>
-    acc + (i.tipo_item === 'genetica'
-      ? (i.precio_gramo ?? 0) * i.cantidad_gramos
-      : (i.precio ?? 0) * i.cantidad_unidades),
-    0
-  );
+  // Subtotales en $ (items con precio cargado; el envío se calcula al confirmar)
+  const subtotalFlores = items.reduce((acc, i) =>
+    acc + (i.tipo_item === 'genetica' ? (i.precio_gramo ?? 0) * i.cantidad_gramos : 0), 0);
+  const subtotalProd = items.reduce((acc, i) =>
+    acc + (i.tipo_item === 'producto' ? (i.precio ?? 0) * i.cantidad_unidades : 0), 0);
+
+  // Descuento por cantidad sobre las flores (gana el umbral mayor)
+  const descPct   = totalGramos >= 40 ? descuento40 : totalGramos >= 20 ? descuento20 : 0;
+  const descMonto = Math.round(subtotalFlores * descPct) / 100;
+  const totalMonto = subtotalFlores - descMonto + subtotalProd;
 
   /* Animación squeezy del ícono cuando se agrega algo */
   const iconControls = useAnimation();
@@ -193,11 +196,27 @@ export function CarritoDrawer() {
                 {/* Footer */}
                 {items.length > 0 && (
                   <div className="px-5 py-4 border-t border-club-verde-claro/30 space-y-3">
-                    {/* Total estimado */}
+                    {/* Total estimado con descuento por cantidad */}
                     {totalMonto > 0 && (
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">Total estimado <span className="text-xs">(sin envío)</span></span>
-                        <span className="text-club-dorado font-bold text-base">{formatPrecio(totalMonto)}</span>
+                      <div className="space-y-1">
+                        {descMonto > 0 && (
+                          <>
+                            <div className="flex justify-between items-center text-xs text-muted-foreground">
+                              <span>Subtotal</span>
+                              <span className="line-through">{formatPrecio(subtotalFlores + subtotalProd)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-emerald-400 font-semibold">
+                                Descuento {descPct}% por {totalGramos >= 40 ? '40g' : '20g'} o más
+                              </span>
+                              <span className="text-emerald-400 font-semibold">−{formatPrecio(descMonto)}</span>
+                            </div>
+                          </>
+                        )}
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Total estimado <span className="text-xs">(sin envío)</span></span>
+                          <span className="text-club-dorado font-bold text-base">{formatPrecio(totalMonto)}</span>
+                        </div>
                       </div>
                     )}
 

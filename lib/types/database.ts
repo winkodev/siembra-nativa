@@ -106,6 +106,7 @@ export interface Pedido {
   // Foto de los montos al confirmar (precios de ese momento)
   monto_total: number | null;
   monto_envio: number | null;
+  monto_descuento: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -177,6 +178,7 @@ export interface Newsletter {
 export interface Notificacion {
   id: string;
   socio_id: string;
+  tipo: string;   // 'general' | 'reprocann_aviso' | 'reprocann_vencido' | ...
   titulo: string;
   mensaje: string | null;
   leida: boolean;

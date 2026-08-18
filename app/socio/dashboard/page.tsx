@@ -4,7 +4,7 @@ import { SocioDashboardClient } from './SocioDashboardClient';
 import type { Newsletter, Notificacion } from '@/lib/types/database';
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = { title: 'Dashboard' };
+export const metadata: Metadata = { title: 'Inicio' };
 
 export default async function SocioDashboardPage() {
   const profile = await getProfile();

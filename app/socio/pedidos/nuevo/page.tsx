@@ -25,7 +25,7 @@ function montoItem(i: CarritoItem): number {
 }
 
 export default function NuevoPedidoPage() {
-  const { items, vaciar } = useCarrito();
+  const { items, vaciar, descuento20, descuento40 } = useCarrito();
   const router = useRouter();
   const [notas, setNotas]     = useState('');
   const [loading, setLoading] = useState(false);
@@ -73,10 +73,13 @@ export default function NuevoPedidoPage() {
   const totalProductos = items.reduce((acc, i) => acc + (i.tipo_item === 'producto' ? i.cantidad_unidades : 0), 0);
 
   // Resumen de montos (mismo cálculo que hace la base al confirmar)
+  const subtotalFlores = items.reduce((acc, i) => acc + (i.tipo_item === 'genetica' ? montoItem(i) : 0), 0);
   const subtotal   = items.reduce((acc, i) => acc + montoItem(i), 0);
+  const descPct    = totalGramos >= 40 ? descuento40 : totalGramos >= 20 ? descuento20 : 0;
+  const descMonto  = Math.round(subtotalFlores * descPct) / 100;
   const envioGratis = gratisDesde > 0 && totalGramos >= gratisDesde;
   const montoEnvio = costoEnvio > 0 && !envioGratis ? costoEnvio : 0;
-  const totalMonto = subtotal + montoEnvio;
+  const totalMonto = subtotal - descMonto + montoEnvio;
 
   const handleConfirmar = async () => {
     if (franjas.length > 0 && !franjaId) { setError('Elegí un horario de entrega'); return; }
@@ -191,6 +194,14 @@ export default function NuevoPedidoPage() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="text-foreground font-semibold">{formatPrecio(subtotal)}</span>
               </div>
+              {descMonto > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-emerald-400 font-semibold">
+                    Descuento {descPct}% por {totalGramos >= 40 ? '40g' : '20g'} o más
+                  </span>
+                  <span className="text-emerald-400 font-semibold">−{formatPrecio(descMonto)}</span>
+                </div>
+              )}
               {costoEnvio > 0 && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Envío</span>

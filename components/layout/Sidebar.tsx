@@ -19,7 +19,7 @@ interface NavItem {
 }
 
 const navSocio: NavItem[] = [
-  { href: '/socio/dashboard', label: 'Dashboard',   icon: <LayoutDashboard className="w-5 h-5" /> },
+  { href: '/socio/dashboard', label: 'Inicio',      icon: <LayoutDashboard className="w-5 h-5" /> },
   { href: '/socio/tienda',    label: 'Tienda',       icon: <ShoppingBag className="w-5 h-5" /> },
   { href: '/socio/pedidos',   label: 'Mis Pedidos',  icon: <ClipboardList className="w-5 h-5" /> },
   { href: '/socio/perfil',    label: 'Mi Perfil',    icon: <User className="w-5 h-5" /> },

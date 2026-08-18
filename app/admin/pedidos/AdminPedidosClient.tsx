@@ -46,6 +46,7 @@ interface PedidoAdmin {
   entrega_franja: string | null;
   monto_total: number | null;
   monto_envio: number | null;
+  monto_descuento: number | null;
   pedido_items: PedidoItemAdmin[];
   profiles: { nombre: string; dni: string | null } | null;
 }
@@ -347,7 +348,10 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales }: { pedidos: Ped
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground">
                                 Total a abonar
-                                {(pedido.monto_envio ?? 0) > 0 && ` (envío ${formatPrecio(pedido.monto_envio!)})`}
+                                {(pedido.monto_envio ?? 0) > 0 && ` · envío ${formatPrecio(pedido.monto_envio!)}`}
+                                {(pedido.monto_descuento ?? 0) > 0 && (
+                                  <span className="text-emerald-400"> · descuento −{formatPrecio(pedido.monto_descuento!)}</span>
+                                )}
                               </span>
                               <span className="text-club-dorado font-bold text-sm">{formatPrecio(pedido.monto_total)}</span>
                             </div>

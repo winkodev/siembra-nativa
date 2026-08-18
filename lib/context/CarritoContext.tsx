@@ -86,12 +86,25 @@ interface CarritoContextValue {
   abierto:           boolean;
   setAbierto:        (v: boolean) => void;
   maxGramos:         number;
+  // % de descuento sobre flores al alcanzar 20g / 40g (0 = sin descuento)
+  descuento20:       number;
+  descuento40:       number;
   contadorAgregados: number;
 }
 
 const CarritoContext = createContext<CarritoContextValue | null>(null);
 
-export function CarritoProvider({ children, maxGramos = 40 }: { children: React.ReactNode; maxGramos?: number }) {
+export function CarritoProvider({
+  children,
+  maxGramos = 40,
+  descuento20 = 0,
+  descuento40 = 0,
+}: {
+  children: React.ReactNode;
+  maxGramos?: number;
+  descuento20?: number;
+  descuento40?: number;
+}) {
   const [state, dispatch] = useReducer(reducer, { items: [], contadorAgregados: 0 });
   const [abierto, setAbierto] = useState(false);
 
@@ -131,6 +144,8 @@ export function CarritoProvider({ children, maxGramos = 40 }: { children: React.
     abierto,
     setAbierto,
     maxGramos,
+    descuento20,
+    descuento40,
     contadorAgregados: state.contadorAgregados,
   };
 

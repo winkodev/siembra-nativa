@@ -73,6 +73,42 @@ export async function rechazarReprocann(socioId: string): Promise<ActionResponse
   return { ok: true, data: undefined };
 }
 
+// Corrige la fecha de vencimiento del REPROCANN. Si la fecha nueva es
+// futura y el estado era "vencido", se re-aprueba (certificado renovado).
+export async function actualizarVencimientoReprocann(
+  socioId: string,
+  fecha: string  // YYYY-MM-DD
+): Promise<ActionResponse<{ reaprobado: boolean }>> {
+  const adminId = await verificarAdmin();
+  if (!adminId) return { ok: false, error: 'No autorizado' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { ok: false, error: 'Fecha inválida' };
+
+  const service = createServiceClient();
+  const { data: actual } = await service
+    .from('profiles')
+    .select('reprocann_estado')
+    .eq('id', socioId)
+    .single();
+
+  if (!actual) return { ok: false, error: 'Socio no encontrado' };
+
+  const esFutura   = fecha >= new Date().toISOString().slice(0, 10);
+  const reaprobado = actual.reprocann_estado === 'vencido' && esFutura;
+
+  const patch: Record<string, unknown> = { reprocann_vencimiento: fecha };
+  if (reaprobado) {
+    patch.reprocann_estado = 'aprobado';
+    patch.compra_habilitada = true;
+  }
+
+  const { error } = await service.from('profiles').update(patch).eq('id', socioId);
+  if (error) return { ok: false, error: 'Error al actualizar el vencimiento' };
+
+  await registrarAccion(createClient(), 'editar_vencimiento_reprocann', 'reprocann', { fecha }, socioId);
+  revalidatePath('/admin/socios');
+  return { ok: true, data: { reaprobado } };
+}
+
 // ------------------------------------------------------------
 // Ficha de actividad + log de notas del socio
 // ------------------------------------------------------------

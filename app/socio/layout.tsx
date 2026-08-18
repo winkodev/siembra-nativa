@@ -19,7 +19,11 @@ export default async function SocioLayout({ children }: { children: React.ReactN
   if (profile.estado === 'inactivo') redirect('/inactivo');
 
   return (
-    <CarritoProvider maxGramos={config.max_gramos_pedido}>
+    <CarritoProvider
+      maxGramos={config.max_gramos_pedido}
+      descuento20={config.descuento_20}
+      descuento40={config.descuento_40}
+    >
       <div className="min-h-screen bg-background">
         <Sidebar rol="socio" nombre={profile.nombre} />
 

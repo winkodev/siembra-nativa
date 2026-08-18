@@ -20,8 +20,9 @@ import {
   obtenerFichaSocio,
   agregarNotaSocio,
   eliminarNotaSocio,
+  actualizarVencimientoReprocann,
 } from '@/app/actions/socios';
-import { crearUsuario, cambiarRolUsuario, type ModoAlta } from '@/app/actions/usuarios';
+import { crearUsuario, cambiarPasswordAdmin, type ModoAlta } from '@/app/actions/usuarios';
 
 type LoadingKey = `reprocann-${string}` | `estado-${string}` | `notas-${string}` | `cert-${string}` | `rol-${string}`;
 
@@ -84,6 +85,12 @@ function SocioDrawer({
   const [error, setError]     = useState<string | null>(null);
   const [certLoading, setCertLoading] = useState(false);
 
+  // Vencimiento REPROCANN editable + cambio de clave de admins
+  const [vencimiento, setVencimiento] = useState(initial.reprocann_vencimiento?.slice(0, 10) ?? '');
+  const [vencimientoOk, setVencimientoOk] = useState(false);
+  const [nuevaPass, setNuevaPass] = useState('');
+  const [passOk, setPassOk]       = useState(false);
+
   // Ficha de actividad + log de notas (se carga al abrir el drawer)
   const [ficha, setFicha]         = useState<FichaSocio | null>(null);
   const [fichaError, setFichaError] = useState<string | null>(null);
@@ -129,11 +136,32 @@ function SocioDrawer({
     });
   }
 
-  async function handleToggleRol() {
-    const nuevo: RolUsuario = socio.rol === 'admin' ? 'socio' : 'admin';
+  async function handleGuardarVencimiento() {
+    if (!vencimiento) return;
+    await run(`reprocann-${socio.id}`, async () => {
+      const res = await actualizarVencimientoReprocann(socio.id, vencimiento);
+      if (res.ok) {
+        setSocio(s => ({
+          ...s,
+          reprocann_vencimiento: vencimiento,
+          ...(res.data.reaprobado ? { reprocann_estado: 'aprobado' as const, compra_habilitada: true } : {}),
+        }));
+        setVencimientoOk(true);
+        setTimeout(() => setVencimientoOk(false), 2000);
+      }
+      return res;
+    });
+  }
+
+  async function handleCambiarPasswordAdmin() {
+    if (nuevaPass.length < 8) { setError('La contraseña debe tener al menos 8 caracteres'); return; }
     await run(`rol-${socio.id}`, async () => {
-      const res = await cambiarRolUsuario(socio.id, nuevo);
-      if (res.ok) setSocio(s => ({ ...s, rol: nuevo }));
+      const res = await cambiarPasswordAdmin(socio.id, nuevaPass);
+      if (res.ok) {
+        setNuevaPass('');
+        setPassOk(true);
+        setTimeout(() => setPassOk(false), 2500);
+      }
       return res;
     });
   }
@@ -315,6 +343,31 @@ function SocioDrawer({
                 <p className="text-xs text-muted-foreground italic">Sin certificado</p>
               )}
 
+              {/* Vencimiento editable (para corregir fechas o registrar renovación) */}
+              <div className="space-y-1.5 pt-1">
+                <p className="text-xs text-muted-foreground font-medium">Fecha de vencimiento</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={vencimiento}
+                    onChange={e => setVencimiento(e.target.value)}
+                    className="input-club flex-1 py-1.5 text-sm"
+                  />
+                  <button
+                    onClick={handleGuardarVencimiento}
+                    disabled={busy(repKey) || !vencimiento || vencimiento === (socio.reprocann_vencimiento?.slice(0, 10) ?? '')}
+                    className="px-3 py-1.5 text-sm rounded-lg bg-club-dorado/15 hover:bg-club-dorado/25 border border-club-dorado/30 text-club-dorado transition-colors disabled:opacity-40"
+                  >
+                    {busy(repKey)
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : vencimientoOk ? <Check className="w-3.5 h-3.5" /> : 'Guardar'}
+                  </button>
+                </div>
+                <p className="text-muted-foreground text-[11px]">
+                  Si el REPROCANN estaba vencido y la fecha nueva es futura, se re-aprueba solo.
+                </p>
+              </div>
+
               {/* Botones de acción */}
               <div className="flex gap-2 flex-wrap pt-1">
                 {socio.reprocann_estado !== 'aprobado' ? (
@@ -366,17 +419,6 @@ function SocioDrawer({
                 )}
                 {socio.estado === 'activo' ? 'Desactivar' : 'Activar'}
               </button>
-              {/* Promover / degradar admin */}
-              <button
-                onClick={handleToggleRol}
-                disabled={busy(`rol-${socio.id}` as LoadingKey)}
-                className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded-lg border border-club-dorado/30 text-club-dorado hover:bg-club-dorado/10 transition-colors disabled:opacity-50"
-              >
-                {busy(`rol-${socio.id}` as LoadingKey)
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : <Shield className="w-3.5 h-3.5" />}
-                {socio.rol === 'admin' ? 'Quitar admin' : 'Hacer admin'}
-              </button>
             </div>
 
             {/* Tienda */}
@@ -389,6 +431,38 @@ function SocioDrawer({
               <p className="text-xs text-muted-foreground/60">Auto por REPROCANN</p>
             </div>
           </section>
+
+          {/* Contraseña (solo cuentas admin: los socios la cambian desde su perfil) */}
+          {socio.rol === 'admin' && (
+            <section className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5" /> Contraseña
+              </p>
+              <div className="rounded-xl bg-white/5 p-3 space-y-2">
+                <input
+                  type="password"
+                  value={nuevaPass}
+                  onChange={e => setNuevaPass(e.target.value)}
+                  placeholder="Nueva contraseña (mínimo 8 caracteres)"
+                  className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-club-dorado/40 transition-colors"
+                  autoComplete="new-password"
+                />
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleCambiarPasswordAdmin}
+                    disabled={busy(`rol-${socio.id}` as LoadingKey) || nuevaPass.length < 8}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-club-dorado/15 hover:bg-club-dorado/25 border border-club-dorado/30 text-club-dorado transition-colors disabled:opacity-50"
+                  >
+                    {busy(`rol-${socio.id}` as LoadingKey)
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : passOk
+                      ? <><Check className="w-3.5 h-3.5" /> Actualizada</>
+                      : 'Cambiar contraseña'}
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Actividad del socio */}
           <section className="space-y-2">

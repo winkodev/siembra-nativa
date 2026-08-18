@@ -142,6 +142,12 @@ export default async function ImprimirPedidoPage({ params }: Props) {
               </tr>
               {p.monto_total != null && p.monto_total > 0 && (
                 <>
+                  {(p.monto_descuento ?? 0) > 0 && (
+                    <tr>
+                      <td colSpan={3} className="py-1 text-right text-[11px] uppercase tracking-widest text-neutral-500">Descuento por cantidad</td>
+                      <td className="py-1 text-right font-semibold">−{formatPrecio(p.monto_descuento)}</td>
+                    </tr>
+                  )}
                   {(p.monto_envio ?? 0) > 0 && (
                     <tr>
                       <td colSpan={3} className="py-1 text-right text-[11px] uppercase tracking-widest text-neutral-500">Envío</td>
