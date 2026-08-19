@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type { Profile, FichaSocio, TipoNotaSocio, RolUsuario } from '@/lib/types/database';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { cn, formatFecha, formatGramos } from '@/lib/utils';
+import { cn, formatFecha, formatGramos, estadoEfectivoReprocann } from '@/lib/utils';
 import {
   toggleEstadoSocio,
   aprobarReprocann,
@@ -213,7 +213,8 @@ function SocioDrawer({
     }
   }
 
-  const rep = REPROCANN_LABEL[socio.reprocann_estado] ?? REPROCANN_LABEL.pendiente;
+  // Estado efectivo: vencido por fecha aunque el cron todavía no lo haya marcado
+  const rep = REPROCANN_LABEL[estadoEfectivoReprocann(socio.reprocann_estado, socio.reprocann_vencimiento)] ?? REPROCANN_LABEL.pendiente;
   const est = ESTADO_LABEL[socio.estado] ?? ESTADO_LABEL.activo;
   const repKey = `reprocann-${socio.id}` as LoadingKey;
   const estKey = `estado-${socio.id}` as LoadingKey;
@@ -637,7 +638,7 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
         if (s.rol !== 'admin') return false;
       } else {
         if (s.rol !== 'socio') return false;
-        if (filtroRep !== 'todos' && s.reprocann_estado !== filtroRep) return false;
+        if (filtroRep !== 'todos' && estadoEfectivoReprocann(s.reprocann_estado, s.reprocann_vencimiento) !== filtroRep) return false;
       }
       return !q
         || s.nombre.toLowerCase().includes(q)
@@ -679,7 +680,7 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
               ? socios.filter(s => s.rol === 'admin').length
               : f.value === 'todos'
               ? socios.filter(s => s.rol === 'socio').length
-              : socios.filter(s => s.rol === 'socio' && s.reprocann_estado === f.value).length;
+              : socios.filter(s => s.rol === 'socio' && estadoEfectivoReprocann(s.reprocann_estado, s.reprocann_vencimiento) === f.value).length;
             return (
               <button
                 key={f.value}
@@ -708,7 +709,7 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
       ) : (
         <div className="space-y-2">
           {filtered.map(socio => {
-            const rep = REPROCANN_LABEL[socio.reprocann_estado] ?? REPROCANN_LABEL.pendiente;
+            const rep = REPROCANN_LABEL[estadoEfectivoReprocann(socio.reprocann_estado, socio.reprocann_vencimiento)] ?? REPROCANN_LABEL.pendiente;
             const est = ESTADO_LABEL[socio.estado] ?? ESTADO_LABEL.activo;
             return (
               <button

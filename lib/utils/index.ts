@@ -81,11 +81,11 @@ export function labelCultivo(cultivo: string): string {
   return cultivo === 'indoor' ? 'Indoor' : 'Outdoor';
 }
 
-// Verificar si REPROCANN está vigente para hacer pedidos
-export function reprocannVigente(estado: ReprocannEstado, vencimiento: string | null): boolean {
-  if (estado !== 'aprobado') return false;
-  if (!vencimiento) return false;
-  return diasHasta(vencimiento) >= 0;
+// Estado efectivo del REPROCANN: si está aprobado pero la fecha ya pasó,
+// se muestra como vencido aunque el cron diario todavía no lo haya marcado.
+export function estadoEfectivoReprocann(estado: ReprocannEstado, vencimiento: string | null): ReprocannEstado {
+  if (estado === 'aprobado' && vencimiento && diasHasta(vencimiento) < 0) return 'vencido';
+  return estado;
 }
 
 // Label legible para categoría de producto

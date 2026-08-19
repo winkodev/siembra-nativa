@@ -12,7 +12,7 @@ import {
   Bell, Loader2,
 } from 'lucide-react';
 import type { Profile, Newsletter, Notificacion } from '@/lib/types/database';
-import { formatFecha, diasHasta, cn } from '@/lib/utils';
+import { formatFecha, diasHasta, cn, estadoEfectivoReprocann } from '@/lib/utils';
 import { marcarNotificacionesLeidas } from '@/app/actions/notificaciones';
 
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.08 } } };
@@ -83,7 +83,9 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
 
   const datosCompletos = perfilCompleto(profile);
   const certCargado    = Boolean(profile.reprocann_certificado_path);
-  const aprobado       = profile.reprocann_estado === 'aprobado';
+  // Estado efectivo: vencido por fecha aunque el cron todavía no lo haya marcado
+  const estadoRep      = estadoEfectivoReprocann(profile.reprocann_estado, profile.reprocann_vencimiento);
+  const aprobado       = estadoRep === 'aprobado';
 
   const alertas = [
     !datosCompletos && {
@@ -100,7 +102,7 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
       cta:   'Subir certificado',
       href:  '/socio/perfil',
     },
-    datosCompletos && certCargado && !aprobado && {
+    datosCompletos && certCargado && estadoRep === 'pendiente' && {
       key:   'revision',
       Icon:  Clock,
       texto: 'Tu documentación está pendiente de aprobación.',
@@ -109,12 +111,12 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
     },
   ].filter(Boolean) as { key: string; Icon: React.ElementType; texto: string; cta: string; href: string }[];
 
-  const estado  = estadoConfig[profile.reprocann_estado] ?? estadoConfig.pendiente;
+  const estado  = estadoConfig[estadoRep] ?? estadoConfig.pendiente;
   const EstIcon = estado.icon;
 
   // Alerta de vencimiento del REPROCANN
   const diasParaVencer = profile.reprocann_vencimiento ? diasHasta(profile.reprocann_vencimiento) : null;
-  const reprocannVencido  = profile.reprocann_estado === 'vencido' || (diasParaVencer !== null && diasParaVencer < 0);
+  const reprocannVencido  = estadoRep === 'vencido';
   const reprocannPorVencer = aprobado && diasParaVencer !== null && diasParaVencer >= 0 && diasParaVencer <= 90;
 
   return (

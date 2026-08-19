@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Shield, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
-import { cn, badgeReprocann, labelReprocann, labelCategoria, formatFecha, diasHasta } from '@/lib/utils';
+import { cn, badgeReprocann, labelReprocann, labelCategoria, formatFecha, diasHasta, estadoEfectivoReprocann } from '@/lib/utils';
 import type { Profile } from '@/lib/types/database';
 
 interface ReprocannStatusProps {
@@ -22,8 +22,10 @@ const iconoEstado = {
 
 export function ReprocannStatus({ profile, className }: ReprocannStatusProps) {
   const { reprocann_estado, reprocann_numero, reprocann_categoria, reprocann_vencimiento } = profile;
+  // Estado efectivo: vencido por fecha aunque el cron todavía no lo haya marcado
+  const estadoEfectivo = estadoEfectivoReprocann(reprocann_estado, reprocann_vencimiento);
   const diasRestantes = reprocann_vencimiento ? diasHasta(reprocann_vencimiento) : null;
-  const porVencer = diasRestantes !== null && diasRestantes >= 0 && diasRestantes <= 90;
+  const porVencer = estadoEfectivo === 'aprobado' && diasRestantes !== null && diasRestantes >= 0 && diasRestantes <= 90;
 
   return (
     <motion.div
@@ -39,10 +41,10 @@ export function ReprocannStatus({ profile, className }: ReprocannStatusProps) {
         </div>
         <span className={cn(
           'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium',
-          badgeReprocann(reprocann_estado)
+          badgeReprocann(estadoEfectivo)
         )}>
-          {iconoEstado[reprocann_estado]}
-          {labelReprocann(reprocann_estado)}
+          {iconoEstado[estadoEfectivo]}
+          {labelReprocann(estadoEfectivo)}
         </span>
       </div>
 
