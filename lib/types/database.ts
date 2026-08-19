@@ -111,6 +111,11 @@ export interface Pedido {
   monto_total: number | null;
   monto_envio: number | null;
   monto_descuento: number | null;
+  // Controles previos a la aprobación (quién y cuándo)
+  armado_por: string | null;
+  armado_at: string | null;
+  comprobante_ok_por: string | null;
+  comprobante_ok_at: string | null;
   created_at: string;
   updated_at: string;
 }

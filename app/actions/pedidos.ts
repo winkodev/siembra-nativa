@@ -45,6 +45,45 @@ export async function crearPedido(
   return { ok: true, data: { pedido_id: data.pedido_id } };
 }
 
+// Controles previos a la aprobación: armado del pedido y chequeo del
+// comprobante. Cada marca registra quién la hizo y cuándo.
+export type TipoCheck = 'armado' | 'comprobante';
+
+export async function marcarCheckPedido(
+  pedidoId: string,
+  tipo: TipoCheck,
+  marcar: boolean
+): Promise<ActionResponse<{ por: string | null; at: string | null; nombre: string | null }>> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const { data: perfil } = await supabase
+    .from('profiles')
+    .select('rol, nombre')
+    .eq('id', user.id)
+    .single();
+  if (perfil?.rol !== 'admin') return { ok: false, error: 'No autorizado' };
+
+  const at = marcar ? new Date().toISOString() : null;
+  const por = marcar ? user.id : null;
+  const patch = tipo === 'armado'
+    ? { armado_por: por, armado_at: at }
+    : { comprobante_ok_por: por, comprobante_ok_at: at };
+
+  const { error } = await supabase.from('pedidos').update(patch).eq('id', pedidoId);
+  if (error) return { ok: false, error: 'Error al registrar el control' };
+
+  await registrarAccion(
+    supabase,
+    marcar ? `check_${tipo}` : `descheck_${tipo}`,
+    'pedidos',
+    { pedido_id: pedidoId }
+  );
+  revalidatePath('/admin/pedidos');
+  return { ok: true, data: { por, at, nombre: marcar ? (perfil?.nombre ?? null) : null } };
+}
+
 // Desde qué estados se puede pasar a cada estado destino
 const transicionesValidas: Record<'aprobado' | 'entregado' | 'cancelado', EstadoPedido[]> = {
   aprobado:  ['pendiente'],
@@ -60,11 +99,16 @@ export async function cambiarEstadoPedido(
 
   const { data: pedido } = await supabase
     .from('pedidos')
-    .select('estado, comprobante_path, socio_id, numero, entrega_franja')
+    .select('estado, comprobante_path, socio_id, numero, entrega_franja, armado_at, comprobante_ok_at')
     .eq('id', pedidoId)
     .single();
 
   if (!pedido) return { ok: false, error: 'Pedido no encontrado' };
+
+  // Trazabilidad: no se aprueba sin los dos controles marcados
+  if (nuevoEstado === 'aprobado' && (!pedido.armado_at || !pedido.comprobante_ok_at)) {
+    return { ok: false, error: 'Marcá los controles de armado y comprobante antes de aprobar.' };
+  }
 
   // Guard de transiciones: evita doble aprobación (descuento doble de stock)
   // y saltos inválidos como pendiente → entregado

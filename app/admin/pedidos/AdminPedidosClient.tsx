@@ -2,9 +2,12 @@
 
 import { useState, useMemo, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, ChevronDown, Clock, Loader2, Search, Receipt, ExternalLink, Printer, CalendarClock } from 'lucide-react';
+import {
+  ShoppingBag, ChevronDown, Clock, Loader2, Search, Receipt, ExternalLink,
+  Printer, CalendarClock, PackageCheck, Check,
+} from 'lucide-react';
 import { cn, formatFecha, formatGramos, formatNumeroPedido, formatPrecio, labelTipo, labelCategoriaProducto, badgePedido } from '@/lib/utils';
-import { cambiarEstadoPedido, verComprobante } from '@/app/actions/pedidos';
+import { cambiarEstadoPedido, verComprobante, marcarCheckPedido, type TipoCheck } from '@/app/actions/pedidos';
 import { PageHeader } from '@/components/layout/PageHeader';
 import type { EstadoPedido } from '@/lib/types/database';
 
@@ -47,6 +50,11 @@ interface PedidoAdmin {
   monto_total: number | null;
   monto_envio: number | null;
   monto_descuento: number | null;
+  // Controles previos a la aprobación
+  armado_at: string | null;
+  comprobante_ok_at: string | null;
+  armado: { nombre: string } | null;
+  comprobante_ok: { nombre: string } | null;
   pedido_items: PedidoItemAdmin[];
   profiles: { nombre: string; dni: string | null } | null;
 }
@@ -133,6 +141,19 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales }: { pedidos: Ped
         return;
       }
       setPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, estado: nuevoEstado } : p));
+    });
+  };
+
+  const handleCheck = (pedidoId: string, tipo: TipoCheck, marcar: boolean) => {
+    setError(null);
+    startTransition(async () => {
+      const res = await marcarCheckPedido(pedidoId, tipo, marcar);
+      if (!res.ok) { setError(res.error); return; }
+      setPedidos(prev => prev.map(p => p.id !== pedidoId ? p : (
+        tipo === 'armado'
+          ? { ...p, armado_at: res.data.at, armado: res.data.nombre ? { nombre: res.data.nombre } : null }
+          : { ...p, comprobante_ok_at: res.data.at, comprobante_ok: res.data.nombre ? { nombre: res.data.nombre } : null }
+      )));
     });
   };
 
@@ -283,8 +304,36 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales }: { pedidos: Ped
                     </p>
                   </div>
 
-                  {/* Comprobante cargado (indicador) */}
-                  {pedido.comprobante_path && (
+                  {/* Controles de preparación: rojo pendiente / verde listo */}
+                  {pedido.estado === 'pendiente' && (
+                    <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+                      <span
+                        title={pedido.armado_at ? `Armado por ${pedido.armado?.nombre ?? 'admin'}` : 'Pedido sin armar'}
+                        className={cn(
+                          'inline-flex p-1.5 rounded-lg border',
+                          pedido.armado_at
+                            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                            : 'bg-red-500/10 border-red-500/25 text-red-400'
+                        )}
+                      >
+                        <PackageCheck className="w-3.5 h-3.5" />
+                      </span>
+                      <span
+                        title={pedido.comprobante_ok_at ? `Comprobante chequeado por ${pedido.comprobante_ok?.nombre ?? 'admin'}` : 'Comprobante sin chequear'}
+                        className={cn(
+                          'inline-flex p-1.5 rounded-lg border',
+                          pedido.comprobante_ok_at
+                            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                            : 'bg-red-500/10 border-red-500/25 text-red-400'
+                        )}
+                      >
+                        <Receipt className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Comprobante cargado (indicador, ya no pendiente) */}
+                  {pedido.estado !== 'pendiente' && pedido.comprobante_path && (
                     <span title="Comprobante de pago cargado" className="hidden sm:inline-flex p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 shrink-0">
                       <Receipt className="w-3.5 h-3.5" />
                     </span>
@@ -397,6 +446,49 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales }: { pedidos: Ped
                             )}
                           </div>
 
+                          {/* Controles obligatorios antes de aprobar */}
+                          {pedido.estado === 'pendiente' && (
+                            <div className="space-y-2 pt-1">
+                              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                                Controles previos
+                              </p>
+                              {([
+                                ['armado', 'Armado', PackageCheck, pedido.armado_at, pedido.armado?.nombre],
+                                ['comprobante', 'Comprobante chequeado', Receipt, pedido.comprobante_ok_at, pedido.comprobante_ok?.nombre],
+                              ] as const).map(([tipo, label, Icono, at, nombre]) => (
+                                <button
+                                  key={tipo}
+                                  onClick={() => handleCheck(pedido.id, tipo, !at)}
+                                  disabled={pending}
+                                  className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all disabled:opacity-60',
+                                    at
+                                      ? 'bg-emerald-500/10 border-emerald-500/30'
+                                      : 'bg-red-500/5 border-red-500/25 hover:border-red-500/40'
+                                  )}
+                                >
+                                  <span className={cn(
+                                    'w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all',
+                                    at ? 'bg-emerald-500 border-emerald-500' : 'border-red-400/50'
+                                  )}>
+                                    {at && <Check className="w-3.5 h-3.5 text-white" />}
+                                  </span>
+                                  <Icono className={cn('w-4 h-4 shrink-0', at ? 'text-emerald-400' : 'text-red-400')} />
+                                  <span className="flex-1 min-w-0">
+                                    <span className={cn('block text-sm font-medium', at ? 'text-emerald-300' : 'text-foreground')}>
+                                      {label}
+                                    </span>
+                                    <span className="block text-[11px] text-muted-foreground truncate">
+                                      {at
+                                        ? `${nombre ?? 'Admin'} · ${formatFecha(at, "dd MMM · HH:mm")}`
+                                        : 'Pendiente de control'}
+                                    </span>
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
                           <div className="flex gap-2 flex-wrap items-center">
                             {/* Vista imprimible (PDF vía diálogo del navegador) */}
                             <a
@@ -411,25 +503,31 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales }: { pedidos: Ped
 
                           {siguientes.length > 0 && (
                             <div className="flex gap-2 flex-wrap">
-                              {siguientes.map(estado => (
-                                <button
-                                  key={estado}
-                                  onClick={() => handleCambiarEstado(pedido.id, estado)}
-                                  disabled={pending && loadingId === pedido.id}
-                                  className={cn(
-                                    'px-4 py-2 rounded-xl text-sm font-semibold transition-all border',
-                                    estado === 'aprobado'  && 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25',
-                                    estado === 'entregado' && 'bg-club-dorado/15 text-club-dorado border-club-dorado/30 hover:bg-club-dorado/25',
-                                    estado === 'cancelado' && 'bg-red-500/15 text-red-400 border-red-500/30 hover:bg-red-500/25',
-                                    pending && loadingId === pedido.id && 'opacity-50 cursor-not-allowed'
-                                  )}
-                                >
-                                  {pending && loadingId === pedido.id
-                                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                                    : `Marcar ${labelEstado[estado].toLowerCase()}`
-                                  }
-                                </button>
-                              ))}
+                              {siguientes.map(estado => {
+                                // Aprobar exige los dos controles marcados
+                                const bloqueado = estado === 'aprobado'
+                                  && (!pedido.armado_at || !pedido.comprobante_ok_at);
+                                return (
+                                  <button
+                                    key={estado}
+                                    onClick={() => handleCambiarEstado(pedido.id, estado)}
+                                    disabled={(pending && loadingId === pedido.id) || bloqueado}
+                                    title={bloqueado ? 'Marcá los controles previos para habilitar la aprobación' : undefined}
+                                    className={cn(
+                                      'px-4 py-2 rounded-xl text-sm font-semibold transition-all border',
+                                      estado === 'aprobado'  && 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25',
+                                      estado === 'entregado' && 'bg-club-dorado/15 text-club-dorado border-club-dorado/30 hover:bg-club-dorado/25',
+                                      estado === 'cancelado' && 'bg-red-500/15 text-red-400 border-red-500/30 hover:bg-red-500/25',
+                                      ((pending && loadingId === pedido.id) || bloqueado) && 'opacity-40 cursor-not-allowed hover:bg-transparent'
+                                    )}
+                                  >
+                                    {pending && loadingId === pedido.id
+                                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                                      : `Marcar ${labelEstado[estado].toLowerCase()}`
+                                    }
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                         </div>

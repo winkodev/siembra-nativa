@@ -20,7 +20,9 @@ export default async function AdminPedidosPage() {
         geneticas ( nombre, tipo ),
         productos ( nombre, categoria )
       ),
-      profiles!socio_id ( nombre, dni )
+      profiles!socio_id ( nombre, dni ),
+      armado:profiles!armado_por ( nombre ),
+      comprobante_ok:profiles!comprobante_ok_por ( nombre )
     `)
     .order('created_at', { ascending: false });
 
