@@ -36,7 +36,7 @@ const estadoConfig = {
     badge:   'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
     icon:    CheckCircle2,
     iconCls: 'text-emerald-400',
-    desc:    'Podés hacer pedidos. Tu acceso está activo.',
+    desc:    'Visitá tu perfil de socio.',
   },
   pendiente: {
     border:  'border-amber-500/40',
@@ -180,8 +180,11 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
       {/* Grid principal: estado + acciones rápidas */}
       <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-        {/* Card REPROCANN: credencial de fondo fundida con el verde */}
-        <div className={cn('relative overflow-hidden glass-card !bg-[#04231f]/95 border group', estado.border)}>
+        {/* Card REPROCANN: toda la card es un botón al perfil del socio */}
+        <Link
+          href="/socio/perfil"
+          className={cn('relative overflow-hidden glass-card !bg-[#04231f]/95 border group hover:border-club-dorado/40 hover:shadow-dorado-sm transition-all duration-300', estado.border)}
+        >
           {credencialOk && (
             /* Credencial en la mitad derecha, fundida en su borde izquierdo */
             <div className="absolute inset-y-0 right-0 w-1/2 overflow-hidden">
@@ -211,19 +214,12 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
             <p className="text-xs text-muted-foreground leading-relaxed flex-1">{estado.desc}</p>
 
             {profile.reprocann_vencimiento && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground mt-auto">
                 Vence: <span className="text-foreground font-medium">{formatFecha(profile.reprocann_vencimiento)}</span>
               </p>
             )}
-
-            <Link
-              href="/socio/perfil"
-              className="text-xs text-club-dorado hover:text-club-dorado/70 transition-colors flex items-center gap-1 mt-auto w-fit"
-            >
-              Mi perfil <ArrowRight className="w-3 h-3" />
-            </Link>
           </div>
-        </div>
+        </Link>
 
         {/* Acceso rápido — Catálogo: el verde se funde con la foto */}
         <Link
