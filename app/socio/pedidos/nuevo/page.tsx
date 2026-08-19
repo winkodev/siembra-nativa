@@ -61,10 +61,13 @@ export default function NuevoPedidoPage() {
       if (!user) return;
       const { data: p } = await supabase
         .from('profiles')
-        .select('direccion, localidad, provincia, codigo_postal')
+        .select('direccion, piso_depto, localidad, provincia, codigo_postal')
         .eq('id', user.id)
         .single();
-      const dir = [p?.direccion, p?.localidad, p?.provincia, p?.codigo_postal].filter(Boolean).join(', ');
+      const dir = [
+        [p?.direccion, p?.piso_depto].filter(Boolean).join(', '),
+        p?.localidad, p?.provincia, p?.codigo_postal,
+      ].filter(Boolean).join(', ');
       setDireccion(dir || null);
     });
   }, []);

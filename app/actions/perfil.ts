@@ -11,6 +11,7 @@ const perfilSchema = z.object({
   dni:             z.string().optional(),
   fecha_nacimiento: z.string().optional(),
   direccion:       z.string().optional(),
+  piso_depto:      z.string().optional(),
   localidad:       z.string().optional(),
   provincia:       z.string().optional(),
   codigo_postal:   z.string().optional(),

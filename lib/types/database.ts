@@ -27,6 +27,7 @@ export interface Profile {
 
   // Dirección (validada contra Georef: guarda coordenadas)
   direccion: string | null;
+  piso_depto: string | null;
   localidad: string | null;
   provincia: string | null;
   codigo_postal: string | null;

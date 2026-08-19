@@ -34,7 +34,13 @@ function itemDisplay(item: PedidoConItems['pedido_items'][number]) {
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
 const fadeUp  = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
-export function HistorialPedidosClient({ pedidos: iniciales }: { pedidos: PedidoConItems[] }) {
+export function HistorialPedidosClient({
+  pedidos: iniciales,
+  direccionEntrega,
+}: {
+  pedidos: PedidoConItems[];
+  direccionEntrega: string | null;
+}) {
   // Todos los pedidos arrancan colapsados — el usuario expande el que quiera
   const [pedidos, setPedidos]     = useState(iniciales);
   const [expandido, setExpandido] = useState<string | null>(null);
@@ -153,6 +159,12 @@ export function HistorialPedidosClient({ pedidos: iniciales }: { pedidos: Pedido
 
                     {/* Notas y footer */}
                     <div className="px-5 py-4 bg-club-dorado/5 space-y-2">
+                      {direccionEntrega && (
+                        <p className="text-muted-foreground text-xs">
+                          <span className="text-foreground/70 font-medium">Dirección: </span>
+                          {direccionEntrega}
+                        </p>
+                      )}
                       {pedido.entrega_franja && (
                         <p className="text-muted-foreground text-xs">
                           <span className="text-foreground/70 font-medium">Entrega: </span>

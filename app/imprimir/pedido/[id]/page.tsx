@@ -34,7 +34,7 @@ export default async function ImprimirPedidoPage({ params }: Props) {
         geneticas ( nombre, tipo ),
         productos ( nombre, categoria )
       ),
-      profiles!socio_id ( nombre, dni, telefono, email, direccion, localidad, provincia, codigo_postal, reprocann_numero )
+      profiles!socio_id ( nombre, dni, telefono, email, direccion, piso_depto, localidad, provincia, codigo_postal, reprocann_numero )
     `)
     .eq('id', params.id)
     .single();
@@ -46,8 +46,10 @@ export default async function ImprimirPedidoPage({ params }: Props) {
   const items = p.pedido_items as any[];
   const totalGramos   = items.reduce((s, i) => s + (i.cantidad_gramos ?? 0), 0);
   const totalUnidades = items.reduce((s, i) => s + (i.cantidad_unidades ?? 0), 0);
-  const direccion = [socio?.direccion, socio?.localidad, socio?.provincia, socio?.codigo_postal]
-    .filter(Boolean).join(', ') || '—';
+  const direccion = [
+    [socio?.direccion, socio?.piso_depto].filter(Boolean).join(', '),
+    socio?.localidad, socio?.provincia, socio?.codigo_postal,
+  ].filter(Boolean).join(', ') || '—';
 
   // La orden contiene datos personales: se registra el acceso
   await registrarAccion(supabase, 'imprimir_pedido', 'pedidos', { pedido_id: p.id }, p.socio_id);

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Loader2, CheckCircle2, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { buscarCodigoPostal } from '@/app/actions/geo';
 import type { Profile } from '@/lib/types/database';
 
 // Respuesta de la API Georef (apis.datos.gob.ar) para /direcciones
@@ -43,6 +44,8 @@ export function DireccionAutocomplete({ profile }: { profile: Profile }) {
         }
       : null
   );
+  const [cp, setCp]         = useState(profile.codigo_postal ?? '');
+  const [buscandoCp, setBuscandoCp] = useState(false);
   const contenedor = useRef<HTMLDivElement>(null);
 
   // Cerrar el desplegable al hacer click afuera
@@ -77,7 +80,7 @@ export function DireccionAutocomplete({ profile }: { profile: Profile }) {
     return () => clearTimeout(id);
   }, [query, sel]);
 
-  const elegir = (d: DireccionGeoref) => {
+  const elegir = async (d: DireccionGeoref) => {
     const calle = [d.calle?.nombre, d.altura?.valor].filter(Boolean).join(' ');
     const nueva: Seleccion = {
       direccion:  calle || d.nomenclatura,
@@ -91,6 +94,14 @@ export function DireccionAutocomplete({ profile }: { profile: Profile }) {
     setQuery(nueva.direccion);
     setAbierto(false);
     setOpciones([]);
+
+    // Georef no trae el CP: se completa por coordenadas (editable)
+    if (nueva.lat != null && nueva.lon != null) {
+      setBuscandoCp(true);
+      const postal = await buscarCodigoPostal(nueva.lat, nueva.lon);
+      if (postal) setCp(postal);
+      setBuscandoCp(false);
+    }
   };
 
   return (
@@ -148,6 +159,17 @@ export function DireccionAutocomplete({ profile }: { profile: Profile }) {
         }
       </div>
 
+      {/* Piso / departamento: lo completa el socio (no es dato geolocalizado) */}
+      <div className="space-y-1.5">
+        <label className="text-sm text-foreground/80 font-medium">Piso / Departamento</label>
+        <input
+          name="piso_depto" type="text"
+          defaultValue={profile.piso_depto ?? ''}
+          className="input-club w-full"
+          placeholder="Ej: 3° B (opcional)"
+        />
+      </div>
+
       {/* Localidad y provincia se completan solas al validar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-1.5">
@@ -169,11 +191,15 @@ export function DireccionAutocomplete({ profile }: { profile: Profile }) {
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-sm text-foreground/80 font-medium">Código postal</label>
+          <label className="text-sm text-foreground/80 font-medium flex items-center gap-1.5">
+            Código postal
+            {buscandoCp && <Loader2 className="w-3 h-3 animate-spin text-club-dorado" />}
+          </label>
           <input
             name="codigo_postal" type="text"
-            defaultValue={profile.codigo_postal ?? ''}
-            className="input-club w-full" placeholder="C1043"
+            value={cp}
+            onChange={e => setCp(e.target.value)}
+            className="input-club w-full" placeholder="Se completa solo"
           />
         </div>
       </div>

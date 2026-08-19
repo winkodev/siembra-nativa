@@ -4,7 +4,7 @@ import { useState, useMemo, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingBag, ChevronDown, Clock, Loader2, Search, Receipt, ExternalLink,
-  Printer, CalendarClock, PackageCheck, Check,
+  Printer, CalendarClock, PackageCheck, Check, MapPin,
 } from 'lucide-react';
 import { cn, formatFecha, formatGramos, formatNumeroPedido, formatPrecio, labelTipo, labelCategoriaProducto, badgePedido } from '@/lib/utils';
 import { cambiarEstadoPedido, verComprobante, marcarCheckPedido, type TipoCheck } from '@/app/actions/pedidos';
@@ -56,7 +56,18 @@ interface PedidoAdmin {
   armado: { nombre: string } | null;
   comprobante_ok: { nombre: string } | null;
   pedido_items: PedidoItemAdmin[];
-  profiles: { nombre: string; dni: string | null } | null;
+  profiles: {
+    nombre: string;
+    dni: string | null;
+    telefono: string | null;
+    direccion: string | null;
+    piso_depto: string | null;
+    localidad: string | null;
+    provincia: string | null;
+    codigo_postal: string | null;
+    latitud: number | null;
+    longitud: number | null;
+  } | null;
 }
 
 // Datos de presentación de un item, sea genética (gramos) o producto (unidades)
@@ -405,6 +416,40 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales }: { pedidos: Ped
                               <span className="text-club-dorado font-bold text-sm">{formatPrecio(pedido.monto_total)}</span>
                             </div>
                           )}
+
+                          {/* Datos de entrega: dirección y contacto del socio */}
+                          {(() => {
+                            const p = pedido.profiles;
+                            const dir = [
+                              [p?.direccion, p?.piso_depto].filter(Boolean).join(', '),
+                              p?.localidad, p?.provincia, p?.codigo_postal,
+                            ].filter(Boolean).join(' · ');
+                            if (!dir && !p?.telefono) return null;
+                            return (
+                              <div className="rounded-xl bg-club-verde-claro/15 border border-club-verde-claro/25 px-3 py-2.5 space-y-1">
+                                {dir && (
+                                  <p className="text-xs flex items-start gap-1.5">
+                                    <MapPin className="w-3.5 h-3.5 text-club-dorado shrink-0 mt-0.5" />
+                                    <span className="text-foreground">{dir}</span>
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-4 pl-5">
+                                  {p?.telefono && (
+                                    <span className="text-xs text-muted-foreground">Tel: {p.telefono}</span>
+                                  )}
+                                  {p?.latitud && p?.longitud && (
+                                    <a
+                                      href={`https://www.google.com/maps?q=${p.latitud},${p.longitud}`}
+                                      target="_blank" rel="noopener noreferrer"
+                                      className="text-xs text-club-dorado hover:text-club-dorado/70 transition-colors inline-flex items-center gap-1"
+                                    >
+                                      <ExternalLink className="w-3 h-3" /> Ver en el mapa
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {pedido.entrega_franja && (
                             <p className="text-muted-foreground text-xs flex items-center gap-1.5">

@@ -24,5 +24,16 @@ export default async function PedidosPage() {
     .eq('socio_id', profile.id)
     .order('created_at', { ascending: false });
 
-  return <HistorialPedidosClient pedidos={(pedidos as PedidoConItems[]) ?? []} />;
+  // Dirección de entrega vigente del socio (la que ve en cada pedido)
+  const direccionEntrega = [
+    [profile.direccion, profile.piso_depto].filter(Boolean).join(', '),
+    profile.localidad, profile.provincia, profile.codigo_postal,
+  ].filter(Boolean).join(' · ');
+
+  return (
+    <HistorialPedidosClient
+      pedidos={(pedidos as PedidoConItems[]) ?? []}
+      direccionEntrega={direccionEntrega || null}
+    />
+  );
 }
