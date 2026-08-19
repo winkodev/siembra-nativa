@@ -284,7 +284,24 @@ function SocioDrawer({
               {direccionCompleta && (
                 <div className="flex gap-2">
                   <MapPin className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                  <span className="text-foreground font-medium">{direccionCompleta}</span>
+                  <span className="flex-1">
+                    <span className="text-foreground font-medium">{direccionCompleta}</span>
+                    {socio.direccion_validada_at && (
+                      <span className="flex items-center gap-1 text-emerald-400 text-xs mt-0.5">
+                        <Check className="w-3 h-3" /> Dirección validada
+                      </span>
+                    )}
+                    {socio.latitud && socio.longitud && (
+                      <a
+                        href={`https://www.google.com/maps?q=${socio.latitud},${socio.longitud}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-club-dorado text-xs mt-1 hover:text-club-dorado/70 transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" /> Ver en el mapa
+                      </a>
+                    )}
+                  </span>
                 </div>
               )}
               {socio.fecha_alta && (

@@ -13,6 +13,7 @@ import { extraerDatosReprocann, type DatosExtraidos } from '@/app/actions/extrae
 import { ReprocannStatus } from '@/components/reprocann/ReprocannStatus';
 import type { Profile, ActionResponse } from '@/lib/types/database';
 import { cn } from '@/lib/utils';
+import { DireccionAutocomplete } from '@/components/perfil/DireccionAutocomplete';
 
 const initial: ActionResponse = { ok: true, data: undefined };
 
@@ -159,38 +160,8 @@ export function ReprocannOnboardingClient({ profile }: { profile: Profile }) {
             <div className="flex-1 h-px bg-club-verde-claro/30" />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm text-foreground/80 font-medium">Calle y número</label>
-            <input name="direccion" type="text" defaultValue={profile.direccion ?? ''}
-              className="input-club w-full" placeholder="Av. Corrientes 1234, 3° B" />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-1.5 sm:col-span-1">
-              <label className="text-sm text-foreground/80 font-medium">Localidad</label>
-              <input name="localidad" type="text" defaultValue={profile.localidad ?? ''}
-                className="input-club w-full" placeholder="Buenos Aires" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm text-foreground/80 font-medium">Provincia</label>
-              <select name="provincia" defaultValue={profile.provincia ?? ''}
-                className="input-club w-full bg-club-verde-medio appearance-none cursor-pointer">
-                <option value="">Seleccioná</option>
-                {[
-                  'Buenos Aires','CABA','Catamarca','Chaco','Chubut','Córdoba',
-                  'Corrientes','Entre Ríos','Formosa','Jujuy','La Pampa','La Rioja',
-                  'Mendoza','Misiones','Neuquén','Río Negro','Salta','San Juan',
-                  'San Luis','Santa Cruz','Santa Fe','Santiago del Estero',
-                  'Tierra del Fuego','Tucumán'
-                ].map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm text-foreground/80 font-medium">Código postal</label>
-              <input name="codigo_postal" type="text" defaultValue={profile.codigo_postal ?? ''}
-                className="input-club w-full" placeholder="C1043" />
-            </div>
-          </div>
+          {/* Autocompletado validado contra Georef (Estado argentino) */}
+          <DireccionAutocomplete profile={profile} />
 
           <div className="flex justify-end pt-2">
             <SaveButton />

@@ -25,11 +25,15 @@ export interface Profile {
   dni: string | null;
   fecha_nacimiento: string | null;
 
-  // Dirección
+  // Dirección (validada contra Georef: guarda coordenadas)
   direccion: string | null;
   localidad: string | null;
   provincia: string | null;
   codigo_postal: string | null;
+  latitud: number | null;
+  longitud: number | null;
+  direccion_normalizada: string | null;
+  direccion_validada_at: string | null;
 
   // REPROCANN
   reprocann_numero: string | null;

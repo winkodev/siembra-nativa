@@ -14,6 +14,10 @@ const perfilSchema = z.object({
   localidad:       z.string().optional(),
   provincia:       z.string().optional(),
   codigo_postal:   z.string().optional(),
+  // Datos de validación de la dirección (Georef)
+  latitud:               z.string().optional(),
+  longitud:              z.string().optional(),
+  direccion_normalizada: z.string().optional(),
 });
 
 export async function guardarPerfil(
@@ -31,9 +35,17 @@ export async function guardarPerfil(
   }
 
   // Limpiar campos vacíos → null
-  const datos = Object.fromEntries(
-    Object.entries(parsed.data).map(([k, v]) => [k, v === '' ? null : v])
+  const { latitud, longitud, direccion_normalizada, ...resto } = parsed.data;
+  const datos: Record<string, unknown> = Object.fromEntries(
+    Object.entries(resto).map(([k, v]) => [k, v === '' ? null : v])
   );
+
+  // La dirección solo se marca como validada si vino del autocompletado
+  const validada = Boolean(direccion_normalizada && latitud && longitud);
+  datos.latitud               = validada ? parseFloat(latitud!) : null;
+  datos.longitud              = validada ? parseFloat(longitud!) : null;
+  datos.direccion_normalizada = validada ? direccion_normalizada : null;
+  datos.direccion_validada_at = validada ? new Date().toISOString() : null;
 
   const { error } = await supabase
     .from('profiles')
