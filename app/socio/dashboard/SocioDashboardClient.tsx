@@ -195,7 +195,8 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
                 className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                 onError={() => setCredencialOk(false)}
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#04231f] via-[#04231f]/30 via-45% to-transparent" />
+              {/* Fundido largo y suave hacia la foto */}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#04231f] from-0% via-[#04231f]/55 via-40% to-transparent to-95%" />
             </div>
           )}
 
@@ -234,7 +235,8 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
               fill
               className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#04231f] via-[#04231f]/30 via-45% to-transparent" />
+            {/* Fundido largo y suave hacia la foto */}
+            <div className="absolute inset-0 bg-gradient-to-r from-[#04231f] from-0% via-[#04231f]/55 via-40% to-transparent to-95%" />
           </div>
 
           <div className="relative z-10 p-5 flex flex-col gap-3 w-3/5">
