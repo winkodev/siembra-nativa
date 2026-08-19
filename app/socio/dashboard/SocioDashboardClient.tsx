@@ -258,11 +258,16 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
           href="/socio/pedidos"
           className="relative overflow-hidden rounded-xl border border-white/5 bg-[#04231f]/95 hover:border-club-dorado/40 hover:shadow-dorado-sm transition-all duration-300 group min-h-[11rem] flex"
         >
-          {/* Ícono gigante de fondo */}
-          <ShoppingBag
-            className="absolute -right-6 -bottom-8 w-44 h-44 text-club-dorado/[0.06] group-hover:text-club-dorado/[0.12] group-hover:scale-110 transition-all duration-700 ease-out"
-            aria-hidden
-          />
+          {/* Foto en la mitad derecha, fundida en su borde izquierdo */}
+          <div className="absolute inset-y-0 right-0 w-1/2 overflow-hidden">
+            <Image
+              src="/images/pedidos.jpg"
+              alt=""
+              fill
+              className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#04231f] from-0% via-[#04231f]/55 via-40% to-transparent to-95%" />
+          </div>
 
           <div className="relative z-10 p-5 flex flex-col gap-3 w-3/5">
             <div className="w-10 h-10 rounded-xl bg-club-dorado/15 border border-club-dorado/25 flex items-center justify-center text-club-dorado group-hover:bg-club-dorado/30 transition-colors">
