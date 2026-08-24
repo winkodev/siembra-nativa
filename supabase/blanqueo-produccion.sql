@@ -35,8 +35,9 @@ DELETE FROM audit_log;
 -- Numeración de pedidos: el próximo pedido será el N° 1
 SELECT setval('pedidos_numero_seq', 1, false);
 
--- Comprobantes de pago subidos durante las pruebas (Storage)
-DELETE FROM storage.objects WHERE bucket_id = 'comprobantes-pago';
+-- NOTA: los comprobantes de pago del bucket 'comprobantes-pago' no se
+-- pueden borrar por SQL (Supabase lo bloquea con storage.protect_delete);
+-- se vacían por la Storage API o desde Dashboard → Storage.
 
 COMMIT;
 
