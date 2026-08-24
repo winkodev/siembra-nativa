@@ -776,7 +776,14 @@ function CrearUsuarioModal({ onClose }: { onClose: () => void }) {
     setLoading(false);
     if (!res.ok) { setError(res.error); return; }
     setResultado(res.data);
-    router.refresh();
+    // OJO: no refrescar acá — el refresh puede remontar la página y cerrar
+    // el modal con la contraseña temporal en pantalla. Se refresca al cerrar.
+  };
+
+  // Cierra el modal y recién ahí actualiza la lista de socios
+  const handleCerrar = () => {
+    if (resultado) router.refresh();
+    onClose();
   };
 
   const handleCopiar = () => {
@@ -793,7 +800,7 @@ function CrearUsuarioModal({ onClose }: { onClose: () => void }) {
           <h2 className="font-avigea text-xl text-foreground">
             {resultado ? 'Usuario creado' : 'Crear usuario'}
           </h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={handleCerrar} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -836,7 +843,13 @@ function CrearUsuarioModal({ onClose }: { onClose: () => void }) {
                 </p>
               </div>
             )}
-            <button onClick={onClose} className="btn-primary w-full py-3">Listo</button>
+            {resultado.password && (
+              <p className="text-xs text-muted-foreground">
+                Si se pierde, no hace falta verla de nuevo: desde la ficha del socio
+                (Cambiar contraseña) podés generarle una nueva cuando quieras.
+              </p>
+            )}
+            <button onClick={handleCerrar} className="btn-primary w-full py-3">Listo</button>
           </div>
         ) : (
           /* Formulario de alta */
