@@ -32,23 +32,34 @@ export function CarritoDrawer() {
   const enCheckout = pathname?.startsWith('/socio/pedidos/nuevo') ?? false;
 
   // Nudge: empuja al próximo umbral de descuento alcanzable. El ahorro se
-  // estima sobre las flores que ya tiene (agregar más solo lo aumenta).
+  // proyecta sobre el subtotal QUE TENDRÍA al llegar al umbral (los gramos
+  // agregados también se bonifican), estimando su precio con el promedio
+  // por gramo de las flores ya elegidas — por eso se muestra como "aprox.".
+  const gramosConPrecio = items.reduce((acc, i) =>
+    acc + (i.tipo_item === 'genetica' && i.precio_gramo != null ? i.cantidad_gramos : 0), 0);
+  const precioPromGramo = gramosConPrecio > 0 ? subtotalFlores / gramosConPrecio : 0;
+
   const nudge = (() => {
     if (excede || subtotalFlores <= 0) return null;
     if (totalGramos < 20 && descuento20 > 0 && maxGramos >= 20) {
+      const faltan = 20 - totalGramos;
+      const subtotalProyectado = subtotalFlores + faltan * precioPromGramo;
       return {
-        faltan:    20 - totalGramos,
-        pct:       descuento20,
-        ahorro:    Math.round(subtotalFlores * descuento20) / 100,
-        aplicado:  0,
+        faltan,
+        pct:      descuento20,
+        ahorro:   Math.round(subtotalProyectado * descuento20) / 100,
+        aplicado: 0,
       };
     }
     if (totalGramos >= 20 && totalGramos < 40 && descuento40 > descuento20 && maxGramos >= 40) {
+      const faltan = 40 - totalGramos;
+      const subtotalProyectado = subtotalFlores + faltan * precioPromGramo;
+      // Extra = bonificación proyectada al 40 menos la que ya tiene aplicada
       return {
-        faltan:    40 - totalGramos,
-        pct:       descuento40,
-        ahorro:    Math.round(subtotalFlores * (descuento40 - descPct)) / 100,
-        aplicado:  descPct,
+        faltan,
+        pct:      descuento40,
+        ahorro:   Math.round(subtotalProyectado * descuento40 - subtotalFlores * descPct) / 100,
+        aplicado: descPct,
       };
     }
     return null;
@@ -268,13 +279,13 @@ export function CarritoDrawer() {
                             <>
                               ¡Ya tenés <span className="font-bold">{nudge.aplicado}% off</span> aplicado!
                               Con <span className="font-bold">{nudge.faltan}g más</span> de flores pasás
-                              al {nudge.pct}% — ahorrarías {formatPrecio(nudge.ahorro)} extra.
+                              al {nudge.pct}% — ahorrarías aprox. {formatPrecio(nudge.ahorro)} extra.
                             </>
                           ) : (
                             <>
                               Sumá <span className="font-bold">{nudge.faltan}g más</span> de flores y
                               llevate <span className="font-bold">{nudge.pct}% off</span> —
-                              ya ahorrarías {formatPrecio(nudge.ahorro)}.
+                              ahorrarías aprox. {formatPrecio(nudge.ahorro)}.
                             </>
                           )}
                         </p>
