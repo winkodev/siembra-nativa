@@ -292,7 +292,7 @@ export function CarritoDrawer() {
                             </div>
                             <div className="flex justify-between items-center text-xs">
                               <span className="text-emerald-400 font-semibold">
-                                Descuento {descPct}% por {totalGramos >= 40 ? '40g' : '20g'} o más
+                                Bonificación {descPct}% ({totalGramos >= 40 ? '40g' : '20g'} o más)
                               </span>
                               <span className="text-emerald-400 font-semibold">−{formatPrecio(descMonto)}</span>
                             </div>
