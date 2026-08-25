@@ -251,7 +251,7 @@ export function CarritoDrawer() {
                         onClick={() => setAbierto(false)}
                         className="btn-primary w-full py-3 text-sm flex items-center justify-center gap-2"
                       >
-                        Confirmar pedido <ArrowRight className="w-4 h-4" />
+                        Continuar pedido <ArrowRight className="w-4 h-4" />
                       </Link>
                     )}
 
