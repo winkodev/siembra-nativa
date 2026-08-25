@@ -10,7 +10,7 @@ import { cn, labelTipo, labelCategoriaProducto, formatPrecio } from '@/lib/utils
 const GRAMOS = [10, 20, 30, 40];
 
 export function CarritoDrawer() {
-  const { items, totalItems, totalGramos, quitar, actualizar, vaciar, abierto, setAbierto, maxGramos, descuento20, descuento40, contadorAgregados } = useCarrito();
+  const { items, totalItems, totalGramos, quitar, actualizar, vaciar, abierto, setAbierto, maxGramos, descuento20, descuento40, costoEnvio, envioGratisDesde, contadorAgregados } = useCarrito();
   const total    = totalGramos; // el límite por pedido aplica solo a las flores
   const excede   = total > maxGramos;
   const porciento = Math.min((total / maxGramos) * 100, 100);
@@ -34,27 +34,35 @@ export function CarritoDrawer() {
     acc + (i.tipo_item === 'genetica' && i.precio_gramo != null ? i.cantidad_gramos : 0), 0);
   const precioPromGramo = gramosConPrecio > 0 ? subtotalFlores / gramosConPrecio : 0;
 
+  // ¿El envío pasa a bonificado al llegar al umbral? (y todavía no lo está)
+  const envioSeBonifica = (umbral: number) =>
+    costoEnvio > 0 && envioGratisDesde > 0 && umbral >= envioGratisDesde && totalGramos < envioGratisDesde;
+
   const nudge = (() => {
     if (excede || subtotalFlores <= 0) return null;
     if (totalGramos < 20 && descuento20 > 0 && maxGramos >= 20) {
       const faltan = 20 - totalGramos;
       const subtotalProyectado = subtotalFlores + faltan * precioPromGramo;
+      const conEnvio = envioSeBonifica(20);
       return {
         faltan,
         pct:      descuento20,
-        ahorro:   Math.round(subtotalProyectado * descuento20) / 100,
+        ahorro:   Math.round(subtotalProyectado * descuento20) / 100 + (conEnvio ? costoEnvio : 0),
         aplicado: 0,
+        conEnvio,
       };
     }
     if (totalGramos >= 20 && totalGramos < 40 && descuento40 > descuento20 && maxGramos >= 40) {
       const faltan = 40 - totalGramos;
       const subtotalProyectado = subtotalFlores + faltan * precioPromGramo;
-      // Extra = bonificación proyectada al 40 menos la que ya tiene aplicada
+      const conEnvio = envioSeBonifica(40);
+      // Extra = bonificación proyectada al 40 menos la ya aplicada, más el envío si se libera
       return {
         faltan,
         pct:      descuento40,
-        ahorro:   Math.round(subtotalProyectado * descuento40 - subtotalFlores * descPct) / 100,
+        ahorro:   Math.round(subtotalProyectado * descuento40 - subtotalFlores * descPct) / 100 + (conEnvio ? costoEnvio : 0),
         aplicado: descPct,
+        conEnvio,
       };
     }
     return null;
@@ -253,13 +261,15 @@ export function CarritoDrawer() {
                             <>
                               ¡Ya tenés <span className="font-bold">{nudge.aplicado}% off</span> aplicado!
                               Con <span className="font-bold">{nudge.faltan}g más</span> de flores pasás
-                              al {nudge.pct}% — ahorrarías aprox. {formatPrecio(nudge.ahorro)} extra.
+                              al {nudge.pct}%{nudge.conEnvio && <> y el <span className="font-bold">envío va bonificado</span></>} —
+                              ahorrarías <span className="font-bold">{formatPrecio(nudge.ahorro)}</span> extra.
                             </>
                           ) : (
                             <>
                               Sumá <span className="font-bold">{nudge.faltan}g más</span> de flores y
-                              llevate <span className="font-bold">{nudge.pct}% off</span> —
-                              ahorrarías aprox. {formatPrecio(nudge.ahorro)}.
+                              llevate <span className="font-bold">{nudge.pct}% off</span>
+                              {nudge.conEnvio && <> con el <span className="font-bold">envío bonificado</span></>} —
+                              ahorrarías <span className="font-bold">{formatPrecio(nudge.ahorro)}</span>.
                             </>
                           )}
                         </p>

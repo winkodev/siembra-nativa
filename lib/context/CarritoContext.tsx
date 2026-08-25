@@ -89,6 +89,9 @@ interface CarritoContextValue {
   // % de descuento sobre flores al alcanzar 20g / 40g (0 = sin descuento)
   descuento20:       number;
   descuento40:       number;
+  // Envío: costo configurado y gramos desde los que va bonificado (0 = nunca)
+  costoEnvio:        number;
+  envioGratisDesde:  number;
   contadorAgregados: number;
 }
 
@@ -99,11 +102,15 @@ export function CarritoProvider({
   maxGramos = 40,
   descuento20 = 0,
   descuento40 = 0,
+  costoEnvio = 0,
+  envioGratisDesde = 0,
 }: {
   children: React.ReactNode;
   maxGramos?: number;
   descuento20?: number;
   descuento40?: number;
+  costoEnvio?: number;
+  envioGratisDesde?: number;
 }) {
   const [state, dispatch] = useReducer(reducer, { items: [], contadorAgregados: 0 });
   const [abierto, setAbierto] = useState(false);
@@ -146,6 +153,8 @@ export function CarritoProvider({
     maxGramos,
     descuento20,
     descuento40,
+    costoEnvio,
+    envioGratisDesde,
     contadorAgregados: state.contadorAgregados,
   };
 

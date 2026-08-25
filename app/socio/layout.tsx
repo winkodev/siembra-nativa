@@ -24,6 +24,8 @@ export default async function SocioLayout({ children }: { children: React.ReactN
       maxGramos={config.max_gramos_pedido}
       descuento20={config.descuento_20}
       descuento40={config.descuento_40}
+      costoEnvio={config.costo_envio}
+      envioGratisDesde={config.envio_gratis_desde}
     >
       <div className="min-h-screen">
         <FondoClub />
