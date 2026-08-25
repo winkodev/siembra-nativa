@@ -213,6 +213,31 @@ export interface SocioNota {
   created_at: string;
 }
 
+// Consultas de socios (el admin responde y las marca atendidas)
+export type TipoConsulta = 'general' | 'pedidos' | 'reprocann' | 'pagos';
+export type EstadoConsulta = 'pendiente' | 'atendida';
+
+export interface Consulta {
+  id: string;
+  socio_id: string;
+  tipo: TipoConsulta;
+  mensaje: string;
+  estado: EstadoConsulta;
+  respuesta: string | null;
+  atendida_por: string | null;
+  atendida_at: string | null;
+  created_at: string;
+}
+
+// Consulta con datos de contacto del socio (vista admin)
+export interface ConsultaConSocio extends Consulta {
+  profiles: {
+    nombre: string;
+    email: string | null;
+    telefono: string | null;
+  };
+}
+
 // Ficha de actividad de un socio (drawer de admin)
 export interface FichaSocio {
   pedidos_total: number;

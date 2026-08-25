@@ -15,6 +15,7 @@ export default async function AdminDashboardPage() {
     { data: stockData },
     { count: reprocannVencer },
     { count: reprocannVencidos },
+    { count: consultasPendientes },
   ] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true })
       .eq('rol', 'socio').eq('estado', 'activo'),
@@ -31,6 +32,9 @@ export default async function AdminDashboardPage() {
 
     supabase.from('profiles').select('*', { count: 'exact', head: true })
       .eq('reprocann_estado', 'vencido'),
+
+    supabase.from('consultas').select('*', { count: 'exact', head: true })
+      .eq('estado', 'pendiente'),
   ]);
 
   const stockTotal = stockData?.reduce((acc, s) => acc + (s.cantidad_gramos ?? 0), 0) ?? 0;
@@ -91,6 +95,7 @@ export default async function AdminDashboardPage() {
       porVencer={porVencer ?? []}
       porAprobar={(porAprobar as any[]) ?? []}
       porEntregar={(porEntregar as any[]) ?? []}
+      consultasPendientes={consultasPendientes ?? 0}
     />
   );
 }

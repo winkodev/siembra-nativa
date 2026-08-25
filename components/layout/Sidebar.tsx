@@ -8,6 +8,7 @@ import { Logo } from '@/components/brand/Logo';
 import {
   LayoutDashboard, ShoppingBag, User, Newspaper,
   Users, Package, ClipboardList, LogOut, Menu, X, Shield, Settings, BarChart3,
+  HelpCircle,
 } from 'lucide-react';
 import { useState } from 'react';
 import { logout } from '@/app/actions/auth';
@@ -22,6 +23,7 @@ const navSocio: NavItem[] = [
   { href: '/socio/dashboard', label: 'Inicio',      icon: <LayoutDashboard className="w-5 h-5" /> },
   { href: '/socio/tienda',    label: 'Catálogo',     icon: <ShoppingBag className="w-5 h-5" /> },
   { href: '/socio/pedidos',   label: 'Mis Pedidos',  icon: <ClipboardList className="w-5 h-5" /> },
+  { href: '/socio/consultas', label: 'Consultas',    icon: <HelpCircle className="w-5 h-5" /> },
   { href: '/socio/perfil',    label: 'Mi Perfil',    icon: <User className="w-5 h-5" /> },
 ];
 
@@ -30,6 +32,7 @@ const navAdmin: NavItem[] = [
   { href: '/admin/socios',      label: 'Socios',       icon: <Users className="w-5 h-5" /> },
   { href: '/admin/inventario',  label: 'Inventario',   icon: <Package className="w-5 h-5" /> },
   { href: '/admin/pedidos',     label: 'Pedidos',      icon: <ClipboardList className="w-5 h-5" /> },
+  { href: '/admin/consultas',   label: 'Consultas',    icon: <HelpCircle className="w-5 h-5" /> },
   { href: '/admin/productos',      label: 'Productos',      icon: <ShoppingBag className="w-5 h-5" /> },
   { href: '/admin/estadisticas',   label: 'Estadísticas',   icon: <BarChart3 className="w-5 h-5" /> },
   { href: '/admin/newsletter',     label: 'Newsletter',     icon: <Newspaper className="w-5 h-5" /> },

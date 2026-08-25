@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Users, Package, ShoppingBag, AlertTriangle, Clock, ArrowRight, Shield, Truck, Receipt } from 'lucide-react';
+import { Users, Package, ShoppingBag, AlertTriangle, Clock, ArrowRight, Shield, Truck, Receipt, HelpCircle } from 'lucide-react';
 import { formatGramos, formatFecha, formatNumeroPedido, diasHasta } from '@/lib/utils';
 import type { MetricasAdmin } from '@/lib/types/database';
 
@@ -62,6 +62,7 @@ interface Props {
   porVencer:  Array<{ id: string; nombre: string; reprocann_numero: string | null; reprocann_vencimiento: string | null }>;
   porAprobar:  PedidoResumen[];
   porEntregar: PedidoResumen[];
+  consultasPendientes: number;
 }
 
 // Lista de pedidos accionables (por aprobar / por entregar)
@@ -114,7 +115,7 @@ function ListaPedidos({ titulo, icono, pedidos, vacio }: {
   );
 }
 
-export function AdminDashboardClient({ metricas, pendientes, porVencer, porAprobar, porEntregar }: Props) {
+export function AdminDashboardClient({ metricas, pendientes, porVencer, porAprobar, porEntregar, consultasPendientes }: Props) {
   return (
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
 
@@ -161,6 +162,22 @@ export function AdminDashboardClient({ metricas, pendientes, porVencer, porAprob
           alerta={metricas.reprocann_por_vencer > 0}
         />
       </motion.div>
+
+      {/* Consultas de socios sin atender */}
+      {consultasPendientes > 0 && (
+        <motion.div variants={fadeUp}>
+          <Link
+            href="/admin/consultas"
+            className="flex items-center gap-3 px-5 py-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 hover:bg-amber-500/15 transition-colors group"
+          >
+            <HelpCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            <p className="text-sm flex-1">
+              <span className="font-bold">{consultasPendientes}</span> consulta{consultasPendientes === 1 ? '' : 's'} de socios sin atender
+            </p>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        </motion.div>
+      )}
 
       {/* Segunda fila de métricas */}
       {metricas.reprocann_vencidos > 0 && (
