@@ -24,7 +24,12 @@ export function CarritoDrawer() {
   // Descuento por cantidad sobre las flores (gana el umbral mayor)
   const descPct   = totalGramos >= 40 ? descuento40 : totalGramos >= 20 ? descuento20 : 0;
   const descMonto = Math.round(subtotalFlores * descPct) / 100;
-  const totalMonto = subtotalFlores - descMonto + subtotalProd;
+
+  // Envío: misma regla que el checkout, así el total estimado coincide
+  const envioGratis = envioGratisDesde > 0 && totalGramos >= envioGratisDesde;
+  const montoEnvio  = costoEnvio > 0 && !envioGratis ? costoEnvio : 0;
+
+  const totalMonto = subtotalFlores - descMonto + subtotalProd + montoEnvio;
 
   // Nudge: empuja al próximo umbral de descuento alcanzable. El ahorro se
   // proyecta sobre el subtotal QUE TENDRÍA al llegar al umbral (los gramos
@@ -279,22 +284,35 @@ export function CarritoDrawer() {
                     {/* Total estimado con descuento por cantidad */}
                     {totalMonto > 0 && (
                       <div className="space-y-1">
+                        {(descMonto > 0 || costoEnvio > 0) && (
+                          <div className="flex justify-between items-center text-xs text-muted-foreground">
+                            <span>Subtotal</span>
+                            <span>{formatPrecio(subtotalFlores + subtotalProd)}</span>
+                          </div>
+                        )}
+                        {/* El envío entra a precio pleno; si está bonificado se resta abajo */}
+                        {costoEnvio > 0 && (
+                          <div className="flex justify-between items-center text-xs text-muted-foreground">
+                            <span>Envío</span>
+                            <span>{formatPrecio(costoEnvio)}</span>
+                          </div>
+                        )}
                         {descMonto > 0 && (
-                          <>
-                            <div className="flex justify-between items-center text-xs text-muted-foreground">
-                              <span>Subtotal</span>
-                              <span className="line-through">{formatPrecio(subtotalFlores + subtotalProd)}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-emerald-400 font-semibold">
-                                Bonificación {descPct}% ({totalGramos >= 40 ? '40g' : '20g'} o más)
-                              </span>
-                              <span className="text-emerald-400 font-semibold">−{formatPrecio(descMonto)}</span>
-                            </div>
-                          </>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-emerald-400 font-semibold">
+                              Bonificación {descPct}% ({totalGramos >= 40 ? '40g' : '20g'} o más)
+                            </span>
+                            <span className="text-emerald-400 font-semibold">−{formatPrecio(descMonto)}</span>
+                          </div>
+                        )}
+                        {envioGratis && costoEnvio > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-emerald-400 font-semibold">Bonificación envío</span>
+                            <span className="text-emerald-400 font-semibold">−{formatPrecio(costoEnvio)}</span>
+                          </div>
                         )}
                         <div className="flex justify-between items-center text-sm">
-                          <span className="text-muted-foreground">Total estimado <span className="text-xs">(sin envío)</span></span>
+                          <span className="text-muted-foreground">Total estimado</span>
                           <span className="text-club-dorado font-bold text-base">{formatPrecio(totalMonto)}</span>
                         </div>
                       </div>
