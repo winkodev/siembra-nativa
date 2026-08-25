@@ -34,3 +34,7 @@
 - Todos los comentarios de código en español.
 - Animaciones Framer Motion: stagger en listas, fadeUp para items, spring para drawers móviles.
 - `layoutId="sidebar-indicator"` para la animación del indicador activo del sidebar.
+
+## 2026-08-25 — Cambios de UI/marketing: mostrar antes de deployar
+- El usuario quiere ver una propuesta o mockup ANTES del deploy en cambios de presentacion (copy, resumenes de compra, banners). Implementar directo solo bugs y cambios mecanicos.
+- En pedidos de "impacto marketinero", confirmar la mecanica exacta con un ejemplo numerico antes de codear: "restar como bonificacion" significaba envio a precio pleno arriba + resta abajo, no un cartel celebratorio.

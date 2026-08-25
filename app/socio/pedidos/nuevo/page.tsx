@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ShoppingBag, ArrowLeft, Loader2, CheckCircle2, AlertTriangle,
-  CalendarClock, MapPin, Check, Receipt, PartyPopper,
+  CalendarClock, MapPin, Check, Receipt,
 } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
 import { crearPedido, subirComprobante } from '@/app/actions/pedidos';
@@ -197,6 +197,14 @@ export default function NuevoPedidoPage() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="text-foreground font-semibold">{formatPrecio(subtotal)}</span>
               </div>
+              {/* El envío entra a precio pleno; si es gratis se resta abajo
+                  como bonificación (el total no cambia, solo la presentación) */}
+              {costoEnvio > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Envío</span>
+                  <span className="text-foreground font-semibold">{formatPrecio(costoEnvio)}</span>
+                </div>
+              )}
               {descMonto > 0 && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-emerald-400 font-semibold">
@@ -205,32 +213,16 @@ export default function NuevoPedidoPage() {
                   <span className="text-emerald-400 font-semibold">−{formatPrecio(descMonto)}</span>
                 </div>
               )}
-              {costoEnvio > 0 && (
+              {envioGratis && costoEnvio > 0 && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Envío</span>
-                  {envioGratis
-                    ? <span className="text-emerald-400 font-semibold">Gratis</span>
-                    : <span className="text-foreground font-semibold">{formatPrecio(costoEnvio)}</span>}
+                  <span className="text-emerald-400 font-semibold">Bonificación envío</span>
+                  <span className="text-emerald-400 font-semibold">−{formatPrecio(costoEnvio)}</span>
                 </div>
               )}
               <div className="flex items-center justify-between pt-1.5 border-t border-club-verde-claro/20">
                 <span className="text-foreground font-semibold">Total</span>
                 <span className="text-club-dorado font-bold text-lg">{formatPrecio(totalMonto)}</span>
               </div>
-
-              {/* Cierre marketinero: cuánto se ahorró entre bonificación y envío */}
-              {(descMonto > 0 || (envioGratis && costoEnvio > 0)) && (
-                <div className="!mt-3 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
-                  <PartyPopper className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <p className="text-emerald-300 text-sm text-center">
-                    Con tu bonificación estás ahorrando{' '}
-                    <span className="font-bold text-emerald-400">
-                      {formatPrecio(descMonto + (envioGratis ? costoEnvio : 0))}
-                    </span>{' '}
-                    en este pedido
-                  </p>
-                </div>
-              )}
             </>
           )}
         </div>
