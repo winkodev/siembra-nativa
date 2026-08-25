@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { ShoppingBag, X, Trash2, ArrowRight, AlertTriangle, Minus, Plus, Gift, BadgePercent } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
 import { cn, labelTipo, labelCategoriaProducto, formatPrecio } from '@/lib/utils';
@@ -26,10 +25,6 @@ export function CarritoDrawer() {
   const descPct   = totalGramos >= 40 ? descuento40 : totalGramos >= 20 ? descuento20 : 0;
   const descMonto = Math.round(subtotalFlores * descPct) / 100;
   const totalMonto = subtotalFlores - descMonto + subtotalProd;
-
-  // En el checkout la píldora flotante sobra (el pedido ya está a la vista)
-  const pathname = usePathname();
-  const enCheckout = pathname?.startsWith('/socio/pedidos/nuevo') ?? false;
 
   // Nudge: empuja al próximo umbral de descuento alcanzable. El ahorro se
   // proyecta sobre el subtotal QUE TENDRÍA al llegar al umbral (los gramos
@@ -85,12 +80,24 @@ export function CarritoDrawer() {
           'relative p-2.5 rounded-xl glass-card transition-colors',
           excede
             ? 'text-red-400 border-red-500/40 animate-pulse'
+            : totalItems > 0
+            ? 'text-club-dorado border-club-dorado/40 shadow-dorado-sm hover:text-club-dorado-claro'
             : 'text-foreground hover:text-club-dorado'
         )}
         aria-label="Ver carrito"
       >
-        <motion.div animate={iconControls}>
-          <ShoppingBag className="w-5 h-5" />
+        {/* Latido continuo mientras el pedido tenga items (doble pulso tipo corazón) */}
+        <motion.div
+          animate={totalItems > 0 && !excede
+            ? { scale: [1, 1.18, 1, 1.12, 1] }
+            : { scale: 1 }}
+          transition={totalItems > 0 && !excede
+            ? { duration: 1.1, times: [0, 0.2, 0.45, 0.65, 1], repeat: Infinity, repeatDelay: 1.4, ease: 'easeInOut' }
+            : { duration: 0.2 }}
+        >
+          <motion.div animate={iconControls}>
+            <ShoppingBag className="w-5 h-5" />
+          </motion.div>
         </motion.div>
         {totalItems > 0 && (
           <motion.span
@@ -106,39 +113,6 @@ export function CarritoDrawer() {
           </motion.span>
         )}
       </button>
-
-      {/* Píldora flotante: hace visible dónde está el pedido cuando tiene items.
-          Oculta en el checkout (el pedido ya está a la vista) y con el modal abierto. */}
-      <AnimatePresence>
-        {totalItems > 0 && !abierto && !enCheckout && (
-          <motion.button
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 24 }}
-            transition={{ type: 'spring', damping: 24, stiffness: 300 }}
-            onClick={() => setAbierto(true)}
-            className={cn(
-              'fixed bottom-5 right-5 z-30 flex items-center gap-2 pl-4 pr-5 py-3 rounded-full font-semibold text-sm shadow-dorado-md transition-colors',
-              excede
-                ? 'bg-red-500 text-white'
-                : 'bg-club-dorado text-club-verde hover:bg-club-dorado-claro'
-            )}
-            aria-label="Ver mi pedido"
-          >
-            <span className="relative">
-              <ShoppingBag className="w-4 h-4" />
-              <span className={cn(
-                'absolute -top-2 -right-2 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center',
-                excede ? 'bg-white text-red-500' : 'bg-club-verde text-club-dorado'
-              )}>
-                {totalItems}
-              </span>
-            </span>
-            Ver mi pedido
-            {totalMonto > 0 && !excede && <span className="font-bold">· {formatPrecio(totalMonto)}</span>}
-          </motion.button>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {abierto && (
