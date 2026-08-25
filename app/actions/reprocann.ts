@@ -105,6 +105,8 @@ export async function subirCertificado(
   }
 
   revalidatePath('/socio/perfil');
+  // También el Inicio: su alerta "subí tu certificado" quedaba cacheada
+  revalidatePath('/socio/dashboard');
   return { ok: true, data: undefined };
 }
 

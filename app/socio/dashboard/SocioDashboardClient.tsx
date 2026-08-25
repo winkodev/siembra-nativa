@@ -91,8 +91,8 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
     !datosCompletos && {
       key:   'datos',
       Icon:  UserRound,
-      texto: 'Completá tu DNI y teléfono para poder hacer pedidos.',
-      cta:   'Ir a mi perfil',
+      texto: 'Completá tu DNI y teléfono en tu perfil para poder hacer pedidos.',
+      cta:   'Completar mis datos',
       href:  '/socio/perfil',
     },
     datosCompletos && !certCargado && {
@@ -133,18 +133,17 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
 
       {/* Alertas contextuales — estilo barra izquierda */}
       {alertas.map(({ key, Icon, texto, cta, href }) => (
-        <motion.div
-          key={key}
-          variants={fadeUp}
-          className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/20 border-l-[3px] border-l-amber-400"
-        >
-          <Icon className="w-4 h-4 text-amber-400 shrink-0" />
-          <p className="text-amber-200/80 text-sm flex-1">{texto}</p>
+        <motion.div key={key} variants={fadeUp}>
+          {/* Toda la tarjeta es clickeable, no solo el CTA */}
           <Link
             href={href}
-            className="text-club-dorado text-xs font-semibold hover:text-club-dorado/70 transition-colors shrink-0 flex items-center gap-1"
+            className="group flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/20 border-l-[3px] border-l-amber-400 hover:bg-amber-500/15 hover:border-amber-500/35 transition-colors"
           >
-            {cta} <ArrowRight className="w-3.5 h-3.5" />
+            <Icon className="w-4 h-4 text-amber-400 shrink-0" />
+            <p className="text-amber-200/80 text-sm flex-1">{texto}</p>
+            <span className="text-club-dorado text-xs font-semibold group-hover:text-club-dorado/70 transition-colors shrink-0 flex items-center gap-1">
+              {cta} <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </span>
           </Link>
         </motion.div>
       ))}

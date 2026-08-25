@@ -42,6 +42,10 @@ export function ReprocannOnboardingClient({ profile }: { profile: Profile }) {
   const [perfilState, perfilAction] = useFormState(guardarPerfil, initial);
   const [certState, certAction]     = useFormState(subirCertificado, initial);
 
+  // DNI y teléfono son obligatorios para pedir: se resaltan en rojo si faltan
+  const [dniVal, setDniVal] = useState(profile.dni ?? '');
+  const [telVal, setTelVal] = useState(profile.telefono ?? '');
+
   const [fileName, setFileName]               = useState<string | null>(null);
   const [extrayendo, setExtrayendo]           = useState(false);
   const [extraido, setExtraido]               = useState(false);
@@ -129,9 +133,16 @@ export function ReprocannOnboardingClient({ profile }: { profile: Profile }) {
                 className="input-club w-full" placeholder="Juan García" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm text-foreground/80 font-medium">DNI</label>
-              <input name="dni" type="text" defaultValue={profile.dni ?? ''}
-                className="input-club w-full" placeholder="12.345.678" />
+              <label className="text-sm text-foreground/80 font-medium">
+                DNI <span className="text-red-400">*</span>
+              </label>
+              <input name="dni" type="text" value={dniVal}
+                onChange={e => setDniVal(e.target.value)}
+                className={cn('input-club w-full', !dniVal.trim() && '!border-red-500/60 focus:!border-red-400')}
+                placeholder="12.345.678" />
+              {!dniVal.trim() && (
+                <p className="text-red-400 text-xs">Obligatorio para poder hacer pedidos.</p>
+              )}
             </div>
           </div>
 
@@ -142,9 +153,16 @@ export function ReprocannOnboardingClient({ profile }: { profile: Profile }) {
                 className="input-club w-full" placeholder="tu@email.com" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm text-foreground/80 font-medium">Teléfono / WhatsApp</label>
-              <input name="telefono" type="tel" defaultValue={profile.telefono ?? ''}
-                className="input-club w-full" placeholder="+54 9 11 1234-5678" />
+              <label className="text-sm text-foreground/80 font-medium">
+                Teléfono / WhatsApp <span className="text-red-400">*</span>
+              </label>
+              <input name="telefono" type="tel" value={telVal}
+                onChange={e => setTelVal(e.target.value)}
+                className={cn('input-club w-full', !telVal.trim() && '!border-red-500/60 focus:!border-red-400')}
+                placeholder="+54 9 11 1234-5678" />
+              {!telVal.trim() && (
+                <p className="text-red-400 text-xs">Obligatorio para poder hacer pedidos.</p>
+              )}
             </div>
           </div>
 

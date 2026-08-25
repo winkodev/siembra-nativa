@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResponse } from '@/lib/types/database';
 
@@ -54,5 +55,10 @@ export async function guardarPerfil(
     .eq('id', user.id);
 
   if (error) return { ok: false, error: 'Error al guardar los datos' };
+
+  // Invalida el caché del Inicio: sin esto el banner "completá tu DNI y
+  // teléfono" seguía mostrándose con los datos ya guardados
+  revalidatePath('/socio/dashboard');
+  revalidatePath('/socio/perfil');
   return { ok: true, data: undefined };
 }
