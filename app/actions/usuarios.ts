@@ -157,10 +157,16 @@ export async function regenerarPasswordTemporal(
   const service = createServiceClient();
   const { data: perfil } = await service
     .from('profiles')
-    .select('email, nombre')
+    .select('email, nombre, superadmin')
     .eq('id', userId)
     .single();
   if (!perfil?.email) return { ok: false, error: 'Usuario no encontrado' };
+
+  // La contraseña del superadmin solo puede regenerarla el propio superadmin
+  // (evita que un admin común tome control de la cuenta principal)
+  if (perfil.superadmin && adminId !== userId) {
+    return { ok: false, error: 'La contraseña de la cuenta principal solo puede cambiarla esa misma cuenta' };
+  }
 
   const password = generarPasswordTemporal();
   const { error } = await service.auth.admin.updateUserById(userId, { password });
@@ -187,8 +193,13 @@ export async function cambiarPasswordAdmin(userId: string, nueva: string): Promi
   const service = createServiceClient();
 
   // Solo aplica a cuentas admin (los socios cambian la suya desde su perfil)
-  const { data: perfil } = await service.from('profiles').select('rol').eq('id', userId).single();
+  const { data: perfil } = await service.from('profiles').select('rol, superadmin').eq('id', userId).single();
   if (perfil?.rol !== 'admin') return { ok: false, error: 'Esta acción es solo para cuentas admin' };
+
+  // La contraseña del superadmin solo puede cambiarla el propio superadmin
+  if (perfil.superadmin && adminId !== userId) {
+    return { ok: false, error: 'La contraseña de la cuenta principal solo puede cambiarla esa misma cuenta' };
+  }
 
   const { error } = await service.auth.admin.updateUserById(userId, { password: nueva });
   if (error) return { ok: false, error: 'Error al cambiar la contraseña' };

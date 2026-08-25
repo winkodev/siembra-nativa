@@ -25,6 +25,15 @@ export async function toggleEstadoSocio(socioId: string, estado: 'activo' | 'ina
   if (!adminId) return { ok: false, error: 'No autorizado' };
 
   const service = createServiceClient();
+
+  // La cuenta principal del club (superadmin) no se puede desactivar
+  if (estado === 'inactivo') {
+    const { data: target } = await service.from('profiles').select('superadmin').eq('id', socioId).single();
+    if (target?.superadmin) {
+      return { ok: false, error: 'La cuenta principal del club no se puede desactivar' };
+    }
+  }
+
   const patch = estado === 'inactivo'
     ? { estado, compra_habilitada: false }
     : { estado };

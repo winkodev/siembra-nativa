@@ -9,8 +9,8 @@
 
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS superadmin BOOLEAN NOT NULL DEFAULT false;
 
--- Asignar el superadmin (reemplazá el email por el de la cuenta admin principal):
--- UPDATE profiles SET superadmin = true WHERE email = 'EMAIL_DEL_SUPERADMIN';
+-- Asignar el superadmin: la cuenta principal del club
+UPDATE profiles SET superadmin = true WHERE email = 'siembranativaltda@gmail.com';
 
 -- Verificación: debe listar exactamente a los superadmins asignados
 SELECT id, nombre, email, rol, superadmin FROM profiles WHERE superadmin = true;
