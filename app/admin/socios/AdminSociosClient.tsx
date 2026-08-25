@@ -22,7 +22,7 @@ import {
   eliminarNotaSocio,
   actualizarVencimientoReprocann,
 } from '@/app/actions/socios';
-import { crearUsuario, cambiarPasswordAdmin, type ModoAlta } from '@/app/actions/usuarios';
+import { crearUsuario, cambiarPasswordAdmin, regenerarPasswordTemporal, type ModoAlta } from '@/app/actions/usuarios';
 
 type LoadingKey = `reprocann-${string}` | `estado-${string}` | `notas-${string}` | `cert-${string}` | `rol-${string}`;
 
@@ -90,6 +90,9 @@ function SocioDrawer({
   const [vencimientoOk, setVencimientoOk] = useState(false);
   const [nuevaPass, setNuevaPass] = useState('');
   const [passOk, setPassOk]       = useState(false);
+  // Contraseña temporal regenerada: queda visible hasta cerrar el drawer
+  const [passGenerada, setPassGenerada] = useState<{ password: string; email_enviado: boolean } | null>(null);
+  const [passCopiada, setPassCopiada]   = useState(false);
 
   // Ficha de actividad + log de notas (se carga al abrir el drawer)
   const [ficha, setFicha]         = useState<FichaSocio | null>(null);
@@ -164,6 +167,21 @@ function SocioDrawer({
       }
       return res;
     });
+  }
+
+  async function handleRegenerarPassword() {
+    await run(`rol-${socio.id}`, async () => {
+      const res = await regenerarPasswordTemporal(socio.id);
+      if (res.ok) setPassGenerada(res.data);
+      return res;
+    });
+  }
+
+  function handleCopiarPassGenerada() {
+    if (!passGenerada) return;
+    navigator.clipboard.writeText(passGenerada.password);
+    setPassCopiada(true);
+    setTimeout(() => setPassCopiada(false), 1500);
   }
 
   async function handleToggleEstado() {
@@ -450,12 +468,49 @@ function SocioDrawer({
             </div>
           </section>
 
-          {/* Contraseña (solo cuentas admin: los socios la cambian desde su perfil) */}
+          {/* Contraseña: regenerar temporal (todas las cuentas) y cambio manual (solo admin) */}
+          <section className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+              <KeyRound className="w-3.5 h-3.5" /> Contraseña
+            </p>
+            <div className="rounded-xl bg-white/5 p-3 space-y-2">
+              {passGenerada ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    {passGenerada.email_enviado
+                      ? <>Nueva contraseña aplicada y enviada por email a <span className="text-foreground">{socio.email}</span>. Respaldo:</>
+                      : <>Nueva contraseña aplicada. El email no salió — compartísela vos:</>}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 px-3 py-2 rounded-lg bg-club-verde-claro/20 border border-club-dorado/30 text-club-dorado font-mono text-sm text-center tracking-wider">
+                      {passGenerada.password}
+                    </code>
+                    <button
+                      onClick={handleCopiarPassGenerada}
+                      className="p-2 rounded-lg border border-club-verde-claro/40 text-muted-foreground hover:text-club-dorado hover:border-club-dorado/40 transition-all"
+                      aria-label="Copiar contraseña"
+                    >
+                      {passCopiada ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  onClick={handleRegenerarPassword}
+                  disabled={busy(`rol-${socio.id}` as LoadingKey)}
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-club-dorado/15 hover:bg-club-dorado/25 border border-club-dorado/30 text-club-dorado transition-colors disabled:opacity-50"
+                >
+                  {busy(`rol-${socio.id}` as LoadingKey)
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <><KeyRound className="w-3.5 h-3.5" /> Generar contraseña nueva y enviar por email</>}
+                </button>
+              )}
+            </div>
+          </section>
+
+          {/* Cambio manual (solo cuentas admin) */}
           {socio.rol === 'admin' && (
             <section className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                <KeyRound className="w-3.5 h-3.5" /> Contraseña
-              </p>
               <div className="rounded-xl bg-white/5 p-3 space-y-2">
                 <input
                   type="password"
@@ -747,7 +802,8 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
         </div>
       )}
 
-      {selected && <SocioDrawer socio={selected} onClose={handleClose} />}
+      {/* key por socio: evita que estado sensible (contraseña generada) persista al cambiar de socio */}
+      {selected && <SocioDrawer key={selected.id} socio={selected} onClose={handleClose} />}
       {modalCrear && <CrearUsuarioModal onClose={() => setModalCrear(false)} />}
     </div>
   );

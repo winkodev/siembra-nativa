@@ -28,10 +28,15 @@ function generarPasswordTemporal(): string {
 async function enviarEmailPasswordTemporal(
   email: string,
   nombre: string,
-  password: string
+  password: string,
+  esAlta: boolean = true // false = regeneración de contraseña de una cuenta existente
 ): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return false;
+
+  const intro = esAlta
+    ? 'Te dimos de alta en la plataforma del club. Entrá con este acceso:'
+    : 'Te generamos una nueva contraseña de acceso a la plataforma:';
 
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -40,12 +45,12 @@ async function enviarEmailPasswordTemporal(
       body: JSON.stringify({
         from: process.env.EMAIL_FROM ?? 'Siembra Nativa Club <onboarding@resend.dev>',
         to: [email],
-        subject: 'Tu acceso a Siembra Nativa Club',
+        subject: esAlta ? 'Tu acceso a Siembra Nativa Club' : 'Tu nueva contraseña — Siembra Nativa Club',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
             <h2 style="color: #083D3A; margin-bottom: 4px;">Siembra Nativa Club</h2>
             <p>Hola ${nombre},</p>
-            <p>Te dimos de alta en la plataforma del club. Entrá con este acceso:</p>
+            <p>${intro}</p>
             <p style="margin: 20px 0;">
               <strong>Usuario:</strong> ${email}<br/>
               <strong>Contraseña temporal:</strong>
@@ -137,6 +142,38 @@ export async function crearUsuario(
 
   await registrarAccion(createClient(), 'crear_usuario', 'usuarios', { email: emailLimpio, rol, modo }, userId);
   revalidatePath('/admin/socios');
+  return { ok: true, data: { password, email_enviado: emailEnviado } };
+}
+
+// Regenera la contraseña de cualquier cuenta (socio o admin): genera una
+// temporal nueva, la aplica y se la envía por email. Devuelve la contraseña
+// para que el admin la vea y la copie (única vez que existe en claro).
+export async function regenerarPasswordTemporal(
+  userId: string
+): Promise<ActionResponse<{ password: string; email_enviado: boolean }>> {
+  const adminId = await verificarAdmin();
+  if (!adminId) return { ok: false, error: 'No autorizado' };
+
+  const service = createServiceClient();
+  const { data: perfil } = await service
+    .from('profiles')
+    .select('email, nombre')
+    .eq('id', userId)
+    .single();
+  if (!perfil?.email) return { ok: false, error: 'Usuario no encontrado' };
+
+  const password = generarPasswordTemporal();
+  const { error } = await service.auth.admin.updateUserById(userId, { password });
+  if (error) return { ok: false, error: 'Error al regenerar la contraseña' };
+
+  const emailEnviado = await enviarEmailPasswordTemporal(
+    perfil.email,
+    perfil.nombre ?? '',
+    password,
+    false
+  );
+
+  await registrarAccion(createClient(), 'regenerar_password', 'usuarios', undefined, userId);
   return { ok: true, data: { password, email_enviado: emailEnviado } };
 }
 
