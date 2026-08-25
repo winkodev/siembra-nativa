@@ -183,7 +183,7 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos }: Props) {
 const GRAMOS_FLOR = [10, 20, 30, 40];
 
 function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerPedidos: boolean }) {
-  const { agregar, tieneItem } = useCarrito();
+  const { agregar, tieneItem, descuento20, descuento40 } = useCarrito();
   const enCarrito = tieneItem({ tipo_item: 'genetica', id: flor.genetica_id });
   const sinStock  = flor.stock_total_gramos < Math.min(...GRAMOS_FLOR);
 
@@ -338,6 +338,15 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
                     </>
                 }
               </motion.button>
+
+              {/* Descuentos por cantidad (sobre el total de flores del pedido) */}
+              {(descuento20 > 0 || descuento40 > 0) && (
+                <p className="text-[11px] text-emerald-400/90 text-center leading-snug">
+                  🎁 {descuento20 > 0 && <>20g o más: <span className="font-bold">{descuento20}% off</span></>}
+                  {descuento20 > 0 && descuento40 > 0 && ' · '}
+                  {descuento40 > 0 && <>40g o más: <span className="font-bold">{descuento40}% off</span></>}
+                </p>
+              )}
             </>
           )}
         </div>

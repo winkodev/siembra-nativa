@@ -3,7 +3,8 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import Link from 'next/link';
-import { ShoppingBag, X, Trash2, ArrowRight, AlertTriangle, Minus, Plus } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { ShoppingBag, X, Trash2, ArrowRight, AlertTriangle, Minus, Plus, Gift, BadgePercent } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
 import { cn, labelTipo, labelCategoriaProducto, formatPrecio } from '@/lib/utils';
 
@@ -25,6 +26,33 @@ export function CarritoDrawer() {
   const descPct   = totalGramos >= 40 ? descuento40 : totalGramos >= 20 ? descuento20 : 0;
   const descMonto = Math.round(subtotalFlores * descPct) / 100;
   const totalMonto = subtotalFlores - descMonto + subtotalProd;
+
+  // En el checkout la píldora flotante sobra (el pedido ya está a la vista)
+  const pathname = usePathname();
+  const enCheckout = pathname?.startsWith('/socio/pedidos/nuevo') ?? false;
+
+  // Nudge: empuja al próximo umbral de descuento alcanzable. El ahorro se
+  // estima sobre las flores que ya tiene (agregar más solo lo aumenta).
+  const nudge = (() => {
+    if (excede || subtotalFlores <= 0) return null;
+    if (totalGramos < 20 && descuento20 > 0 && maxGramos >= 20) {
+      return {
+        faltan:    20 - totalGramos,
+        pct:       descuento20,
+        ahorro:    Math.round(subtotalFlores * descuento20) / 100,
+        aplicado:  0,
+      };
+    }
+    if (totalGramos >= 20 && totalGramos < 40 && descuento40 > descuento20 && maxGramos >= 40) {
+      return {
+        faltan:    40 - totalGramos,
+        pct:       descuento40,
+        ahorro:    Math.round(subtotalFlores * (descuento40 - descPct)) / 100,
+        aplicado:  descPct,
+      };
+    }
+    return null;
+  })();
 
   /* Animación squeezy del ícono cuando se agrega algo */
   const iconControls = useAnimation();
@@ -67,6 +95,39 @@ export function CarritoDrawer() {
           </motion.span>
         )}
       </button>
+
+      {/* Píldora flotante: hace visible dónde está el pedido cuando tiene items.
+          Oculta en el checkout (el pedido ya está a la vista) y con el modal abierto. */}
+      <AnimatePresence>
+        {totalItems > 0 && !abierto && !enCheckout && (
+          <motion.button
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 300 }}
+            onClick={() => setAbierto(true)}
+            className={cn(
+              'fixed bottom-5 right-5 z-30 flex items-center gap-2 pl-4 pr-5 py-3 rounded-full font-semibold text-sm shadow-dorado-md transition-colors',
+              excede
+                ? 'bg-red-500 text-white'
+                : 'bg-club-dorado text-club-verde hover:bg-club-dorado-claro'
+            )}
+            aria-label="Ver mi pedido"
+          >
+            <span className="relative">
+              <ShoppingBag className="w-4 h-4" />
+              <span className={cn(
+                'absolute -top-2 -right-2 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center',
+                excede ? 'bg-white text-red-500' : 'bg-club-verde text-club-dorado'
+              )}>
+                {totalItems}
+              </span>
+            </span>
+            Ver mi pedido
+            {totalMonto > 0 && !excede && <span className="font-bold">· {formatPrecio(totalMonto)}</span>}
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {abierto && (
@@ -196,6 +257,30 @@ export function CarritoDrawer() {
                 {/* Footer */}
                 {items.length > 0 && (
                   <div className="px-5 py-4 border-t border-club-verde-claro/30 space-y-3">
+                    {/* Nudge hacia el próximo descuento por cantidad */}
+                    {nudge && (
+                      <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs leading-relaxed">
+                        {nudge.aplicado > 0
+                          ? <BadgePercent className="w-4 h-4 shrink-0 mt-0.5" />
+                          : <Gift className="w-4 h-4 shrink-0 mt-0.5" />}
+                        <p>
+                          {nudge.aplicado > 0 ? (
+                            <>
+                              ¡Ya tenés <span className="font-bold">{nudge.aplicado}% off</span> aplicado!
+                              Con <span className="font-bold">{nudge.faltan}g más</span> de flores pasás
+                              al {nudge.pct}% — ahorrarías {formatPrecio(nudge.ahorro)} extra.
+                            </>
+                          ) : (
+                            <>
+                              Sumá <span className="font-bold">{nudge.faltan}g más</span> de flores y
+                              llevate <span className="font-bold">{nudge.pct}% off</span> —
+                              ya ahorrarías {formatPrecio(nudge.ahorro)}.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Total estimado con descuento por cantidad */}
                     {totalMonto > 0 && (
                       <div className="space-y-1">
