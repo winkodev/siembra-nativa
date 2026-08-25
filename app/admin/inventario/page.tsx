@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getProfile } from '@/lib/supabase/server';
 import { InventarioClient } from './InventarioClient';
 import type { Metadata } from 'next';
 import type { Genetica, Stock, Ubicacion } from '@/lib/types/database';
@@ -7,6 +7,7 @@ export const metadata: Metadata = { title: 'Inventario' };
 
 export default async function InventarioPage() {
   const supabase = createClient();
+  const profile = await getProfile();
 
   const [{ data: geneticas }, { data: stock }, { data: ubicaciones }, { data: pendientes }] = await Promise.all([
     supabase.from('geneticas').select('*').order('nombre'),
@@ -34,6 +35,7 @@ export default async function InventarioPage() {
       stock={(stock ?? []) as (Stock & { geneticas: { nombre: string; tipo: string } })[]}
       ubicaciones={(ubicaciones ?? []) as Ubicacion[]}
       reservas={reservas}
+      superadmin={Boolean(profile?.superadmin)}
     />
   );
 }

@@ -16,6 +16,7 @@ interface Props {
   stock:       StockConGenetica[];
   ubicaciones: Ubicacion[];
   reservas:    Record<string, number>;  // gramos en pedidos pendientes, por genética
+  superadmin:  boolean;                 // habilita editar/eliminar ingresos de stock
 }
 
 const tabs = [
@@ -25,7 +26,7 @@ const tabs = [
 
 const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
-export function InventarioClient({ geneticas, stock, ubicaciones, reservas }: Props) {
+export function InventarioClient({ geneticas, stock, ubicaciones, reservas, superadmin }: Props) {
   const [tab, setTab] = useState<'geneticas' | 'stock'>('stock');
 
   return (
@@ -60,7 +61,7 @@ export function InventarioClient({ geneticas, stock, ubicaciones, reservas }: Pr
       {tab === 'geneticas' ? (
         <GeneticasTab geneticas={geneticas} />
       ) : (
-        <StockTab stock={stock} geneticas={geneticas} ubicaciones={ubicaciones} reservas={reservas} />
+        <StockTab stock={stock} geneticas={geneticas} ubicaciones={ubicaciones} reservas={reservas} superadmin={superadmin} />
       )}
 
     </motion.div>

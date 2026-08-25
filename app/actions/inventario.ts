@@ -141,6 +141,15 @@ export async function eliminarGenetica(id: string): Promise<ActionResponse> {
 // STOCK
 // ============================================================
 
+// Editar/eliminar ingresos de stock queda reservado al superadmin:
+// un admin común solo puede registrar ingresos nuevos.
+async function esSuperadmin(supabase: ReturnType<typeof createClient>): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase.from('profiles').select('superadmin').eq('id', user.id).single();
+  return Boolean(data?.superadmin);
+}
+
 const stockSchema = z.object({
   genetica_id:     z.string().uuid('Seleccioná una genética'),
   cantidad_gramos: z.string().transform(v => parseFloat(v)).pipe(z.number().positive('La cantidad debe ser mayor a 0')),
@@ -179,6 +188,9 @@ export async function editarStock(
   formData: FormData
 ): Promise<ActionResponse> {
   const supabase = createClient();
+  if (!(await esSuperadmin(supabase))) {
+    return { ok: false, error: 'Solo el superadmin puede editar ingresos de stock' };
+  }
 
   const raw = Object.fromEntries(formData);
   const parsed = stockSchema.safeParse(raw);
@@ -222,6 +234,9 @@ export async function editarStock(
 
 export async function eliminarStock(id: string): Promise<ActionResponse> {
   const supabase = createClient();
+  if (!(await esSuperadmin(supabase))) {
+    return { ok: false, error: 'Solo el superadmin puede eliminar ingresos de stock' };
+  }
   const { error } = await supabase.from('stock').delete().eq('id', id);
   if (error) return { ok: false, error: 'Error al eliminar el registro' };
 

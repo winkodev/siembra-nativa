@@ -16,6 +16,8 @@ export interface Profile {
   id: string;
   nombre: string;
   rol: RolUsuario;
+  // Superadmin: admin con permisos extra (ej: editar/eliminar ingresos de stock)
+  superadmin: boolean;
   estado: EstadoUsuario;
   fecha_alta: string;
 

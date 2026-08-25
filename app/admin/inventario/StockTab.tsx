@@ -184,9 +184,10 @@ interface Props {
   geneticas:   Genetica[];
   ubicaciones: Ubicacion[];
   reservas:    Record<string, number>;  // gramos en pedidos pendientes, por genética
+  superadmin:  boolean;                 // solo el superadmin edita/elimina ingresos
 }
 
-export function StockTab({ stock, geneticas, ubicaciones, reservas }: Props) {
+export function StockTab({ stock, geneticas, ubicaciones, reservas, superadmin }: Props) {
   const [modal, setModal]           = useState<'nuevo' | StockConGenetica | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [error, setError]           = useState<string | null>(null);
@@ -361,20 +362,23 @@ export function StockTab({ stock, geneticas, ubicaciones, reservas }: Props) {
                       {formatFecha(s.fecha_ingreso)}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1 justify-end">
-                        <button
-                          onClick={() => setModal(s)}
-                          className="p-2 rounded-lg text-muted-foreground hover:text-club-dorado hover:bg-club-dorado/10 transition-all"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete(s.id)}
-                          className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {/* Editar/eliminar ingresos: solo superadmin (la action también lo valida) */}
+                      {superadmin && (
+                        <div className="flex items-center gap-1 justify-end">
+                          <button
+                            onClick={() => setModal(s)}
+                            className="p-2 rounded-lg text-muted-foreground hover:text-club-dorado hover:bg-club-dorado/10 transition-all"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(s.id)}
+                            className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </motion.tr>
                 ))}
