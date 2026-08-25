@@ -38,3 +38,7 @@
 ## 2026-08-25 — Cambios de UI/marketing: mostrar antes de deployar
 - El usuario quiere ver una propuesta o mockup ANTES del deploy en cambios de presentacion (copy, resumenes de compra, banners). Implementar directo solo bugs y cambios mecanicos.
 - En pedidos de "impacto marketinero", confirmar la mecanica exacta con un ejemplo numerico antes de codear: "restar como bonificacion" significaba envio a precio pleno arriba + resta abajo, no un cartel celebratorio.
+
+## 2026-08-25 — Acciones que tocan la sesion propia
+- Cambiar la password del usuario logueado invalida su sesion al instante: cualquier flujo que genere una clave y la muestre DESPUES de aplicarla pierde la clave si el target es uno mismo. Bloquear el caso self en el server action y ofrecer solo el cambio manual (el usuario ya conoce lo que tipeo).
+- Recuperacion: PUT /auth/v1/admin/users/{id} con la service key permite resetear la password de cualquier cuenta.

@@ -154,6 +154,15 @@ export async function regenerarPasswordTemporal(
   const adminId = await verificarAdmin();
   if (!adminId) return { ok: false, error: 'No autorizado' };
 
+  // Nunca sobre la cuenta propia: cambiar la contraseña invalida la sesión
+  // y te desloguea ANTES de poder ver/copiar la clave generada
+  if (adminId === userId) {
+    return {
+      ok: false,
+      error: 'No podés regenerar tu propia contraseña con este botón. Usá el campo "Nueva contraseña" escribiéndola vos (vas a tener que volver a iniciar sesión).',
+    };
+  }
+
   const service = createServiceClient();
   const { data: perfil } = await service
     .from('profiles')
