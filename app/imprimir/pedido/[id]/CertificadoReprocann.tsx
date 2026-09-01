@@ -21,10 +21,9 @@ export function CertificadoReprocann({ url, esPdf }: Props) {
     (async () => {
       try {
         const pdfjs = await import('pdfjs-dist');
-        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-          'pdfjs-dist/build/pdf.worker.min.mjs',
-          import.meta.url
-        ).toString();
+        // Worker servido desde /public (copiado de pdfjs-dist@4.10.38):
+        // bundlearlo con new URL() rompe el build (Terser no acepta el .mjs)
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
         const doc  = await pdfjs.getDocument(url).promise;
         const page = await doc.getPage(1);
