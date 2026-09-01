@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Shield, Leaf, Users, FileCheck } from 'lucide-react';
+import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
 
 const stagger = {
   hidden:  {},
@@ -165,6 +166,9 @@ export default function LandingPage() {
           <p className="text-muted-foreground text-xs">Cannabis medicinal regulado · Ley 27.350 · Argentina</p>
         </div>
       </footer>
+
+      {/* Contacto directo con el club por WhatsApp */}
+      <WhatsAppButton />
 
     </div>
   );

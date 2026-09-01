@@ -58,7 +58,14 @@ export default async function AdminDashboardPage() {
     pedido_items ( cantidad_gramos, cantidad_unidades )
   `;
 
-  const [{ data: pendientes }, { data: porVencer }, { data: porAprobar }, { data: porEntregar }] = await Promise.all([
+  const [
+    { data: pendientes },
+    { data: porVencer },
+    { data: porAprobar },
+    { data: porEntregar },
+    { data: porArmar },
+    { count: porArmarCount },
+  ] = await Promise.all([
     supabase
       .from('profiles')
       .select('id, nombre, reprocann_estado, reprocann_numero, created_at')
@@ -86,6 +93,21 @@ export default async function AdminDashboardPage() {
       .eq('estado', 'aprobado')
       .order('created_at', { ascending: true })
       .limit(5),
+    // Por armar: pago ya verificado por el club pero todavía sin armar
+    supabase
+      .from('pedidos')
+      .select(selectPedido)
+      .eq('estado', 'pendiente')
+      .not('comprobante_ok_at', 'is', null)
+      .is('armado_at', null)
+      .order('created_at', { ascending: true })
+      .limit(5),
+    supabase
+      .from('pedidos')
+      .select('*', { count: 'exact', head: true })
+      .eq('estado', 'pendiente')
+      .not('comprobante_ok_at', 'is', null)
+      .is('armado_at', null),
   ]);
 
   return (
@@ -95,6 +117,8 @@ export default async function AdminDashboardPage() {
       porVencer={porVencer ?? []}
       porAprobar={(porAprobar as any[]) ?? []}
       porEntregar={(porEntregar as any[]) ?? []}
+      porArmar={(porArmar as any[]) ?? []}
+      porArmarCount={porArmarCount ?? 0}
       consultasPendientes={consultasPendientes ?? 0}
     />
   );

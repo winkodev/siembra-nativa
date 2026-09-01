@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation';
 import { registrarAccion } from '@/lib/audit';
 import { formatFecha, formatGramos, formatNumeroPedido, formatPrecio, labelTipo, labelCategoriaProducto } from '@/lib/utils';
 import { PrintControls } from './PrintControls';
+import { CertificadoReprocann } from './CertificadoReprocann';
 import type { EstadoPedido } from '@/lib/types/database';
 
 export const metadata = { title: 'Imprimir pedido' };
@@ -34,7 +35,7 @@ export default async function ImprimirPedidoPage({ params }: Props) {
         geneticas ( nombre, tipo ),
         productos ( nombre, categoria )
       ),
-      profiles!socio_id ( nombre, dni, telefono, email, direccion, piso_depto, localidad, provincia, codigo_postal, reprocann_numero )
+      profiles!socio_id ( nombre, dni, telefono, email, direccion, piso_depto, localidad, provincia, codigo_postal, reprocann_numero, reprocann_certificado_path )
     `)
     .eq('id', params.id)
     .single();
@@ -53,6 +54,21 @@ export default async function ImprimirPedidoPage({ params }: Props) {
 
   // La orden contiene datos personales: se registra el acceso
   await registrarAccion(supabase, 'imprimir_pedido', 'pedidos', { pedido_id: p.id }, p.socio_id);
+
+  // Certificado REPROCANN real: signed URL de 5 minutos (nunca URL pública)
+  let certUrl: string | null = null;
+  let certEsPdf = false;
+  if (socio?.reprocann_certificado_path) {
+    const { data: signed } = await supabase.storage
+      .from('certificados-reprocann')
+      .createSignedUrl(socio.reprocann_certificado_path, 300);
+    if (signed?.signedUrl) {
+      certUrl   = signed.signedUrl;
+      certEsPdf = socio.reprocann_certificado_path.toLowerCase().endsWith('.pdf');
+      // Acceso a documento sensible: queda auditado
+      await registrarAccion(supabase, 'ver_certificado', 'profiles', { pedido_id: p.id }, p.socio_id);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white text-neutral-900">
@@ -101,6 +117,11 @@ export default async function ImprimirPedidoPage({ params }: Props) {
             </p>
           </div>
         </section>
+
+        {/* Línea de corte: separa los datos del pedido del detalle valorizado */}
+        <div className="relative border-t-2 border-dashed border-neutral-400 mt-6 mb-6" aria-hidden>
+          <span className="absolute -top-2.5 left-2 bg-white px-1.5 text-neutral-400 text-[13px] leading-none">✂</span>
+        </div>
 
         {/* Items */}
         <section className="mb-5">
@@ -174,10 +195,22 @@ export default async function ImprimirPedidoPage({ params }: Props) {
           </section>
         )}
 
+        {/* El footer cierra la orden en la hoja 1 (el certificado va en hoja aparte) */}
         <footer className="mt-8 pt-3 border-t border-neutral-200 text-[11px] text-neutral-400 flex justify-between">
           <span>Siembra Nativa Club — documento interno</span>
           <span>Impreso el {formatFecha(new Date(), "dd/MM/yyyy HH:mm")}</span>
         </footer>
+
+        {/* Certificado REPROCANN real del socio: hoja propia a tamaño completo.
+            max-h en la imagen garantiza que título + certificado entren en UNA hoja */}
+        {certUrl && (
+          <section className="break-before-page">
+            <h2 className="text-[11px] font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
+              Certificado REPROCANN
+            </h2>
+            <CertificadoReprocann url={certUrl} esPdf={certEsPdf} />
+          </section>
+        )}
 
       </div>
     </div>

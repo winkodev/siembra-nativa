@@ -6,6 +6,7 @@ import { FondoClub } from '@/components/layout/FondoClub';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { CarritoProvider } from '@/lib/context/CarritoContext';
 import { CarritoDrawer } from '@/components/layout/CarritoDrawer';
+import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -37,6 +38,9 @@ export default async function SocioLayout({ children }: { children: React.ReactN
           <div className="fixed top-3 right-4 sm:right-6 lg:right-8 z-30">
             <CarritoDrawer />
           </div>
+
+          {/* Contacto directo con el club por WhatsApp */}
+          <WhatsAppButton />
 
           <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto">
             <PageTransition>

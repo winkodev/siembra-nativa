@@ -232,6 +232,49 @@ export async function editarStock(
   return { ok: true, data: undefined };
 }
 
+// Mover un lote a otra ubicación (solo superadmin, como editar/eliminar)
+export async function moverStockUbicacion(id: string, ubicacion: string): Promise<ActionResponse> {
+  const supabase = createClient();
+  if (!(await esSuperadmin(supabase))) {
+    return { ok: false, error: 'Solo el superadmin puede mover lotes de ubicación' };
+  }
+
+  const destino = ubicacion.trim() || null;
+
+  // La ubicación destino debe existir y estar activa (o quedar sin ubicación)
+  if (destino) {
+    const { data: ubi } = await supabase
+      .from('ubicaciones')
+      .select('id')
+      .eq('nombre', destino)
+      .eq('activa', true)
+      .maybeSingle();
+    if (!ubi) return { ok: false, error: 'La ubicación destino no existe o está inactiva' };
+  }
+
+  const { data: actual } = await supabase
+    .from('stock')
+    .select('ubicacion, lote')
+    .eq('id', id)
+    .single();
+  if (!actual) return { ok: false, error: 'Registro de stock no encontrado' };
+
+  if ((actual.ubicacion ?? null) === destino) {
+    return { ok: false, error: 'El lote ya está en esa ubicación' };
+  }
+
+  const { error } = await supabase.from('stock').update({ ubicacion: destino }).eq('id', id);
+  if (error) return { ok: false, error: 'Error al mover el lote' };
+
+  await registrarAccion(supabase, 'mover_stock', 'stock', {
+    lote: actual.lote,
+    desde: actual.ubicacion,
+    hasta: destino,
+  });
+  revalidatePath('/admin/inventario');
+  return { ok: true, data: undefined };
+}
+
 export async function eliminarStock(id: string): Promise<ActionResponse> {
   const supabase = createClient();
   if (!(await esSuperadmin(supabase))) {

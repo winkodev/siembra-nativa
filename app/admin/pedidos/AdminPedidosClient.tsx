@@ -86,24 +86,37 @@ function itemDisplay(item: PedidoItemAdmin) {
   };
 }
 
-const filtrosEstado: { label: string; value: EstadoPedido | 'todos' }[] = [
+// Filtros: estados + "Por armar" (pendientes con pago comprobado y sin armar)
+type Filtro = EstadoPedido | 'todos' | 'armar';
+
+const filtrosEstado: { label: string; value: Filtro }[] = [
   { label: 'Todos',     value: 'todos'     },
   { label: 'Pendiente', value: 'pendiente' },
+  { label: 'Por armar', value: 'armar'     },
   { label: 'Aprobado',  value: 'aprobado'  },
   { label: 'Entregado', value: 'entregado' },
   { label: 'Cancelado', value: 'cancelado' },
 ];
 
+// Pago comprobado por el club pero todavía sin armar
+function esPorArmar(p: PedidoAdmin): boolean {
+  return p.estado === 'pendiente' && !!p.comprobante_ok_at && !p.armado_at;
+}
+
 // Presets de período para la vista "Todos"
 type Periodo = 'todo' | 'hoy' | '7' | '30' | 'rango';
 
-export function AdminPedidosClient({ pedidos: pedidosIniciales }: { pedidos: PedidoAdmin[] }) {
+export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }: {
+  pedidos: PedidoAdmin[];
+  filtroInicial?: string;  // llega por query param (?filtro=armar) desde el dashboard
+}) {
   const [pedidos, setPedidos]     = useState(pedidosIniciales);
   const [expandido, setExpandido] = useState<string | null>(null);
-  // Arranca mostrando lo accionable: pendientes (o todos si no hay ninguno)
-  const [filtro, setFiltro]       = useState<EstadoPedido | 'todos'>(
-    () => pedidosIniciales.some(p => p.estado === 'pendiente') ? 'pendiente' : 'todos'
-  );
+  // Arranca con el filtro pedido por URL; si no, muestra lo accionable
+  const [filtro, setFiltro]       = useState<Filtro>(() => {
+    if (filtrosEstado.some(f => f.value === filtroInicial)) return filtroInicial as Filtro;
+    return pedidosIniciales.some(p => p.estado === 'pendiente') ? 'pendiente' : 'todos';
+  });
   const [busqueda, setBusqueda]   = useState('');
   const [periodo, setPeriodo]     = useState<Periodo>('todo');
   const [desde, setDesde]         = useState('');
@@ -132,7 +145,9 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales }: { pedidos: Ped
     }
 
     return pedidos.filter(p => {
-      if (filtro !== 'todos' && p.estado !== filtro) return false;
+      if (filtro === 'armar') {
+        if (!esPorArmar(p)) return false;
+      } else if (filtro !== 'todos' && p.estado !== filtro) return false;
       if (minFecha && new Date(p.created_at) < minFecha) return false;
       if (maxFecha && new Date(p.created_at) > maxFecha) return false;
       if (!q) return true;
@@ -203,6 +218,8 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales }: { pedidos: Ped
           {filtrosEstado.map(f => {
             const count = f.value === 'todos'
               ? pedidos.length
+              : f.value === 'armar'
+              ? pedidos.filter(esPorArmar).length
               : pedidos.filter(p => p.estado === f.value).length;
             return (
               <button

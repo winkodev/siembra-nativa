@@ -5,9 +5,9 @@ import { useFormState, useFormStatus } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Pencil, Trash2, X, Loader2, Package,
-  CheckCircle2, CalendarDays, MapPin, Tag, Search,
+  CheckCircle2, CalendarDays, MapPin, Tag, Search, ArrowRightLeft,
 } from 'lucide-react';
-import { agregarStock, editarStock, eliminarStock } from '@/app/actions/inventario';
+import { agregarStock, editarStock, eliminarStock, moverStockUbicacion } from '@/app/actions/inventario';
 import { cn, formatFecha, formatGramos, labelTipo } from '@/lib/utils';
 import type { Genetica, Stock, Ubicacion, ActionResponse } from '@/lib/types/database';
 
@@ -178,6 +178,94 @@ function StockModal({ stockItem, geneticas, ubicaciones, loteSugerido, onClose }
   );
 }
 
+// ---- Modal para mover un lote a otra ubicación ----
+const SIN_UBICACION = '__sin__';
+
+function MoverModal({ stockItem, ubicaciones, onClose }: {
+  stockItem:   StockConGenetica;
+  ubicaciones: Ubicacion[];
+  onClose:     () => void;
+}) {
+  const [destino, setDestino] = useState('');
+  const [pending, setPending] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  // Destinos posibles: ubicaciones activas distintas de la actual
+  const opciones = ubicaciones.filter(u => u.activa && u.nombre !== stockItem.ubicacion);
+
+  const handleMover = async () => {
+    setPending(true);
+    setError(null);
+    const res = await moverStockUbicacion(stockItem.id, destino === SIN_UBICACION ? '' : destino);
+    if (!res.ok) {
+      setError(res.error ?? 'Error');
+      setPending(false);
+      return;
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-club">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="glass-card w-full max-w-sm p-6"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-avigea text-xl text-foreground">Mover de ubicación</h2>
+          <button onClick={onClose} className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="mb-4 px-4 py-3 rounded-xl bg-club-verde-claro/15 border border-club-verde-claro/25 text-sm">
+          <p className="text-foreground font-semibold">{stockItem.geneticas.nombre}</p>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            {stockItem.lote ?? 'Sin lote'} · {formatGramos(stockItem.cantidad_gramos)} restantes
+            {' · '}Ubicación actual: <span className="text-club-dorado">{stockItem.ubicacion ?? 'Sin ubicación'}</span>
+          </p>
+        </div>
+
+        {error && (
+          <div className="mb-4 px-4 py-2.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-1.5 mb-5">
+          <label className="text-sm text-foreground/80 font-medium flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 text-club-dorado" /> Nueva ubicación *
+          </label>
+          <select
+            value={destino}
+            onChange={e => setDestino(e.target.value)}
+            className="input-club w-full bg-club-verde-medio appearance-none cursor-pointer"
+          >
+            <option value="" disabled>Seleccioná la ubicación destino</option>
+            {opciones.map(u => (
+              <option key={u.id} value={u.nombre}>{u.nombre}</option>
+            ))}
+            {stockItem.ubicacion && <option value={SIN_UBICACION}>Sin ubicación</option>}
+          </select>
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={onClose} className="btn-secondary px-5 py-2.5 text-sm">Cancelar</button>
+          <button
+            onClick={handleMover}
+            disabled={!destino || pending}
+            className="btn-primary px-5 py-2.5 text-sm"
+          >
+            {pending ? <><Loader2 className="w-4 h-4 animate-spin" /> Moviendo...</> : <><ArrowRightLeft className="w-4 h-4" /> Mover</>}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ---- Componente principal del tab ----
 interface Props {
   stock:       StockConGenetica[];
@@ -189,6 +277,7 @@ interface Props {
 
 export function StockTab({ stock, geneticas, ubicaciones, reservas, superadmin }: Props) {
   const [modal, setModal]           = useState<'nuevo' | StockConGenetica | null>(null);
+  const [moverLote, setMoverLote]   = useState<StockConGenetica | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [error, setError]           = useState<string | null>(null);
   const [filtroGenetica, setFiltroGenetica] = useState<string>('todas');
@@ -362,23 +451,32 @@ export function StockTab({ stock, geneticas, ubicaciones, reservas, superadmin }
                       {formatFecha(s.fecha_ingreso)}
                     </td>
                     <td className="px-4 py-3">
-                      {/* Editar/eliminar ingresos: solo superadmin (la action también lo valida) */}
-                      {superadmin && (
-                        <div className="flex items-center gap-1 justify-end">
-                          <button
-                            onClick={() => setModal(s)}
-                            className="p-2 rounded-lg text-muted-foreground hover:text-club-dorado hover:bg-club-dorado/10 transition-all"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setConfirmDelete(s.id)}
-                            className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1 justify-end">
+                        {/* Mover/editar/eliminar: solo superadmin (las actions también lo validan) */}
+                        {superadmin && (
+                          <>
+                            <button
+                              onClick={() => setMoverLote(s)}
+                              title="Mover de ubicación"
+                              className="p-2 rounded-lg text-muted-foreground hover:text-club-dorado hover:bg-club-dorado/10 transition-all"
+                            >
+                              <ArrowRightLeft className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setModal(s)}
+                              className="p-2 rounded-lg text-muted-foreground hover:text-club-dorado hover:bg-club-dorado/10 transition-all"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDelete(s.id)}
+                              className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </motion.tr>
                 ))}
@@ -397,6 +495,17 @@ export function StockTab({ stock, geneticas, ubicaciones, reservas, superadmin }
             ubicaciones={ubicaciones}
             loteSugerido={loteSugerido}
             onClose={() => setModal(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Modal mover de ubicación */}
+      <AnimatePresence>
+        {moverLote && (
+          <MoverModal
+            stockItem={moverLote}
+            ubicaciones={ubicaciones}
+            onClose={() => setMoverLote(null)}
           />
         )}
       </AnimatePresence>

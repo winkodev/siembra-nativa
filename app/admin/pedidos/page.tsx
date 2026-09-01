@@ -5,7 +5,9 @@ import type { PedidoConItems } from '@/lib/types/database';
 
 export const metadata = { title: 'Gestión de pedidos' };
 
-export default async function AdminPedidosPage() {
+export default async function AdminPedidosPage({ searchParams }: {
+  searchParams?: { filtro?: string };
+}) {
   const profile = await getProfile();
   if (!profile || profile.rol !== 'admin') redirect('/socio/dashboard');
 
@@ -26,5 +28,5 @@ export default async function AdminPedidosPage() {
     `)
     .order('created_at', { ascending: false });
 
-  return <AdminPedidosClient pedidos={(pedidos as any[]) ?? []} />;
+  return <AdminPedidosClient pedidos={(pedidos as any[]) ?? []} filtroInicial={searchParams?.filtro} />;
 }

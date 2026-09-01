@@ -1,5 +1,15 @@
 # Siembra Nativa Club — Pendientes
 
+## ✅ 2026-08-19: Alertas REPROCANN — módulo cerrado
+
+- El grueso ya estaba (commit af7a006, 18/08): cron pg_cron diario (`procesar_vencimientos_reprocann`,
+  09:00 UTC) que marca vencidos, apaga `compra_habilitada` y notifica al socio con anticipación
+  configurable (`reprocann_aviso_dias` = 60 en prod). SQL `avisos-y-descuentos.sql` verificado
+  ejecutado en Supabase (config presente vía REST).
+- Cierre de hoy (674bfd0): `estadoEfectivoReprocann()` — los badges (Inicio socio, perfil,
+  tabla/filtros admin) muestran "Vencido" por fecha sin esperar al cron. Se eliminó
+  `reprocannVigente()` (no se usaba). `tsc --noEmit` = 0.
+
 ## 🟢 EN CURSO: Reserva de stock + comprobante de pago (2026-08-14)
 
 **Objetivo:** (a) que los gramos/unidades de un pedido pendiente queden reservados (invisibles

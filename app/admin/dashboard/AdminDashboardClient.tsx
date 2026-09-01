@@ -62,15 +62,19 @@ interface Props {
   porVencer:  Array<{ id: string; nombre: string; reprocann_numero: string | null; reprocann_vencimiento: string | null }>;
   porAprobar:  PedidoResumen[];
   porEntregar: PedidoResumen[];
+  porArmar:    PedidoResumen[];
+  porArmarCount: number;
   consultasPendientes: number;
 }
 
-// Lista de pedidos accionables (por aprobar / por entregar)
-function ListaPedidos({ titulo, icono, pedidos, vacio }: {
+// Lista de pedidos accionables (por aprobar / por armar / por entregar)
+function ListaPedidos({ titulo, icono, pedidos, vacio, count, href = '/admin/pedidos' }: {
   titulo: string;
   icono: React.ReactNode;
   pedidos: PedidoResumen[];
   vacio: string;
+  count?: number;  // pill con el total (puede superar los 5 listados)
+  href?:  string;  // destino de la lista (permite aterrizar con filtro aplicado)
 }) {
   return (
     <motion.div variants={fadeUp} className="glass-card p-6">
@@ -78,8 +82,13 @@ function ListaPedidos({ titulo, icono, pedidos, vacio }: {
         <h2 className="font-avigea text-xl text-foreground flex items-center gap-2">
           {icono}
           {titulo}
+          {count != null && count > 0 && (
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-club-dorado/15 text-club-dorado border border-club-dorado/30">
+              {count}
+            </span>
+          )}
         </h2>
-        <Link href="/admin/pedidos" className="text-club-dorado text-sm hover:text-club-dorado-claro transition-colors flex items-center gap-1">
+        <Link href={href} className="text-club-dorado text-sm hover:text-club-dorado-claro transition-colors flex items-center gap-1">
           Ver todos <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -91,7 +100,7 @@ function ListaPedidos({ titulo, icono, pedidos, vacio }: {
           {pedidos.map(p => (
             <Link
               key={p.id}
-              href="/admin/pedidos"
+              href={href}
               className="flex items-center justify-between px-4 py-3 rounded-xl bg-club-verde-claro/15 hover:bg-club-verde-claro/25 border border-transparent hover:border-club-dorado/20 transition-all duration-200 group"
             >
               <div>
@@ -115,7 +124,7 @@ function ListaPedidos({ titulo, icono, pedidos, vacio }: {
   );
 }
 
-export function AdminDashboardClient({ metricas, pendientes, porVencer, porAprobar, porEntregar, consultasPendientes }: Props) {
+export function AdminDashboardClient({ metricas, pendientes, porVencer, porAprobar, porEntregar, porArmar, porArmarCount, consultasPendientes }: Props) {
   return (
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
 
@@ -192,13 +201,22 @@ export function AdminDashboardClient({ metricas, pendientes, porVencer, porAprob
         </motion.div>
       )}
 
-      {/* Pedidos accionables */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      {/* Pedidos accionables en el orden del flujo: aprobar → armar → entregar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ListaPedidos
           titulo="Pedidos por aprobar"
           icono={<ShoppingBag className="w-5 h-5 text-amber-400" />}
           pedidos={porAprobar}
           vacio="No hay pedidos esperando aprobación."
+        />
+        {/* Por armar: solo pedidos con el pago ya comprobado y sin armar */}
+        <ListaPedidos
+          titulo="Pedidos por armar"
+          icono={<Package className="w-5 h-5 text-club-dorado" />}
+          pedidos={porArmar}
+          vacio="No hay pedidos con pago comprobado esperando armado."
+          count={porArmarCount}
+          href="/admin/pedidos?filtro=armar"
         />
         <ListaPedidos
           titulo="Pedidos por entregar"
