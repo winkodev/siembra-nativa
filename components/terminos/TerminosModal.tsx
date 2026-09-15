@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ScrollText } from 'lucide-react';
 import { TerminosTexto } from './TerminosTexto';
@@ -9,16 +11,23 @@ interface Props {
   onCerrar: () => void;
 }
 
-// Modal de solo lectura con el texto completo de los T&C
+// Modal de solo lectura con el texto completo de los T&C.
+// Se renderiza en un portal sobre <body>: dentro de PageTransition (motion.div
+// con transform) un `fixed` queda atrapado y otras tarjetas se dibujan encima.
+// Fondo opaco a propósito: el texto tiene que leerse sin que se cuele lo de atrás.
 export function TerminosModal({ abierto, onCerrar }: Props) {
-  return (
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
+  if (!montado) return null;
+
+  return createPortal(
     <AnimatePresence>
       {abierto && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
           onClick={onCerrar}>
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-            className="glass-card w-full max-w-2xl flex flex-col max-h-[90vh]"
+            className="w-full max-w-2xl flex flex-col max-h-[90vh] rounded-xl bg-club-verde border border-club-dorado/30 shadow-2xl"
             onClick={e => e.stopPropagation()}>
 
             <div className="flex items-center justify-between p-5 border-b border-club-verde-claro/20">
@@ -37,6 +46,7 @@ export function TerminosModal({ abierto, onCerrar }: Props) {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

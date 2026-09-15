@@ -42,3 +42,7 @@
 ## 2026-08-25 — Acciones que tocan la sesion propia
 - Cambiar la password del usuario logueado invalida su sesion al instante: cualquier flujo que genere una clave y la muestre DESPUES de aplicarla pierde la clave si el target es uno mismo. Bloquear el caso self en el server action y ofrecer solo el cambio manual (el usuario ya conoce lo que tipeo).
 - Recuperacion: PUT /auth/v1/admin/users/{id} con la service key permite resetear la password de cualquier cuenta.
+
+## 2026-09-15 — Modales dentro de PageTransition
+- `PageTransition` envuelve el contenido en un `motion.div` con transform: cualquier `fixed` que se renderice adentro queda atrapado en ese stacking context y otras tarjetas se dibujan encima, además de que el `glass-card` translúcido deja ver lo de atrás.
+- Regla: los modales de socio/admin van con `createPortal(..., document.body)`, `z-[100]` y fondo OPACO (`bg-club-verde`), no `glass-card`. Ver `components/terminos/TerminosModal.tsx`.
