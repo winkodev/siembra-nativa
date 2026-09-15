@@ -5,6 +5,35 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResponse } from '@/lib/types/database';
 
+// Registra la aceptación de los Términos y Condiciones del socio.
+// Idempotente: si ya estaban aceptados, no pisa la fecha original.
+export async function aceptarTerminos(): Promise<ActionResponse> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ terminos_aceptados_at: new Date().toISOString() })
+    .eq('id', user.id)
+    .is('terminos_aceptados_at', null);
+
+  if (error) return { ok: false, error: 'Error al registrar la aceptación' };
+
+  // La notificación "Aceptá los términos" deja de tener sentido
+  await supabase
+    .from('notificaciones')
+    .update({ leida: true })
+    .eq('socio_id', user.id)
+    .eq('tipo', 'terminos')
+    .eq('leida', false);
+
+  revalidatePath('/socio/dashboard');
+  revalidatePath('/socio/perfil');
+  revalidatePath('/socio/tienda');
+  return { ok: true, data: undefined };
+}
+
 const perfilSchema = z.object({
   nombre:          z.string().min(2, 'El nombre es requerido'),
   email:           z.string().email('Email inválido').optional().or(z.literal('')),

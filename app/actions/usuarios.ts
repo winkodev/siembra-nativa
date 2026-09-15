@@ -134,6 +134,16 @@ export async function crearUsuario(
 
   if (perfilError) return { ok: false, error: 'Usuario creado, pero falló la asignación de rol' };
 
+  // Socio nuevo: aviso in-app para que acepte los T&C (habilita la tienda)
+  if (rol === 'socio') {
+    await service.from('notificaciones').insert({
+      socio_id: userId,
+      tipo:     'terminos',
+      titulo:   'Aceptá los términos y condiciones',
+      mensaje:  'Para habilitar la tienda necesitás leer y aceptar los términos y condiciones desde tu perfil.',
+    });
+  }
+
   // Con contraseña temporal: intentar enviarla por email (Resend)
   let emailEnviado = modo === 'invitacion';
   if (modo === 'password' && password) {

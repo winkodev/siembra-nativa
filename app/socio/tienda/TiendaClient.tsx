@@ -56,9 +56,11 @@ interface Props {
   flores:            StockPublico[];
   productos:         Producto[];
   puedeHacerPedidos: boolean;
+  // Si falta aceptar los T&C, el aviso de bloqueo apunta a eso en vez de a la documentación
+  terminosPendientes: boolean;
 }
 
-export function TiendaClient({ flores, productos, puedeHacerPedidos }: Props) {
+export function TiendaClient({ flores, productos, puedeHacerPedidos, terminosPendientes }: Props) {
   const [filtro, setFiltro]     = useState<Filtro>('todos');
   const [busqueda, setBusqueda] = useState('');
 
@@ -108,10 +110,21 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos }: Props) {
         >
           <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <p className="text-sm">
-            Tu documentación aún no fue aprobada. Podés explorar el catálogo, pero para hacer pedidos necesitás aprobación del club.{' '}
-            <Link href="/socio/perfil" className="text-club-dorado underline underline-offset-2">
-              Subir documentación →
-            </Link>
+            {terminosPendientes ? (
+              <>
+                Para hacer pedidos necesitás aceptar los términos y condiciones. Podés explorar el catálogo mientras tanto.{' '}
+                <Link href="/socio/perfil" className="text-club-dorado underline underline-offset-2">
+                  Ver términos →
+                </Link>
+              </>
+            ) : (
+              <>
+                Tu documentación aún no fue aprobada. Podés explorar el catálogo, pero para hacer pedidos necesitás aprobación del club.{' '}
+                <Link href="/socio/perfil" className="text-club-dorado underline underline-offset-2">
+                  Subir documentación →
+                </Link>
+              </>
+            )}
           </p>
         </motion.div>
       )}
@@ -296,7 +309,7 @@ function FlorCard({ flor, puedeHacerPedidos }: { flor: StockPublico; puedeHacerP
             </button>
           ) : !puedeHacerPedidos ? (
             <button disabled className="w-full py-2.5 rounded-xl text-sm font-semibold bg-club-verde-claro/10 text-muted-foreground cursor-not-allowed border border-club-verde-claro/20">
-              Documentación pendiente
+              Pedidos no habilitados
             </button>
           ) : (
             <>
@@ -437,7 +450,7 @@ function ProductoCard({ producto, puedeHacerPedidos }: { producto: Producto; pue
             </button>
           ) : !puedeHacerPedidos ? (
             <button disabled className="w-full py-2.5 rounded-xl text-sm font-semibold bg-club-verde-claro/10 text-muted-foreground cursor-not-allowed border border-club-verde-claro/20">
-              Documentación pendiente
+              Pedidos no habilitados
             </button>
           ) : (
             <div className="flex items-center gap-2">

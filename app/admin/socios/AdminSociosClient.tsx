@@ -7,7 +7,7 @@ import {
   UserCheck, UserX, Store, X, ChevronRight, ExternalLink,
   Loader2, AlertCircle, Clock, Search, Users,
   ShoppingBag, Leaf, Scale, CalendarDays, Plus, Trash2, NotebookPen,
-  UserPlus, Mail, KeyRound, Copy, Check, Shield,
+  UserPlus, Mail, KeyRound, Copy, Check, Shield, ScrollText,
 } from 'lucide-react';
 import type { Profile, FichaSocio, TipoNotaSocio, RolUsuario } from '@/lib/types/database';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -465,6 +465,18 @@ function SocioDrawer({
                 {socio.compra_habilitada ? 'Habilitada' : 'Deshabilitada'}
               </p>
               <p className="text-xs text-muted-foreground/60">Auto por REPROCANN</p>
+            </div>
+
+            {/* Términos y condiciones */}
+            <div className="rounded-xl bg-white/5 p-3 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Términos</p>
+              <ScrollText className={`w-5 h-5 ${socio.terminos_aceptados_at ? 'text-green-400' : 'text-muted-foreground'}`} />
+              <p className={`text-xs font-medium ${socio.terminos_aceptados_at ? 'text-green-400' : 'text-muted-foreground'}`}>
+                {socio.terminos_aceptados_at ? 'Aceptados' : 'Pendientes'}
+              </p>
+              <p className="text-xs text-muted-foreground/60">
+                {socio.terminos_aceptados_at ? formatFecha(socio.terminos_aceptados_at) : 'Requerido para la tienda'}
+              </p>
             </div>
           </section>
 

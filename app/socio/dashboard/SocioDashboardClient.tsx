@@ -9,7 +9,7 @@ import remarkBreaks from 'remark-breaks';
 import {
   Leaf, ShoppingBag, AlertTriangle, ArrowRight, Newspaper,
   FileText, Shield, CheckCircle2, Clock, XCircle, UserRound, ChevronDown,
-  Bell, Loader2,
+  Bell, Loader2, ScrollText,
 } from 'lucide-react';
 import type { Profile, Newsletter, Notificacion } from '@/lib/types/database';
 import { formatFecha, diasHasta, cn, estadoEfectivoReprocann } from '@/lib/utils';
@@ -87,7 +87,16 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
   const estadoRep      = estadoEfectivoReprocann(profile.reprocann_estado, profile.reprocann_vencimiento);
   const aprobado       = estadoRep === 'aprobado';
 
+  const terminosOk     = Boolean(profile.terminos_aceptados_at);
+
   const alertas = [
+    !terminosOk && {
+      key:   'terminos',
+      Icon:  ScrollText,
+      texto: 'Aceptá los términos y condiciones para habilitar la tienda.',
+      cta:   'Ver términos',
+      href:  '/socio/perfil',
+    },
     !datosCompletos && {
       key:   'datos',
       Icon:  UserRound,

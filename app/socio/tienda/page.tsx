@@ -28,7 +28,8 @@ export default async function TiendaPage() {
     <TiendaClient
       flores={flores}
       productos={(productos as Producto[]) ?? []}
-      puedeHacerPedidos={profile.compra_habilitada}
+      puedeHacerPedidos={profile.compra_habilitada && Boolean(profile.terminos_aceptados_at)}
+      terminosPendientes={!profile.terminos_aceptados_at}
     />
   );
 }

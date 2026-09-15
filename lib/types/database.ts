@@ -45,6 +45,10 @@ export interface Profile {
   reprocann_vencimiento: string | null;
   reprocann_certificado_path: string | null;
 
+  // Términos y condiciones: fecha de aceptación (null = pendiente).
+  // Junto con compra_habilitada, condición para poder hacer pedidos.
+  terminos_aceptados_at: string | null;
+
   // Solo admin
   notas_admin: string | null;
   compra_habilitada: boolean;

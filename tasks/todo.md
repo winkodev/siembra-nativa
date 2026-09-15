@@ -266,3 +266,25 @@ descuento (gramos FIFO + unidades). Chequear bloqueos por compra_habilitada / RE
 - [ ] Validación externa de REPROCANN (cuando exista API oficial)
 - [ ] Notificaciones push
 - [ ] Reportes y exportación de datos (CSV)
+
+## 🟢 EN CURSO: Términos y condiciones (2026-09-15)
+
+**Objetivo:** el socio debe aceptar los T&C para que se habilite la tienda. Mismo patrón
+que datos/REPROCANN: tarjeta ámbar en Inicio + notificación in-app + sección en Perfil.
+Sin bloqueo total del sitio. Texto consultable desde el perfil (modal) una vez aceptado.
+
+1. [x] **DB** — `supabase/terminos-y-condiciones.sql`: columna `profiles.terminos_aceptados_at`,
+   notificación tipo `terminos` para socios existentes, `crear_pedido` v4 exige aceptación.
+2. [x] **Tipos** — `Profile.terminos_aceptados_at`.
+3. [x] **Contenido** — `components/terminos/` texto estructurado + modal reutilizable.
+4. [x] **Action** — `aceptarTerminos()` (graba fecha, marca leída la notificación).
+5. [x] **Perfil** — sección T&C: aceptar (checkbox + botón) / ver (fecha + modal).
+6. [x] **Inicio** — alerta ámbar "Aceptá los términos" primera en la lista.
+7. [x] **Tienda/detalle** — `puedeHacerPedidos` exige T&C; mensaje distingue el motivo.
+8. [x] **Alta de socio** — `crearUsuario` inserta la notificación si rol = socio.
+9. [x] **Admin** — indicador "Términos" en la ficha del socio.
+10. [x] `npx tsc --noEmit` = 0 (2026-09-15).
+- PENDIENTE (manual): ejecutar `supabase/terminos-y-condiciones.sql` en Supabase antes de deployar.
+  Sin la columna, `getProfile()` devuelve `terminos_aceptados_at` undefined → todos ven la alerta.
+- Los socios existentes deben aceptar una vez; para eximirlos:
+  `UPDATE profiles SET terminos_aceptados_at = NOW() WHERE rol = 'socio';` (y marcar leída la notificación).

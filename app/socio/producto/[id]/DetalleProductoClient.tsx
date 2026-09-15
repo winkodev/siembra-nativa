@@ -18,9 +18,11 @@ const categoriaBadge: Record<string, string> = {
 interface Props {
   producto:          Producto;
   puedeHacerPedidos: boolean;
+  // Si falta aceptar los T&C, el aviso de bloqueo apunta a eso en vez de a la documentación
+  terminosPendientes: boolean;
 }
 
-export function DetalleProductoClient({ producto, puedeHacerPedidos }: Props) {
+export function DetalleProductoClient({ producto, puedeHacerPedidos, terminosPendientes }: Props) {
   const { agregar, items, tieneItem } = useCarrito();
   const ref           = { tipo_item: 'producto' as const, id: producto.id };
   const enCarrito     = tieneItem(ref);
@@ -116,7 +118,12 @@ export function DetalleProductoClient({ producto, puedeHacerPedidos }: Props) {
           {!puedeHacerPedidos && (
             <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-sm">
               <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-              <p>Tu documentación aún no fue aprobada. Una vez que el club la revise, vas a poder hacer pedidos.</p>
+              <p>
+                {terminosPendientes
+                  ? <>Para hacer pedidos necesitás aceptar los términos y condiciones desde{' '}
+                      <Link href="/socio/perfil" className="text-club-dorado underline underline-offset-2">tu perfil</Link>.</>
+                  : 'Tu documentación aún no fue aprobada. Una vez que el club la revise, vas a poder hacer pedidos.'}
+              </p>
             </div>
           )}
 

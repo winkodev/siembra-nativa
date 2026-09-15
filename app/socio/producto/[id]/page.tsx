@@ -31,7 +31,8 @@ export default async function DetalleProductoPage({ params }: Props) {
   return (
     <DetalleProductoClient
       producto={producto as Producto}
-      puedeHacerPedidos={profile.compra_habilitada}
+      puedeHacerPedidos={profile.compra_habilitada && Boolean(profile.terminos_aceptados_at)}
+      terminosPendientes={!profile.terminos_aceptados_at}
     />
   );
 }
