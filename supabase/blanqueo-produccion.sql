@@ -14,7 +14,7 @@
 -- SE BORRA:
 --   - Pedidos e items (y sus comprobantes de pago en Storage)
 --   - Lotes de stock (flores) y stock de productos (queda en 0)
---   - Notificaciones, notas de socios y log de auditoría
+--   - Notificaciones, notas de socios, consultas y log de auditoría
 -- ============================================================
 
 BEGIN;
@@ -30,6 +30,7 @@ UPDATE productos SET stock = 0;
 -- Historial de prueba
 DELETE FROM notificaciones;
 DELETE FROM socio_notas;
+DELETE FROM consultas;
 DELETE FROM audit_log;
 
 -- Numeración de pedidos: el próximo pedido será el N° 1
@@ -51,6 +52,7 @@ SELECT
   (SELECT COALESCE(SUM(stock), 0) FROM productos) AS unidades_productos,
   (SELECT COUNT(*) FROM notificaciones)     AS notificaciones,
   (SELECT COUNT(*) FROM socio_notas)        AS notas,
+  (SELECT COUNT(*) FROM consultas)          AS consultas,
   (SELECT COUNT(*) FROM audit_log)          AS audit,
   (SELECT COUNT(*) FROM storage.objects WHERE bucket_id = 'comprobantes-pago') AS comprobantes,
   (SELECT last_value FROM pedidos_numero_seq) AS proximo_numero_pedido;
