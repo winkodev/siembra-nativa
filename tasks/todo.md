@@ -288,3 +288,10 @@ Sin bloqueo total del sitio. Texto consultable desde el perfil (modal) una vez a
   Sin la columna, `getProfile()` devuelve `terminos_aceptados_at` undefined → todos ven la alerta.
 - Los socios existentes deben aceptar una vez; para eximirlos:
   `UPDATE profiles SET terminos_aceptados_at = NOW() WHERE rol = 'socio';` (y marcar leída la notificación).
+
+## ✅ 2026-09-22: Carta de porte + vista previa de la orden imprimible
+
+- `OrdenPedido.tsx` (nuevo): la hoja imprimible pasa a ser presentacional; `[id]/page.tsx` solo hace fetch + auditoría.
+- `CartaPorte` en la hoja 2 (arriba del certificado REPROCANN). Certificado con `max-h-[165mm]` para que entre todo en una hoja.
+- `/imprimir/pedido/preview` (admin): datos ficticios y certificado SVG placeholder. No lee ni escribe en la base ni audita.
+- Pendiente: revisar texto legal de la carta de porte y decidir si se muestra solo en pedidos con envío.

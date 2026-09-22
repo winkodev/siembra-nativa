@@ -63,7 +63,7 @@ export function CertificadoReprocann({ url, esPdf }: Props) {
     <img
       src={imgSrc}
       alt="Certificado REPROCANN del socio"
-      className="w-full max-h-[235mm] object-contain object-left-top grayscale"
+      className="w-full max-h-[165mm] object-contain object-left-top grayscale"
     />
   );
 }
