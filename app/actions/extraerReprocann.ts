@@ -4,7 +4,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { ActionResponse, ReprocannCategoria } from '@/lib/types/database';
 
 export interface DatosExtraidos {
-  reprocann_numero:      string | null;
   reprocann_categoria:   ReprocannCategoria | null;
   reprocann_vencimiento: string | null; // YYYY-MM-DD
 }
@@ -17,10 +16,6 @@ const HERRAMIENTA_EXTRACCION: Anthropic.Tool = {
   input_schema: {
     type: 'object',
     properties: {
-      reprocann_numero: {
-        type: ['string', 'null'],
-        description: 'Número de "Id trámite" de la credencial (ej: "375537"). null si no aparece.',
-      },
       reprocann_categoria: {
         type: ['string', 'null'],
         enum: ['paciente_cultiva', 'tercero_cultivador', 'ong', null],
@@ -34,7 +29,7 @@ const HERRAMIENTA_EXTRACCION: Anthropic.Tool = {
           'Fecha de "Fecha vencimiento" en formato YYYY-MM-DD. La credencial suele mostrarla como dd/mm/aaaa (ej: "25/04/2029" => "2029-04-25"). null si no aparece.',
       },
     },
-    required: ['reprocann_numero', 'reprocann_categoria', 'reprocann_vencimiento'],
+    required: ['reprocann_categoria', 'reprocann_vencimiento'],
   },
 };
 
@@ -75,7 +70,7 @@ export async function extraerDatosReprocann(
               text:
                 'Esta es una credencial/certificado REPROCANN argentino (Registro del Programa de Cannabis). ' +
                 'Extraé los datos del titular y registralos con la herramienta. ' +
-                'Prestá atención a los campos "Id trámite", "Fecha vencimiento" y a la categoría del paciente ' +
+                'Prestá atención a los campos "Fecha vencimiento" y a la categoría del paciente ' +
                 '(por ejemplo "Paciente con autocultivo"). Si un campo no aparece claramente, registralo como null.',
             },
           ],

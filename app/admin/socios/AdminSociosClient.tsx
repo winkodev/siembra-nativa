@@ -350,18 +350,11 @@ function SocioDrawer({
                 )}
               </div>
 
-              {(socio.reprocann_numero || socio.reprocann_categoria) && (
+              {socio.reprocann_categoria && (
                 <div className="text-sm space-y-1">
-                  {socio.reprocann_numero && (
-                    <p className="text-muted-foreground">
-                      N°: <span className="text-foreground font-medium">{socio.reprocann_numero}</span>
-                    </p>
-                  )}
-                  {socio.reprocann_categoria && (
                     <p className="text-muted-foreground">
                       Cat: <span className="text-foreground font-medium">{CATEGORIA_LABEL[socio.reprocann_categoria]}</span>
                     </p>
-                  )}
                 </div>
               )}
 

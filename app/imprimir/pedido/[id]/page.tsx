@@ -25,7 +25,7 @@ export default async function ImprimirPedidoPage({ params }: Props) {
         geneticas ( nombre, tipo ),
         productos ( nombre, categoria )
       ),
-      profiles!socio_id ( nombre, dni, telefono, email, direccion, piso_depto, localidad, provincia, codigo_postal, reprocann_numero, reprocann_certificado_path )
+      profiles!socio_id ( nombre, dni, telefono, email, direccion, piso_depto, localidad, provincia, codigo_postal, reprocann_certificado_path )
     `)
     .eq('id', params.id)
     .single();

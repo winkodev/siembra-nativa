@@ -42,7 +42,6 @@ const SOCIO_FICTICIO = {
   localidad: 'Rosario',
   provincia: 'Santa Fe',
   codigo_postal: '2000',
-  reprocann_numero: 'RC-000000',
   reprocann_certificado_path: null,
 };
 

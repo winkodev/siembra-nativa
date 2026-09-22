@@ -7,7 +7,7 @@ import type { Profile } from '@/lib/types/database';
 
 interface ReprocannStatusProps {
   profile: Pick<Profile,
-    'reprocann_estado' | 'reprocann_numero' | 'reprocann_categoria' |
+    'reprocann_estado' | 'reprocann_categoria' |
     'reprocann_vencimiento' | 'reprocann_certificado_path'
   >;
   className?: string;
@@ -21,7 +21,7 @@ const iconoEstado = {
 };
 
 export function ReprocannStatus({ profile, className }: ReprocannStatusProps) {
-  const { reprocann_estado, reprocann_numero, reprocann_categoria, reprocann_vencimiento } = profile;
+  const { reprocann_estado, reprocann_categoria, reprocann_vencimiento } = profile;
   // Estado efectivo: vencido por fecha aunque el cron todavía no lo haya marcado
   const estadoEfectivo = estadoEfectivoReprocann(reprocann_estado, reprocann_vencimiento);
   const diasRestantes = reprocann_vencimiento ? diasHasta(reprocann_vencimiento) : null;
@@ -49,14 +49,8 @@ export function ReprocannStatus({ profile, className }: ReprocannStatusProps) {
       </div>
 
       {/* Datos — solo si hay info cargada por el admin */}
-      {(reprocann_numero || reprocann_vencimiento) ? (
+      {(reprocann_categoria || reprocann_vencimiento) ? (
         <div className="space-y-2.5">
-          {reprocann_numero && (
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Número</span>
-              <span className="text-foreground font-mono">{reprocann_numero}</span>
-            </div>
-          )}
           {reprocann_categoria && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Categoría</span>
@@ -99,7 +93,7 @@ export function ReprocannStatus({ profile, className }: ReprocannStatusProps) {
       )}
 
       {/* Pendiente de revisión */}
-      {reprocann_estado === 'pendiente' && reprocann_numero && (
+      {reprocann_estado === 'pendiente' && profile.reprocann_certificado_path && (
         <div className="mt-4 px-3 py-2 rounded-lg bg-yellow-500/15 border border-yellow-500/30 text-yellow-400 text-xs flex items-center gap-2">
           <Clock className="w-4 h-4 flex-shrink-0" />
           Tu certificado está siendo revisado por el equipo del club.

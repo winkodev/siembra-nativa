@@ -66,7 +66,6 @@ export function OrdenPedido({ pedido: p, socio, items, certUrl, certEsPdf, previ
             <p><span className="text-neutral-500">Teléfono:</span> {socio?.telefono ?? '—'}</p>
             <p><span className="text-neutral-500">Email:</span> {socio?.email ?? '—'}</p>
             <p className="col-span-2"><span className="text-neutral-500">Dirección:</span> {direccion}</p>
-            <p className="col-span-2"><span className="text-neutral-500">REPROCANN:</span> {socio?.reprocann_numero ?? '—'}</p>
           </div>
         </section>
 
@@ -165,7 +164,7 @@ export function OrdenPedido({ pedido: p, socio, items, certUrl, certEsPdf, previ
 
         {/* El footer cierra la orden en la hoja 1 (carta de porte + certificado van en hoja aparte) */}
         <footer className="mt-8 pt-3 border-t border-neutral-200 text-[11px] text-neutral-400 flex justify-between">
-          <span>Siembra Nativa Club — documento interno</span>
+          <span>Siembra Nativa Club — Asociación Civil María Nativa Club de Cultivo</span>
           <span>Impreso el {formatFecha(new Date(), "dd/MM/yyyy HH:mm")}</span>
         </footer>
 
@@ -222,26 +221,21 @@ function CartaPorte({ pedido: p, socio, items, totalGramos, totalUnidades, direc
       </div>
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 mb-2">
-        <p><span className="text-neutral-500">Remitente:</span> <span className="font-semibold">Siembra Nativa Club</span></p>
+        <p><span className="text-neutral-500">Remitente:</span> <span className="font-semibold">Asociación Civil María Nativa Club de Cultivo</span> · CUIT 30-71848590-4</p>
         <p><span className="text-neutral-500">Destinatario:</span> <span className="font-semibold">{socio?.nombre ?? '—'}</span> · DNI {socio?.dni ?? '—'}</p>
         <p className="col-span-2"><span className="text-neutral-500">Domicilio de entrega:</span> {direccion}</p>
-        <p><span className="text-neutral-500">REPROCANN N.º:</span> <span className="font-semibold">{socio?.reprocann_numero ?? '—'}</span></p>
         <p><span className="text-neutral-500">Contenido total:</span> <span className="font-semibold">{totalTexto}</span></p>
         <p className="col-span-2"><span className="text-neutral-500">Detalle:</span> {contenido}</p>
       </div>
 
       <p className="text-justify text-neutral-700 mb-2">
-        El presente envío contiene cannabis de uso medicinal y/o derivados dispensados a un paciente inscripto en el
-        Registro del Programa de Cannabis (REPROCANN), en el marco de la Ley 27.350, su Decreto Reglamentario 883/2020
-        y normativa complementaria. El destinatario es socio de Siembra Nativa Club y ha designado a la asociación como
-        cultivador solidario. La cantidad transportada corresponde a la dispensa mensual autorizada y se adjunta copia
-        del certificado REPROCANN vigente del destinatario. Ante cualquier consulta, comunicarse con el club.
+        El destinatario es socio de la Asociación Civil María Nativa Club de Cultivo, CUIT N.° 30-71848590-4,
+        organización inscripta y autorizada por el Ministerio de Salud de la Nación en el marco del Registro del
+        Programa de Cannabis (REPROCANN) y la Ley N.° 27.350. La Asociación, en su carácter de cultivador
+        solidario/ONG habilitada, emite la presente Carta de Porte con carácter de declaración jurada, a los efectos
+        de amparar el traslado de material vegetal (cannabis y/o sus derivados) correspondiente a los socios
+        inscriptos de la organización, conforme la autorización vigente otorgada por dicho Ministerio.
       </p>
-
-      <div className="grid grid-cols-2 gap-6 mt-4 mb-1">
-        <div className="border-t border-neutral-400 pt-1 text-neutral-500 text-[10.5px]">Firma y aclaración — responsable del club</div>
-        <div className="border-t border-neutral-400 pt-1 text-neutral-500 text-[10.5px]">Fecha de despacho</div>
-      </div>
     </section>
   );
 }

@@ -322,7 +322,6 @@ export interface EstadisticasClub {
 
 // Tipo para formulario de onboarding REPROCANN
 export interface ReprocannFormData {
-  reprocann_numero: string;
   reprocann_categoria: ReprocannCategoria;
   reprocann_vencimiento: string;
   certificado: File;

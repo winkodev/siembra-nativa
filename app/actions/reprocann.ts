@@ -6,7 +6,6 @@ import { z } from 'zod';
 import type { ActionResponse } from '@/lib/types/database';
 
 const reprocannSchema = z.object({
-  reprocann_numero:      z.string().min(4, 'Número inválido'),
   reprocann_categoria:   z.enum(['paciente_cultiva', 'tercero_cultivador', 'ong']),
   reprocann_vencimiento: z.string().refine(v => !isNaN(Date.parse(v)), 'Fecha inválida'),
 });
@@ -29,7 +28,6 @@ export async function guardarReprocann(
   const { error } = await supabase
     .from('profiles')
     .update({
-      reprocann_numero:      parsed.data.reprocann_numero,
       reprocann_categoria:   parsed.data.reprocann_categoria,
       reprocann_vencimiento: parsed.data.reprocann_vencimiento,
       reprocann_estado:      'pendiente', // Vuelve a pendiente cuando se actualiza
@@ -77,7 +75,6 @@ export async function subirCertificado(
 
   // Datos extraídos del certificado (editables por el socio antes de subir)
   const vencimiento = (formData.get('reprocann_vencimiento') as string | null)?.trim() || null;
-  const numero      = (formData.get('reprocann_numero') as string | null)?.trim() || null;
   const categoriaRaw = (formData.get('reprocann_categoria') as string | null)?.trim() || null;
   const categoria = (['paciente_cultiva', 'tercero_cultivador', 'ong'] as const).includes(categoriaRaw as never)
     ? (categoriaRaw as 'paciente_cultiva' | 'tercero_cultivador' | 'ong')
@@ -95,7 +92,6 @@ export async function subirCertificado(
       reprocann_certificado_path: path,
       reprocann_estado: 'pendiente',
       ...(vencimiento ? { reprocann_vencimiento: vencimiento } : {}),
-      ...(numero      ? { reprocann_numero: numero } : {}),
       ...(categoria   ? { reprocann_categoria: categoria } : {}),
     })
     .eq('id', user.id);

@@ -319,23 +319,13 @@ export function ReprocannOnboardingClient({ profile }: { profile: Profile }) {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <div className="space-y-1.5">
                     <label className="text-xs text-foreground/80 font-medium">Fecha de vencimiento</label>
                     <input
                       type="date"
                       name="reprocann_vencimiento"
                       defaultValue={datos?.reprocann_vencimiento ?? profile.reprocann_vencimiento ?? ''}
-                      className="input-club w-full"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-foreground/80 font-medium">Número de registro</label>
-                    <input
-                      type="text"
-                      name="reprocann_numero"
-                      defaultValue={datos?.reprocann_numero ?? profile.reprocann_numero ?? ''}
-                      placeholder="Ej: 123456"
                       className="input-club w-full"
                     />
                   </div>

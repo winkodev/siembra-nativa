@@ -58,8 +58,8 @@ function MetricCard({ label, valor, icon, href, alerta }: MetricCardProps) {
 
 interface Props {
   metricas:  MetricasAdmin;
-  pendientes: Array<{ id: string; nombre: string; reprocann_estado: string; reprocann_numero: string | null; created_at: string }>;
-  porVencer:  Array<{ id: string; nombre: string; reprocann_numero: string | null; reprocann_vencimiento: string | null }>;
+  pendientes: Array<{ id: string; nombre: string; reprocann_estado: string; created_at: string }>;
+  porVencer:  Array<{ id: string; nombre: string; reprocann_vencimiento: string | null }>;
   porAprobar:  PedidoResumen[];
   porEntregar: PedidoResumen[];
   porArmar:    PedidoResumen[];
@@ -251,8 +251,7 @@ export function AdminDashboardClient({ metricas, pendientes, porVencer, porAprob
                   <div>
                     <p className="text-foreground text-sm font-semibold">{socio.nombre}</p>
                     <p className="text-muted-foreground text-xs mt-0.5">
-                      {socio.reprocann_numero ?? 'Sin número'}
-                      {socio.reprocann_vencimiento && <> · Vence {formatFecha(socio.reprocann_vencimiento)}</>}
+                      {socio.reprocann_vencimiento ? <>Vence {formatFecha(socio.reprocann_vencimiento)}</> : 'Sin vencimiento'}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -295,7 +294,7 @@ export function AdminDashboardClient({ metricas, pendientes, porVencer, porAprob
                 <div>
                   <p className="text-foreground text-sm font-semibold">{socio.nombre}</p>
                   <p className="text-muted-foreground text-xs mt-0.5">
-                    {socio.reprocann_numero ?? 'Sin número'} · Cargado {formatFecha(socio.created_at)}
+                    Cargado {formatFecha(socio.created_at)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

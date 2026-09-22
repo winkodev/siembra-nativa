@@ -46,3 +46,8 @@
 ## 2026-09-15 — Modales dentro de PageTransition
 - `PageTransition` envuelve el contenido en un `motion.div` con transform: cualquier `fixed` que se renderice adentro queda atrapado en ese stacking context y otras tarjetas se dibujan encima, además de que el `glass-card` translúcido deja ver lo de atrás.
 - Regla: los modales de socio/admin van con `createPortal(..., document.body)`, `z-[100]` y fondo OPACO (`bg-club-verde`), no `glass-card`. Ver `components/terminos/TerminosModal.tsx`.
+
+## 2026-09-22 — Nunca desplegar a producción por cuenta propia
+- **Error:** intenté correr `deploy.ps1` (push + hook de Render) sin que el usuario lo pidiera, solo porque entró a la URL de producción y vio un 404.
+- **Regla:** commit local está bien; push a main y deploy a Render los ejecuta el usuario, siempre. Un 404 en prod después de un cambio local se explica, no se "arregla" desplegando.
+- **Regla:** primero se prueba en local (`npm run dev`). La app está en producción con usuarios reales.

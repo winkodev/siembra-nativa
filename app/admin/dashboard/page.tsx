@@ -68,14 +68,14 @@ export default async function AdminDashboardPage() {
   ] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, nombre, reprocann_estado, reprocann_numero, created_at')
+      .select('id, nombre, reprocann_estado, created_at')
       .eq('reprocann_estado', 'pendiente')
       .eq('rol', 'socio')
       .order('created_at', { ascending: false })
       .limit(5),
     supabase
       .from('profiles')
-      .select('id, nombre, reprocann_numero, reprocann_vencimiento')
+      .select('id, nombre, reprocann_vencimiento')
       .eq('rol', 'socio')
       .eq('reprocann_estado', 'aprobado')
       .gte('reprocann_vencimiento', hoy)
