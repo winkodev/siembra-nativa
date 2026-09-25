@@ -41,16 +41,6 @@ export function labelReprocann(estado: ReprocannEstado): string {
   return map[estado];
 }
 
-// Label legible para categoría REPROCANN
-export function labelCategoria(cat: string): string {
-  const map: Record<string, string> = {
-    paciente_cultiva:   'Paciente que cultiva',
-    tercero_cultivador: 'Tercero cultivador',
-    ong:                'ONG',
-  };
-  return map[cat] ?? cat;
-}
-
 // Clase CSS para badge de pedido
 export function badgePedido(estado: EstadoPedido): string {
   const map: Record<EstadoPedido, string> = {

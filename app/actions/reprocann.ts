@@ -2,41 +2,7 @@
 
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
 import type { ActionResponse } from '@/lib/types/database';
-
-const reprocannSchema = z.object({
-  reprocann_categoria:   z.enum(['paciente_cultiva', 'tercero_cultivador', 'ong']),
-  reprocann_vencimiento: z.string().refine(v => !isNaN(Date.parse(v)), 'Fecha inválida'),
-});
-
-/** Guardar/actualizar datos de REPROCANN (sin certificado) */
-export async function guardarReprocann(
-  prevState: ActionResponse,
-  formData: FormData
-): Promise<ActionResponse> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: 'No autenticado' };
-
-  const raw = Object.fromEntries(formData);
-  const parsed = reprocannSchema.safeParse(raw);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.errors[0].message };
-  }
-
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      reprocann_categoria:   parsed.data.reprocann_categoria,
-      reprocann_vencimiento: parsed.data.reprocann_vencimiento,
-      reprocann_estado:      'pendiente', // Vuelve a pendiente cuando se actualiza
-    })
-    .eq('id', user.id);
-
-  if (error) return { ok: false, error: 'Error al guardar datos' };
-  return { ok: true, data: undefined };
-}
 
 /** Subir certificado PDF/imagen al bucket privado */
 export async function subirCertificado(
@@ -73,26 +39,13 @@ export async function subirCertificado(
     return { ok: false, error: 'Error al subir el archivo. Intentá de nuevo.' };
   }
 
-  // Datos extraídos del certificado (editables por el socio antes de subir)
-  const vencimiento = (formData.get('reprocann_vencimiento') as string | null)?.trim() || null;
-  const categoriaRaw = (formData.get('reprocann_categoria') as string | null)?.trim() || null;
-  const categoria = (['paciente_cultiva', 'tercero_cultivador', 'ong'] as const).includes(categoriaRaw as never)
-    ? (categoriaRaw as 'paciente_cultiva' | 'tercero_cultivador' | 'ong')
-    : null;
-
-  // Validar vencimiento si vino cargado
-  if (vencimiento && isNaN(Date.parse(vencimiento))) {
-    return { ok: false, error: 'La fecha de vencimiento no es válida' };
-  }
-
-  // Guardar la ruta + datos del certificado (NUNCA la URL pública)
+  // Guardar solo la ruta (NUNCA la URL pública). El vencimiento no lo carga el
+  // socio: lo revisa y completa el admin al aprobar el certificado.
   const { error: updateError } = await supabase
     .from('profiles')
     .update({
       reprocann_certificado_path: path,
       reprocann_estado: 'pendiente',
-      ...(vencimiento ? { reprocann_vencimiento: vencimiento } : {}),
-      ...(categoria   ? { reprocann_categoria: categoria } : {}),
     })
     .eq('id', user.id);
 

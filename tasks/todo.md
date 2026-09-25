@@ -295,3 +295,12 @@ Sin bloqueo total del sitio. Texto consultable desde el perfil (modal) una vez a
 - `CartaPorte` en la hoja 2 (arriba del certificado REPROCANN). Certificado con `max-h-[165mm]` para que entre todo en una hoja.
 - `/imprimir/pedido/preview` (admin): datos ficticios y certificado SVG placeholder. No lee ni escribe en la base ni audita.
 - Pendiente: revisar texto legal de la carta de porte y decidir si se muestra solo en pedidos con envío.
+
+## ✅ 2026-09-25: El socio solo sube el certificado; el admin carga el vencimiento
+
+- [x] Onboarding socio: solo archivo (sin fecha, sin categoría, sin extracción IA)
+- [x] subirCertificado: ignora fecha/categoría; borrar guardarReprocann (sin uso)
+- [x] Extracción IA pasa al admin: botón "Leer fecha del certificado" en el drawer
+- [x] Aprobar requiere vencimiento cargado
+- [x] Categoría fuera de la UI (todos son ONG): ReprocannStatus, admin socios, labelCategoria, ReprocannFormData
+- [x] tsc + prueba en local (aprobado por el usuario 2026-09-25)

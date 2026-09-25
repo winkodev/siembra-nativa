@@ -4,12 +4,11 @@ import { useFormState, useFormStatus } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
   Upload, Save, Loader2, FileText, CheckCircle2, User,
-  MapPin, Sparkles, AlertCircle, Clock, ExternalLink
+  MapPin, AlertCircle, Clock, ExternalLink
 } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { subirCertificado, verMiCertificado } from '@/app/actions/reprocann';
 import { guardarPerfil } from '@/app/actions/perfil';
-import { extraerDatosReprocann, type DatosExtraidos } from '@/app/actions/extraerReprocann';
 import { ReprocannStatus } from '@/components/reprocann/ReprocannStatus';
 import type { Profile, ActionResponse } from '@/lib/types/database';
 import { cn } from '@/lib/utils';
@@ -47,10 +46,6 @@ export function ReprocannOnboardingClient({ profile }: { profile: Profile }) {
   const [telVal, setTelVal] = useState(profile.telefono ?? '');
 
   const [fileName, setFileName]               = useState<string | null>(null);
-  const [extrayendo, setExtrayendo]           = useState(false);
-  const [extraido, setExtraido]               = useState(false);
-  const [datos, setDatos]                     = useState<DatosExtraidos | null>(null);
-  const [errorExtraccion, setErrorExtraccion] = useState<string | null>(null);
   const [verCertLoading, setVerCertLoading]   = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,31 +59,8 @@ export function ReprocannOnboardingClient({ profile }: { profile: Profile }) {
     }
   }
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setFileName(file.name);
-    setExtraido(false);
-    setDatos(null);
-    setErrorExtraccion(null);
-
-    if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return;
-
-    setExtrayendo(true);
-    try {
-      const fd = new FormData();
-      fd.append('certificado', file);
-      const res = await extraerDatosReprocann(fd);
-      if (res.ok) {
-        setDatos(res.data);       // guardamos lo leído del PDF para pre-llenar los campos
-        setExtraido(true);
-      } else {
-        setErrorExtraccion(res.error);
-      }
-    } finally {
-      setExtrayendo(false);
-    }
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setFileName(e.target.files?.[0]?.name ?? null);
   }
 
   return (
@@ -199,7 +171,7 @@ export function ReprocannOnboardingClient({ profile }: { profile: Profile }) {
           Certificado REPROCANN
         </h2>
         <p className="text-muted-foreground text-xs mb-5">
-          Subí tu certificado y el equipo lo revisará para habilitarte el acceso a pedidos.
+          Subí tu certificado. El equipo lo revisa, registra la fecha de vencimiento y te habilita los pedidos.
         </p>
 
         {/* Estado de revisión */}
@@ -241,7 +213,7 @@ export function ReprocannOnboardingClient({ profile }: { profile: Profile }) {
           </div>
         )}
 
-        {/* Formulario único de carga/reemplazo + datos del certificado */}
+        {/* Formulario de carga/reemplazo del certificado (solo el archivo) */}
         <form action={certAction} className="space-y-3">
             {certState && !certState.ok && (
               <div className="px-4 py-2.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">
@@ -264,12 +236,7 @@ export function ReprocannOnboardingClient({ profile }: { profile: Profile }) {
                   : 'border-club-verde-claro/50 bg-club-verde-claro/10 hover:border-club-dorado/40 hover:bg-club-dorado/5'
               )}
             >
-              {extrayendo ? (
-                <>
-                  <Loader2 className="w-8 h-8 text-club-dorado animate-spin" />
-                  <span className="text-foreground text-sm font-medium">Procesando...</span>
-                </>
-              ) : fileName ? (
+              {fileName ? (
                 <>
                   <CheckCircle2 className="w-8 h-8 text-club-dorado" />
                   <span className="text-foreground text-sm font-medium">{fileName}</span>
@@ -296,56 +263,6 @@ export function ReprocannOnboardingClient({ profile }: { profile: Profile }) {
               className="sr-only"
               onChange={handleFileChange}
             />
-
-            {errorExtraccion && (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                No pudimos leer el certificado automáticamente. Completá los datos a mano.
-              </div>
-            )}
-
-            {/* Datos del certificado — pre-llenados con lo leído del PDF y editables */}
-            {fileName && !extrayendo && (
-              <motion.div
-                key={JSON.stringify(datos)}
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-3 p-4 rounded-xl bg-club-dorado/5 border border-club-dorado/20"
-              >
-                {datos && (extraido) && (
-                  <div className="flex items-center gap-2 text-club-dorado text-xs font-medium">
-                    <Sparkles className="w-4 h-4 shrink-0" />
-                    Leímos estos datos del certificado. Revisalos antes de subir.
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-foreground/80 font-medium">Fecha de vencimiento</label>
-                    <input
-                      type="date"
-                      name="reprocann_vencimiento"
-                      defaultValue={datos?.reprocann_vencimiento ?? profile.reprocann_vencimiento ?? ''}
-                      className="input-club w-full"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs text-foreground/80 font-medium">Categoría</label>
-                  <select
-                    name="reprocann_categoria"
-                    defaultValue={datos?.reprocann_categoria ?? profile.reprocann_categoria ?? ''}
-                    className="input-club w-full bg-club-verde-medio appearance-none cursor-pointer"
-                  >
-                    <option value="">Seleccioná</option>
-                    <option value="paciente_cultiva">Paciente que cultiva</option>
-                    <option value="tercero_cultivador">Tercero cultivador</option>
-                    <option value="ong">ONG</option>
-                  </select>
-                </div>
-              </motion.div>
-            )}
 
             <div className="flex justify-end">
               <UploadButton />

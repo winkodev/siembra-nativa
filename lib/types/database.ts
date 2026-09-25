@@ -320,13 +320,6 @@ export interface EstadisticasClub {
   top_geneticas: { nombre: string; gramos: number }[];
 }
 
-// Tipo para formulario de onboarding REPROCANN
-export interface ReprocannFormData {
-  reprocann_categoria: ReprocannCategoria;
-  reprocann_vencimiento: string;
-  certificado: File;
-}
-
 // Database type completo para Supabase client
 // Nota: cada tabla/vista declara `Relationships: []` porque postgrest-js (v2.45+)
 // exige esa clave para considerar el schema válido; sin ella, todos los `.from()`

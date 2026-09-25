@@ -7,7 +7,7 @@ import {
   UserCheck, UserX, Store, X, ChevronRight, ExternalLink,
   Loader2, AlertCircle, Clock, Search, Users,
   ShoppingBag, Leaf, Scale, CalendarDays, Plus, Trash2, NotebookPen,
-  UserPlus, Mail, KeyRound, Copy, Check, Shield, ScrollText,
+  UserPlus, Mail, KeyRound, Copy, Check, Shield, ScrollText, Sparkles,
 } from 'lucide-react';
 import type { Profile, FichaSocio, TipoNotaSocio, RolUsuario } from '@/lib/types/database';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -21,6 +21,7 @@ import {
   agregarNotaSocio,
   eliminarNotaSocio,
   actualizarVencimientoReprocann,
+  leerVencimientoCertificado,
 } from '@/app/actions/socios';
 import { crearUsuario, cambiarPasswordAdmin, regenerarPasswordTemporal, type ModoAlta } from '@/app/actions/usuarios';
 
@@ -46,12 +47,6 @@ const REPROCANN_LABEL: Record<string, { label: string; color: string }> = {
 const ESTADO_LABEL: Record<string, { label: string; color: string }> = {
   activo:   { label: 'Activo',    color: 'text-green-400 bg-green-400/10 border-green-400/30' },
   inactivo: { label: 'Inactivo',  color: 'text-red-400   bg-red-400/10   border-red-400/30'   },
-};
-
-const CATEGORIA_LABEL: Record<string, string> = {
-  paciente_cultiva:   'Paciente cultivador',
-  tercero_cultivador: 'Tercero cultivador',
-  ong:                'ONG',
 };
 
 const filtrosReprocann = [
@@ -88,6 +83,8 @@ function SocioDrawer({
   // Vencimiento REPROCANN editable + cambio de clave de admins
   const [vencimiento, setVencimiento] = useState(initial.reprocann_vencimiento?.slice(0, 10) ?? '');
   const [vencimientoOk, setVencimientoOk] = useState(false);
+  // Lectura IA de la fecha del certificado (sugerencia; el admin la confirma con Guardar)
+  const [leyendoFecha, setLeyendoFecha] = useState(false);
   const [nuevaPass, setNuevaPass] = useState('');
   const [passOk, setPassOk]       = useState(false);
   // Contraseña temporal regenerada: queda visible hasta cerrar el drawer
@@ -154,6 +151,19 @@ function SocioDrawer({
       }
       return res;
     });
+  }
+
+  async function handleLeerFecha() {
+    setLeyendoFecha(true);
+    setError(null);
+    try {
+      const res = await leerVencimientoCertificado(socio.id);
+      if (!res.ok) setError(res.error);
+      else if (!res.data.vencimiento) setError('No se encontró la fecha de vencimiento en el certificado. Cargala a mano.');
+      else setVencimiento(res.data.vencimiento);
+    } finally {
+      setLeyendoFecha(false);
+    }
   }
 
   async function handleCambiarPasswordAdmin() {
@@ -350,14 +360,6 @@ function SocioDrawer({
                 )}
               </div>
 
-              {socio.reprocann_categoria && (
-                <div className="text-sm space-y-1">
-                    <p className="text-muted-foreground">
-                      Cat: <span className="text-foreground font-medium">{CATEGORIA_LABEL[socio.reprocann_categoria]}</span>
-                    </p>
-                </div>
-              )}
-
               {/* Certificado */}
               {socio.reprocann_certificado_path ? (
                 <button
@@ -372,9 +374,21 @@ function SocioDrawer({
                 <p className="text-xs text-muted-foreground italic">Sin certificado</p>
               )}
 
-              {/* Vencimiento editable (para corregir fechas o registrar renovación) */}
+              {/* Vencimiento: lo carga el admin al revisar el certificado (el socio no lo completa) */}
               <div className="space-y-1.5 pt-1">
-                <p className="text-xs text-muted-foreground font-medium">Fecha de vencimiento</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground font-medium">Fecha de vencimiento</p>
+                  {socio.reprocann_certificado_path && (
+                    <button
+                      onClick={handleLeerFecha}
+                      disabled={leyendoFecha || busy(repKey)}
+                      className="flex items-center gap-1 text-[11px] text-club-dorado hover:text-club-dorado/80 transition-colors disabled:opacity-50"
+                    >
+                      {leyendoFecha ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      Leer del certificado
+                    </button>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <input
                     type="date"
@@ -393,7 +407,9 @@ function SocioDrawer({
                   </button>
                 </div>
                 <p className="text-muted-foreground text-[11px]">
-                  Si el REPROCANN estaba vencido y la fecha nueva es futura, se re-aprueba solo.
+                  {socio.reprocann_vencimiento
+                    ? 'Si el REPROCANN estaba vencido y la fecha nueva es futura, se re-aprueba solo.'
+                    : 'Revisá el certificado y guardá la fecha de vencimiento para poder aprobar.'}
                 </p>
               </div>
 
@@ -402,7 +418,8 @@ function SocioDrawer({
                 {socio.reprocann_estado !== 'aprobado' ? (
                   <button
                     onClick={handleAprobar}
-                    disabled={busy(repKey)}
+                    disabled={busy(repKey) || !socio.reprocann_vencimiento}
+                    title={!socio.reprocann_vencimiento ? 'Primero guardá la fecha de vencimiento' : undefined}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-green-500/15 hover:bg-green-500/25 border border-green-500/30 text-green-400 transition-colors disabled:opacity-50"
                   >
                     {busy(repKey) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}

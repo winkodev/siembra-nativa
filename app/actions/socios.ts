@@ -3,6 +3,7 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { registrarAccion } from '@/lib/audit';
+import { extraerVencimientoReprocann } from '@/lib/reprocann/extraerVencimiento';
 import type { ActionResponse, FichaSocio, SocioNota, TipoNotaSocio } from '@/lib/types/database';
 
 // Verifica que el usuario sea admin y devuelve su ID
@@ -52,6 +53,17 @@ export async function aprobarReprocann(socioId: string): Promise<ActionResponse>
   if (!adminId) return { ok: false, error: 'No autorizado' };
 
   const service = createServiceClient();
+
+  // El vencimiento lo carga el admin al revisar el certificado: sin fecha no se aprueba
+  const { data: actual } = await service
+    .from('profiles')
+    .select('reprocann_vencimiento')
+    .eq('id', socioId)
+    .single();
+  if (!actual?.reprocann_vencimiento) {
+    return { ok: false, error: 'Cargá la fecha de vencimiento del certificado antes de aprobar' };
+  }
+
   const { error } = await service
     .from('profiles')
     .update({ reprocann_estado: 'aprobado', compra_habilitada: true })
@@ -222,4 +234,40 @@ export async function obtenerCertificadoUrl(socioId: string, path: string): Prom
 
   if (error || !data) return { ok: false, error: 'No se pudo generar el acceso al certificado' };
   return { ok: true, data: { url: data.signedUrl } };
+}
+
+// Admin: lee la fecha de vencimiento del certificado guardado en el bucket
+// (con IA) y la devuelve como SUGERENCIA. El admin la revisa y la guarda a mano.
+export async function leerVencimientoCertificado(socioId: string): Promise<ActionResponse<{ vencimiento: string | null }>> {
+  const adminId = await verificarAdmin();
+  if (!adminId) return { ok: false, error: 'No autorizado' };
+
+  const service = createServiceClient();
+  const { data: perfil } = await service
+    .from('profiles')
+    .select('reprocann_certificado_path')
+    .eq('id', socioId)
+    .single();
+
+  const path = perfil?.reprocann_certificado_path;
+  if (!path) return { ok: false, error: 'El socio no tiene certificado cargado' };
+
+  const { data: archivo, error } = await service.storage
+    .from('certificados-reprocann')
+    .download(path);
+  if (error || !archivo) return { ok: false, error: 'No se pudo descargar el certificado' };
+
+  // El bucket puede no informar el mime: se infiere por extensión
+  const ext  = path.split('.').pop()?.toLowerCase() ?? '';
+  const mime = ext === 'pdf' ? 'application/pdf'
+    : ext === 'png' ? 'image/png'
+    : ext === 'webp' ? 'image/webp'
+    : 'image/jpeg';
+
+  const res = await extraerVencimientoReprocann(await archivo.arrayBuffer(), mime);
+  if (!res.ok) return { ok: false, error: res.error };
+
+  // Acceso a documento sensible: queda auditado igual que "ver certificado"
+  await registrarAccion(createClient(), 'ver_certificado', 'reprocann_certificado', { path, motivo: 'leer_vencimiento' }, socioId);
+  return { ok: true, data: { vencimiento: res.vencimiento } };
 }

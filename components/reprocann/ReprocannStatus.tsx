@@ -2,13 +2,12 @@
 
 import { motion } from 'framer-motion';
 import { Shield, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
-import { cn, badgeReprocann, labelReprocann, labelCategoria, formatFecha, diasHasta, estadoEfectivoReprocann } from '@/lib/utils';
+import { cn, badgeReprocann, labelReprocann, formatFecha, diasHasta, estadoEfectivoReprocann } from '@/lib/utils';
 import type { Profile } from '@/lib/types/database';
 
 interface ReprocannStatusProps {
   profile: Pick<Profile,
-    'reprocann_estado' | 'reprocann_categoria' |
-    'reprocann_vencimiento' | 'reprocann_certificado_path'
+    'reprocann_estado' | 'reprocann_vencimiento' | 'reprocann_certificado_path'
   >;
   className?: string;
 }
@@ -21,7 +20,7 @@ const iconoEstado = {
 };
 
 export function ReprocannStatus({ profile, className }: ReprocannStatusProps) {
-  const { reprocann_estado, reprocann_categoria, reprocann_vencimiento } = profile;
+  const { reprocann_estado, reprocann_vencimiento } = profile;
   // Estado efectivo: vencido por fecha aunque el cron todavía no lo haya marcado
   const estadoEfectivo = estadoEfectivoReprocann(reprocann_estado, reprocann_vencimiento);
   const diasRestantes = reprocann_vencimiento ? diasHasta(reprocann_vencimiento) : null;
@@ -49,14 +48,8 @@ export function ReprocannStatus({ profile, className }: ReprocannStatusProps) {
       </div>
 
       {/* Datos — solo si hay info cargada por el admin */}
-      {(reprocann_categoria || reprocann_vencimiento) ? (
+      {reprocann_vencimiento ? (
         <div className="space-y-2.5">
-          {reprocann_categoria && (
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Categoría</span>
-              <span className="text-foreground">{labelCategoria(reprocann_categoria)}</span>
-            </div>
-          )}
           {reprocann_vencimiento && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Vencimiento</span>
