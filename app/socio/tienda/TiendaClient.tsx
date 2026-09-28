@@ -48,9 +48,8 @@ function BarraCannabinoide({ label, valor, max }: { label: string; valor: number
 }
 
 // Filtro unificado: flores secas + aceites + otros productos
-// 'productos' no tiene chip: lo activa el carrito por URL (?ver=productos)
-// y muestra solo productos, con los destacados arriba.
-type Filtro = 'todos' | 'flores' | 'aceite' | 'otros' | 'productos';
+type Filtro = 'todos' | 'flores' | 'aceite' | 'otros';
+const FILTROS: Filtro[] = ['todos', 'flores', 'aceite', 'otros'];
 
 // Entrada renderizable: una flor (genética) o un producto
 type Entry = { kind: 'flor'; data: StockPublico } | { kind: 'producto'; data: Producto };
@@ -64,8 +63,9 @@ interface Props {
 }
 
 export function TiendaClient({ flores, productos, puedeHacerPedidos, terminosPendientes }: Props) {
-  const soloProductos = useSearchParams().get('ver') === 'productos';
-  const [filtro, setFiltro]     = useState<Filtro>(soloProductos ? 'productos' : 'todos');
+  // El chip inicial puede venir por URL (el carrito enlaza a ?filtro=otros)
+  const filtroUrl = useSearchParams().get('filtro') as Filtro | null;
+  const [filtro, setFiltro]     = useState<Filtro>(filtroUrl && FILTROS.includes(filtroUrl) ? filtroUrl : 'todos');
   const [busqueda, setBusqueda] = useState('');
 
   // Lista combinada: flores primero, productos después (destacados primero)
@@ -81,7 +81,6 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos, terminosPen
     if (filtro === 'flores' && e.kind !== 'flor') return false;
     if (filtro === 'aceite' && !(e.kind === 'producto' && e.data.categoria === 'aceite')) return false;
     if (filtro === 'otros'  && !(e.kind === 'producto' && e.data.categoria !== 'aceite')) return false;
-    if (filtro === 'productos' && e.kind !== 'producto') return false;
     // Filtro por búsqueda
     return e.data.nombre.toLowerCase().includes(q);
   });

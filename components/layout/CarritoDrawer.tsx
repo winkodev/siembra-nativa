@@ -223,7 +223,7 @@ export function CarritoDrawer({ upsellTitulo, upsellTexto }: Props) {
                     productos={destacados}
                     tieneItem={p => tieneItem({ tipo_item: 'producto', id: p.id })}
                     onAgregar={agregarDestacado}
-                    onVerCatalogo={() => { setAbierto(false); router.push('/socio/tienda?ver=productos'); }}
+                    onVerCatalogo={() => { setAbierto(false); router.push('/socio/tienda?filtro=otros'); }}
                     onContinuar={irAConfirmar}
                     onVolver={() => setPaso('items')}
                   />
