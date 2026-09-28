@@ -11,7 +11,8 @@ import type {
 export async function crearPedido(
   items: CarritoItem[],
   notas: string,
-  franjaId?: string | null
+  franjaId?: string | null,
+  cuponId?: string | null
 ): Promise<ActionResponse<{ pedido_id: string }>> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -32,6 +33,8 @@ export async function crearPedido(
     p_items: payload,
     p_notas: notas || null,
     p_franja_id: franjaId ?? null,
+    // Cupón personal: la base lo valida (dueño, disponible, vencimiento, flores) y lo marca usado
+    p_cupon_id: cuponId ?? null,
   });
 
   if (error || !data) {
@@ -152,6 +155,11 @@ export async function cambiarEstadoPedido(
       await supabase.from('pedidos').update({ estado: 'pendiente' }).eq('id', pedidoId);
       return { ok: false, error: 'Error al descontar stock: ' + stockError.message };
     }
+  }
+
+  // Cancelar libera el cupón que se haya usado en el pedido (vuelve a disponible)
+  if (nuevoEstado === 'cancelado') {
+    await supabase.rpc('liberar_cupon_pedido', { p_pedido_id: pedidoId });
   }
 
   if (nuevoEstado === 'cancelado' && pedido.estado === 'aprobado') {

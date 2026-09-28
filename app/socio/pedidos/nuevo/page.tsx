@@ -12,6 +12,7 @@ import { useCarrito } from '@/lib/context/CarritoContext';
 import { crearPedido, subirComprobante } from '@/app/actions/pedidos';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatGramos, formatFranja, formatPrecio, labelTipo, labelCategoriaProducto } from '@/lib/utils';
+import { montoCupon, motivoCuponNoAplica, labelCupon } from '@/lib/utils/cupones';
 import type { FranjaHoraria, CarritoItem } from '@/lib/types/database';
 
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.08 } } };
@@ -25,7 +26,7 @@ function montoItem(i: CarritoItem): number {
 }
 
 export default function NuevoPedidoPage() {
-  const { items, vaciar, descuento20, descuento40 } = useCarrito();
+  const { items, vaciar, descuento20, descuento40, cupon, quitarCupon } = useCarrito();
   const router = useRouter();
   const [notas, setNotas]     = useState('');
   const [loading, setLoading] = useState(false);
@@ -100,7 +101,11 @@ export default function NuevoPedidoPage() {
   const descMonto  = Math.round(subtotalFlores * descPct) / 100;
   const envioGratis = gratisDesde > 0 && totalGramos >= gratisDesde;
   const montoEnvio = costoEnvio > 0 && !envioGratis ? costoEnvio : 0;
-  const totalMonto = subtotal - descMonto + montoEnvio;
+  // Cupón aplicado desde el carrito (mismo cálculo que la base; solo viaja si aplica)
+  const baseCupon   = { subtotalFlores, descMonto, subtotalProd: subtotal - subtotalFlores, montoEnvio, totalGramos, items };
+  const cuponMotivo = cupon ? motivoCuponNoAplica(cupon, baseCupon) : null;
+  const cuponMonto  = cupon ? montoCupon(cupon, baseCupon) : 0;
+  const totalMonto  = subtotal - descMonto + montoEnvio - cuponMonto;
 
   const handleConfirmar = async () => {
     if (franjas.length > 0 && !franjaId) { setError('Elegí un horario de entrega'); return; }
@@ -110,13 +115,15 @@ export default function NuevoPedidoPage() {
 
     setLoading(true);
     setError(null);
-    const res = await crearPedido(items, notas, franjaId);
+    const res = await crearPedido(items, notas, franjaId, cupon && !cuponMotivo ? cupon.id : null);
 
     if (!res.ok) {
       setLoading(false);
       setError(res.error);
       return;
     }
+    // El cupón ya quedó usado en la base: no debe reaparecer en el próximo carrito
+    if (cupon) quitarCupon();
 
     // Subir el comprobante asociado al pedido recién creado
     if (comprobante) {
@@ -235,6 +242,14 @@ export default function NuevoPedidoPage() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-emerald-400 font-semibold">Bonificación envío</span>
                   <span className="text-emerald-400 font-semibold">−{formatPrecio(costoEnvio)}</span>
+                </div>
+              )}
+              {cupon && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className={cn('font-semibold', cuponMotivo ? 'text-amber-300' : 'text-club-dorado')}>
+                    Cupón · {labelCupon(cupon)}{cuponMotivo && <span className="font-normal text-xs"> — {cuponMotivo}</span>}
+                  </span>
+                  <span className="text-club-dorado font-semibold">{cuponMonto > 0 ? `−${formatPrecio(cuponMonto)}` : '—'}</span>
                 </div>
               )}
               <div className="flex items-center justify-between pt-1.5 border-t border-club-verde-claro/20">

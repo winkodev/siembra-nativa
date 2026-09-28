@@ -122,6 +122,9 @@ export interface Pedido {
   monto_total: number | null;
   monto_envio: number | null;
   monto_descuento: number | null;
+  // Cupón personal aplicado al confirmar (ver tabla cupones)
+  cupon_id: string | null;
+  monto_cupon: number | null;
   // Controles previos a la aprobación (quién y cuándo)
   armado_por: string | null;
   armado_at: string | null;
@@ -197,6 +200,32 @@ export interface Newsletter {
 }
 
 // Notificación in-app para el socio (pedido confirmado/entregado, avisos)
+// Cupón personal: lo crea el admin para un socio, un solo uso, se aplica en crear_pedido
+export type TipoCupon = 'porcentaje' | 'monto' | 'producto_gratis' | 'envio_gratis';
+export type EstadoCupon = 'disponible' | 'usado' | 'anulado';
+
+export interface Cupon {
+  id: string;
+  socio_id: string;
+  tipo: TipoCupon;
+  valor: number | null;          // % o $ según tipo
+  producto_id: string | null;    // producto_gratis
+  cantidad: number | null;       // producto_gratis: unidades
+  mensaje: string;               // texto libre que ve el socio
+  vence_at: string | null;
+  estado: EstadoCupon;
+  visto_at: string | null;       // popup mostrado
+  pedido_id: string | null;
+  usado_at: string | null;
+  creado_por: string | null;
+  created_at: string;
+}
+
+// Cupón con el producto de regalo resuelto (lo que ve el socio y guarda el carrito)
+export interface CuponConProducto extends Cupon {
+  producto: { nombre: string; precio: number | null; categoria: CategoriaProducto; stock: number } | null;
+}
+
 export interface Notificacion {
   id: string;
   socio_id: string;
@@ -402,6 +431,12 @@ export interface Database {
         Update: Partial<Omit<SocioNota, 'id' | 'created_at'>>;
         Relationships: [];
       };
+      cupones: {
+        Row: Cupon;
+        Insert: Partial<Omit<Cupon, 'id' | 'created_at'>> & { socio_id: string; tipo: TipoCupon; mensaje: string };
+        Update: Partial<Omit<Cupon, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
       notificaciones: {
         Row: Notificacion;
         Insert: Partial<Omit<Notificacion, 'id' | 'created_at'>> & { socio_id: string; titulo: string };
@@ -433,6 +468,10 @@ export interface Database {
         Args: { p_pedido_id: string };
         Returns: void;
       };
+      liberar_cupon_pedido: {
+        Args: { p_pedido_id: string };
+        Returns: void;
+      };
       estadisticas_club: {
         Args: { p_desde: string; p_hasta: string; p_agrupacion: string };
         Returns: EstadisticasClub;
@@ -442,6 +481,7 @@ export interface Database {
           p_items: { tipo: string; id: string; cantidad: number }[];
           p_notas: string | null;
           p_franja_id: string | null;
+          p_cupon_id?: string | null;
         };
         Returns: { pedido_id: string; numero: number };
       };

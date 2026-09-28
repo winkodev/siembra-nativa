@@ -50,6 +50,7 @@ interface PedidoAdmin {
   monto_total: number | null;
   monto_envio: number | null;
   monto_descuento: number | null;
+  monto_cupon: number | null;
   // Controles previos a la aprobación
   armado_at: string | null;
   comprobante_ok_at: string | null;
@@ -428,6 +429,9 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }:
                                 {(pedido.monto_envio ?? 0) > 0 && ` · envío ${formatPrecio(pedido.monto_envio!)}`}
                                 {(pedido.monto_descuento ?? 0) > 0 && (
                                   <span className="text-emerald-400"> · descuento −{formatPrecio(pedido.monto_descuento!)}</span>
+                                )}
+                                {(pedido.monto_cupon ?? 0) > 0 && (
+                                  <span className="text-club-dorado"> · cupón −{formatPrecio(pedido.monto_cupon!)}</span>
                                 )}
                               </span>
                               <span className="text-club-dorado font-bold text-sm">{formatPrecio(pedido.monto_total)}</span>

@@ -138,6 +138,12 @@ export function OrdenPedido({ pedido: p, socio, items, certUrl, certEsPdf, previ
                       <td className="py-1 text-right font-semibold">−{formatPrecio(p.monto_descuento)}</td>
                     </tr>
                   )}
+                  {(p.monto_cupon ?? 0) > 0 && (
+                    <tr>
+                      <td colSpan={3} className="py-1 text-right text-[11px] uppercase tracking-widest text-neutral-500">Cupón</td>
+                      <td className="py-1 text-right font-semibold">−{formatPrecio(p.monto_cupon)}</td>
+                    </tr>
+                  )}
                   {(p.monto_envio ?? 0) > 0 && (
                     <tr>
                       <td colSpan={3} className="py-1 text-right text-[11px] uppercase tracking-widest text-neutral-500">Envío</td>

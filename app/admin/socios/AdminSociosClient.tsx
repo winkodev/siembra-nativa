@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { Profile, FichaSocio, TipoNotaSocio, RolUsuario } from '@/lib/types/database';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { CuponesSocio } from '@/components/admin/CuponesSocio';
 import { cn, formatFecha, formatGramos, estadoEfectivoReprocann } from '@/lib/utils';
 import {
   toggleEstadoSocio,
@@ -585,6 +586,9 @@ function SocioDrawer({
               </div>
             </section>
           )}
+
+          {/* Cupones personales (solo socios) */}
+          {socio.rol === 'socio' && <CuponesSocio socioId={socio.id} socioNombre={socio.nombre} />}
 
           {/* Actividad del socio */}
           <section className="space-y-2">

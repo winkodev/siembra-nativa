@@ -7,6 +7,7 @@ import { PageTransition } from '@/components/layout/PageTransition';
 import { CarritoProvider } from '@/lib/context/CarritoContext';
 import { CarritoDrawer } from '@/components/layout/CarritoDrawer';
 import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
+import { CuponPopup } from '@/components/socio/CuponPopup';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -41,6 +42,9 @@ export default async function SocioLayout({ children }: { children: React.ReactN
 
           {/* Contacto directo con el club por WhatsApp */}
           <WhatsAppButton />
+
+          {/* Popup "Tenés un regalo": una vez por cupón nuevo */}
+          <CuponPopup />
 
           <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto">
             <PageTransition>

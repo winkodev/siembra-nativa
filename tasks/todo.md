@@ -117,7 +117,7 @@ FIFO por lote y el admin intacto). Se unifica la presentación y el pedido pasa 
    - [ ] tipos
 3. **Carrito** — reducer con clave `tipo_item:id`; drawer: gramos para flores, unidades para productos;
    límite max_gramos solo cuenta flores.
-   - [ ] CarritoContext + CarritoDrawer
+   - [x] CarritoContext + CarritoDrawer
 4. **Página unificada** — nueva `TiendaClient` combinando `stock_publico` + `productos`, filtro + buscador.
    - [ ] tienda
 5. **Pedido** — `crearPedido` separa flores/productos, valida límite y stock de cada uno; confirmación lista ambos.
@@ -326,3 +326,17 @@ Sin bloqueo total del sitio. Texto consultable desde el perfil (modal) una vez a
 - [x] Catálogo: filtro "Destacados" (`?filtro=destacados`), destacados primero, estrella en el badge.
 - [x] Configuración → General: título y bajada del paso.
 - [x] Probado en local (aprobado por el usuario). SQL ya ejecutado en Supabase. Pendiente deploy.
+
+## 🟢 EN CURSO 2026-09-28: Cupones personales
+
+Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean solo desde la ficha del socio.
+
+- [x] SQL `supabase/cupones.sql`: tabla cupones + RLS, columnas cupon_id/monto_cupon en pedidos, crear_pedido v5 con p_cupon_id
+- [x] Tipos + actions (admin: crear/anular/listar; socio: disponibles, marcar visto)
+- [x] Admin → Socios: sección Cupones en el drawer
+- [ ] CarritoContext: cupón aplicado persistido; Drawer: tarjeta + línea de descuento + animación squishy
+- [x] Popup "Tenés un regalo" al entrar (una vez por cupón)
+- [x] Nuevo pedido: línea cupón y envío a crearPedido
+- [x] Cancelar pedido libera el cupón
+- [x] Admin pedidos + orden impresa: línea cupón
+- [ ] tsc + prueba local

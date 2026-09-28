@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, X, Trash2, ArrowRight, AlertTriangle, Minus, Plus, Gift, BadgePercent, Sparkles, Package, Check } from 'lucide-react';
+import { ShoppingBag, X, Trash2, ArrowRight, AlertTriangle, Minus, Plus, Gift, BadgePercent, Sparkles, Package, Check, Ticket } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
 import { createClient } from '@/lib/supabase/client';
 import { cn, labelTipo, labelCategoriaProducto, formatPrecio } from '@/lib/utils';
-import type { Producto } from '@/lib/types/database';
+import type { Producto, CuponConProducto } from '@/lib/types/database';
+import { misCupones } from '@/app/actions/cupones';
+import { montoCupon, motivoCuponNoAplica, labelCupon } from '@/lib/utils/cupones';
 
 const GRAMOS = [10, 20, 30, 40];
 
@@ -18,12 +20,14 @@ interface Props {
 }
 
 export function CarritoDrawer({ upsellTitulo, upsellTexto }: Props) {
-  const { items, totalItems, totalGramos, quitar, actualizar, vaciar, abierto, setAbierto, maxGramos, descuento20, descuento40, costoEnvio, envioGratisDesde, contadorAgregados, agregar, tieneItem } = useCarrito();
+  const { items, totalItems, totalGramos, quitar, actualizar, vaciar, abierto, setAbierto, maxGramos, descuento20, descuento40, costoEnvio, envioGratisDesde, contadorAgregados, agregar, tieneItem, cupon, aplicarCupon, quitarCupon } = useCarrito();
   const router = useRouter();
 
   // Paso intermedio: 'items' (carrito) o 'sumar' (oferta de destacados)
   const [paso, setPaso] = useState<'items' | 'sumar'>('items');
   const [destacados, setDestacados] = useState<Producto[]>([]);
+  // Cupones disponibles del socio (uno por pedido: se ofrece el primero no aplicado)
+  const [cuponesDisponibles, setCuponesDisponibles] = useState<CuponConProducto[]>([]);
 
   // Destacados activos con stock: se cargan al montar (así ya están listos
   // cuando el socio toca "Continuar pedido") y se refrescan al abrir el carrito
@@ -37,6 +41,10 @@ export function CarritoDrawer({ upsellTitulo, upsellTexto }: Props) {
       .gt('stock', 0)
       .order('nombre')
       .then(({ data }) => setDestacados((data as Producto[]) ?? []));
+  }, [abierto]);
+
+  useEffect(() => {
+    misCupones().then(res => { if (res.ok) setCuponesDisponibles(res.data); });
   }, [abierto]);
 
   // Los que todavía no están en el pedido
@@ -83,7 +91,24 @@ export function CarritoDrawer({ upsellTitulo, upsellTexto }: Props) {
   const envioGratis = envioGratisDesde > 0 && totalGramos >= envioGratisDesde;
   const montoEnvio  = costoEnvio > 0 && !envioGratis ? costoEnvio : 0;
 
-  const totalMonto = subtotalFlores - descMonto + subtotalProd + montoEnvio;
+  // Cupón aplicado: se calcula igual que en la base (después del descuento por cantidad)
+  const baseCupon = { subtotalFlores, descMonto, subtotalProd, montoEnvio, totalGramos, items };
+  const cuponMotivo = cupon ? motivoCuponNoAplica(cupon, baseCupon) : null;
+  const cuponMonto  = cupon ? montoCupon(cupon, baseCupon) : 0;
+  const cuponOfrecido = !cupon ? cuponesDisponibles[0] ?? null : null;
+
+  const totalMonto = subtotalFlores - descMonto + subtotalProd + montoEnvio - cuponMonto;
+
+  // Aplicar: si es producto gratis y no está en el carrito, lo agrega
+  function aplicar(c: CuponConProducto) {
+    if (c.tipo === 'producto_gratis' && c.producto && c.producto_id && !tieneItem({ tipo_item: 'producto', id: c.producto_id })) {
+      agregar({
+        tipo_item: 'producto', id: c.producto_id, nombre: c.producto.nombre, categoria: c.producto.categoria,
+        precio: c.producto.precio, cantidad_unidades: c.cantidad ?? 1, stock_disponible: c.producto.stock,
+      });
+    }
+    aplicarCupon(c);
+  }
 
   // Nudge: empuja al próximo umbral de descuento alcanzable. El ahorro se
   // proyecta sobre el subtotal QUE TENDRÍA al llegar al umbral (los gramos
@@ -194,11 +219,12 @@ export function CarritoDrawer({ upsellTitulo, upsellTexto }: Props) {
             />
 
             {/* Modal centrado */}
+            {/* Entrada squishy: arranca chiquito y ancho, y rebota hasta su tamaño */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 16 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              initial={{ opacity: 0, scale: 0.7, scaleX: 1.15, y: 28 }}
+              animate={{ opacity: 1, scale: 1, scaleX: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 16, transition: { duration: 0.15 } }}
+              transition={{ type: 'spring', damping: 15, stiffness: 380, mass: 0.8 }}
               className="fixed z-50 inset-x-4 top-[10vh] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-md"
             >
               <div className="bg-club-verde border border-club-verde-claro/30 rounded-2xl shadow-2xl overflow-hidden">
@@ -322,6 +348,42 @@ export function CarritoDrawer({ upsellTitulo, upsellTexto }: Props) {
                 {/* Footer */}
                 {items.length > 0 && (
                   <div className="px-5 py-4 border-t border-club-verde-claro/30 space-y-3">
+                    {/* Cupón personal: ofrecido (Aplicar) o ya aplicado (Quitar) */}
+                    {(cuponOfrecido || cupon) && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.85, scaleX: 1.1 }}
+                        animate={{ opacity: 1, scale: 1, scaleX: 1 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 14 }}
+                        className="rounded-xl bg-club-dorado/10 border border-club-dorado/40 px-3 py-2.5 space-y-1.5"
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <Ticket className="w-4 h-4 text-club-dorado shrink-0 mt-0.5" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-club-dorado font-bold text-sm">{labelCupon((cupon ?? cuponOfrecido)!)}</p>
+                            <p className="text-foreground/80 text-xs leading-relaxed whitespace-pre-wrap">{(cupon ?? cuponOfrecido)!.mensaje}</p>
+                          </div>
+                        </div>
+                        {cupon ? (
+                          <div className="flex items-center justify-between gap-2">
+                            <p className={cn('text-xs', cuponMotivo ? 'text-amber-300' : 'text-emerald-400 font-semibold')}>
+                              {cuponMotivo ?? `Aplicado: −${formatPrecio(cuponMonto)}`}
+                            </p>
+                            <button onClick={quitarCupon} className="text-xs text-muted-foreground hover:text-red-400 transition-colors shrink-0">
+                              Quitar
+                            </button>
+                          </div>
+                        ) : (
+                          <motion.button
+                            whileTap={{ scale: 0.94 }}
+                            onClick={() => aplicar(cuponOfrecido!)}
+                            className="w-full py-2 rounded-lg bg-club-dorado text-club-verde text-xs font-bold flex items-center justify-center gap-1.5 shadow-dorado-sm"
+                          >
+                            <Gift className="w-3.5 h-3.5" /> Aplicar cupón
+                          </motion.button>
+                        )}
+                      </motion.div>
+                    )}
+
                     {/* Nudge hacia el próximo descuento por cantidad */}
                     {nudge && (
                       <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs leading-relaxed">
@@ -378,6 +440,12 @@ export function CarritoDrawer({ upsellTitulo, upsellTexto }: Props) {
                             <span className="text-emerald-400 font-semibold">−{formatPrecio(costoEnvio)}</span>
                           </div>
                         )}
+                        {cuponMonto > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-club-dorado font-semibold">Cupón</span>
+                            <span className="text-club-dorado font-semibold">−{formatPrecio(cuponMonto)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-muted-foreground">Total estimado</span>
                           <span className="text-club-dorado font-bold text-base">{formatPrecio(totalMonto)}</span>
@@ -411,12 +479,14 @@ export function CarritoDrawer({ upsellTitulo, upsellTexto }: Props) {
                         El máximo por pedido es {maxGramos}g. Reducí alguna cantidad.
                       </div>
                     ) : (
-                      <button
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        whileHover={{ scale: 1.02 }}
                         onClick={continuar}
                         className="btn-primary w-full py-3 text-sm flex items-center justify-center gap-2"
                       >
                         Continuar pedido <ArrowRight className="w-4 h-4" />
-                      </button>
+                      </motion.button>
                     )}
 
                     <button

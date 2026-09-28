@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useReducer, useEffect, useState } from 'react';
-import type { CarritoItem, ItemRef } from '@/lib/types/database';
+import type { CarritoItem, ItemRef, CuponConProducto } from '@/lib/types/database';
 
 // Reexport para que los consumidores importen el tipo desde el contexto si quieren
 export type { CarritoItem, CarritoItemGenetica, CarritoItemProducto, ItemRef } from '@/lib/types/database';
@@ -73,6 +73,7 @@ function reducer(state: CarritoState, action: CarritoAction): CarritoState {
 }
 
 const STORAGE_KEY = 'sn_carrito';
+const CUPON_KEY   = 'sn_cupon';   // cupón aplicado (uno por pedido)
 
 interface CarritoContextValue {
   items:             CarritoItem[];
@@ -93,6 +94,10 @@ interface CarritoContextValue {
   costoEnvio:        number;
   envioGratisDesde:  number;
   contadorAgregados: number;
+  // Cupón personal aplicado al pedido (uno por pedido; la base lo valida al confirmar)
+  cupon:             CuponConProducto | null;
+  aplicarCupon:      (c: CuponConProducto) => void;
+  quitarCupon:       () => void;
 }
 
 const CarritoContext = createContext<CarritoContextValue | null>(null);
@@ -114,6 +119,7 @@ export function CarritoProvider({
 }) {
   const [state, dispatch] = useReducer(reducer, { items: [], contadorAgregados: 0 });
   const [abierto, setAbierto] = useState(false);
+  const [cupon, setCupon]     = useState<CuponConProducto | null>(null);
 
   // Restaurar carrito desde localStorage al montar
   useEffect(() => {
@@ -126,6 +132,8 @@ export function CarritoProvider({
           .filter(i => i && (i.tipo_item === 'genetica' || i.tipo_item === 'producto'))
           .forEach(item => dispatch({ type: 'AGREGAR', item }));
       }
+      const cuponGuardado = localStorage.getItem(CUPON_KEY);
+      if (cuponGuardado) setCupon(JSON.parse(cuponGuardado) as CuponConProducto);
     } catch {}
   }, []);
 
@@ -133,6 +141,11 @@ export function CarritoProvider({
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items));
   }, [state.items]);
+
+  useEffect(() => {
+    if (cupon) localStorage.setItem(CUPON_KEY, JSON.stringify(cupon));
+    else localStorage.removeItem(CUPON_KEY);
+  }, [cupon]);
 
   const totalGramos = state.items.reduce(
     (acc, i) => acc + (i.tipo_item === 'genetica' ? i.cantidad_gramos : 0),
@@ -146,7 +159,7 @@ export function CarritoProvider({
     agregar:           (item) => dispatch({ type: 'AGREGAR', item }),
     quitar:            (ref)  => dispatch({ type: 'QUITAR', key: itemKey(ref) }),
     actualizar:        (ref, cantidad) => dispatch({ type: 'ACTUALIZAR', key: itemKey(ref), cantidad }),
-    vaciar:            ()     => dispatch({ type: 'VACIAR' }),
+    vaciar:            ()     => { dispatch({ type: 'VACIAR' }); setCupon(null); },
     tieneItem:         (ref)  => state.items.some(i => itemKey(i) === itemKey(ref)),
     abierto,
     setAbierto,
@@ -156,6 +169,9 @@ export function CarritoProvider({
     costoEnvio,
     envioGratisDesde,
     contadorAgregados: state.contadorAgregados,
+    cupon,
+    aplicarCupon:      (c) => setCupon(c),
+    quitarCupon:       () => setCupon(null),
   };
 
   return <CarritoContext.Provider value={value}>{children}</CarritoContext.Provider>;

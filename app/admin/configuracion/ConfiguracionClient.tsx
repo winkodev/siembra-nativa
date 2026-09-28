@@ -349,6 +349,8 @@ function FranjasTab({ franjas: inicial }: { franjas: FranjaHoraria[] }) {
 const ACCION_LABEL: Record<string, string> = {
   destacar_producto:     'Destacó un producto',
   quitar_destacado_producto: 'Quitó un producto de destacados',
+  crear_cupon:           'Creó un cupón para un socio',
+  anular_cupon:          'Anuló un cupón',
   editar_datos_pago:     'Cambió los datos de pago (alias / CBU)',
   editar_config:         'Editó la configuración',
   crear_ubicacion:       'Creó una ubicación',
