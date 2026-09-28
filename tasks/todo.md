@@ -327,7 +327,7 @@ Sin bloqueo total del sitio. Texto consultable desde el perfil (modal) una vez a
 - [x] Configuración → General: título y bajada del paso.
 - [x] Probado en local (aprobado por el usuario). SQL ya ejecutado en Supabase. Pendiente deploy.
 
-## 🟢 EN CURSO 2026-09-28: Cupones personales
+## ✅ 2026-09-28: Cupones personales (desplegado)
 
 Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean solo desde la ficha del socio.
 
@@ -339,4 +339,4 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - [x] Nuevo pedido: línea cupón y envío a crearPedido
 - [x] Cancelar pedido libera el cupón
 - [x] Admin pedidos + orden impresa: línea cupón
-- [ ] tsc + prueba local
+- [x] tsc + prueba local. SQL ejecutado. Deploy 9f6a260.
