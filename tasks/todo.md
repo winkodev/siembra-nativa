@@ -310,3 +310,10 @@ Sin bloqueo total del sitio. Texto consultable desde el perfil (modal) una vez a
 - Action `habilitarCompraManual(socioId, habilitar)`: cambia solo `compra_habilitada`, exige socio activo, audita.
 - Drawer del socio, tarjeta Tienda: botón Habilitar manual / Deshabilitar; leyenda "Manual (sin REPROCANN)".
 - No toca el estado REPROCANN: aprobar/rechazar/vencer siguen mandando después.
+
+## ✅ 2026-09-28: Datos de pago (alias / CBU) configurables por el superadmin
+
+- Mercado Pago descartado: sus T&C prohíben cannabis y derivados (jun-2025), riesgo de suspensión de cuenta.
+- Claves `pago_*` en `configuracion_app`; action `guardarDatosPago` (solo superadmin, CBU 22 dígitos, auditado).
+- Pestaña "Pagos" en Configuración visible solo al superadmin.
+- "Nuevo pedido": tarjeta "Cómo pagar" con total, alias y CBU copiables, antes del comprobante. Solo si comprobante obligatorio y hay datos.

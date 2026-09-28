@@ -4,15 +4,15 @@ import { useState, useMemo, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, MapPin, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Loader2, Check,
-  SlidersHorizontal, History, CalendarClock,
+  SlidersHorizontal, History, CalendarClock, Landmark,
 } from 'lucide-react';
 import { cn, formatFecha, formatFranja } from '@/lib/utils';
 import {
   crearUbicacion, actualizarUbicacion, eliminarUbicacion, toggleUbicacionActiva, guardarConfigApp,
-  crearFranja, actualizarFranja, eliminarFranja, toggleFranjaActiva,
+  crearFranja, actualizarFranja, eliminarFranja, toggleFranjaActiva, guardarDatosPago,
 } from '@/app/actions/configuracion';
 import type { Ubicacion, AuditLog, FranjaHoraria } from '@/lib/types/database';
-import type { AppConfig } from '@/lib/supabase/config';
+import type { AppConfig, DatosPago } from '@/lib/supabase/config';
 
 // Entrada de audit_log con los nombres resueltos
 export interface AuditEntry extends AuditLog {
@@ -26,6 +26,8 @@ const tabs = [
   { id: 'ubicaciones', label: 'Ubicaciones', icon: <MapPin className="w-4 h-4" /> },
   { id: 'actividad',   label: 'Actividad',   icon: <History className="w-4 h-4" /> },
 ];
+// Solo la ve el superadmin: alias / CBU donde transfieren los socios
+const tabPagos = { id: 'pagos', label: 'Pagos', icon: <Landmark className="w-4 h-4" /> };
 
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
 const fadeUp  = { hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: { duration: 0.25 } } };
@@ -35,11 +37,13 @@ interface Props {
   franjas:     FranjaHoraria[];
   config:      AppConfig;
   actividad:   AuditEntry[];
+  superadmin:  boolean;
 }
 
 
-export function ConfiguracionClient({ ubicaciones, franjas, config, actividad }: Props) {
+export function ConfiguracionClient({ ubicaciones, franjas, config, actividad, superadmin }: Props) {
   const [tab, setTab] = useState('general');
+  const tabsVisibles = superadmin ? [...tabs, tabPagos] : tabs;
 
   return (
     <div className="space-y-6">
@@ -57,7 +61,7 @@ export function ConfiguracionClient({ ubicaciones, franjas, config, actividad }:
       </div>
 
       <div className="flex gap-1.5 p-1 glass-card rounded-xl w-fit">
-        {tabs.map(t => (
+        {tabsVisibles.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -77,7 +81,86 @@ export function ConfiguracionClient({ ubicaciones, franjas, config, actividad }:
       {tab === 'horarios'    && <FranjasTab franjas={franjas} />}
       {tab === 'ubicaciones' && <UbicacionesTab ubicaciones={ubicaciones} />}
       {tab === 'actividad'   && <ActividadTab actividad={actividad} />}
+      {tab === 'pagos' && superadmin && <PagosTab config={config} />}
     </div>
+  );
+}
+
+// ── Tab Pagos (solo superadmin): alias / CBU para transferencias ──
+
+function PagosTab({ config }: { config: AppConfig }) {
+  const [datos, setDatos] = useState<DatosPago>({
+    pago_alias:         config.pago_alias,
+    pago_cbu:           config.pago_cbu,
+    pago_titular:       config.pago_titular,
+    pago_banco:         config.pago_banco,
+    pago_instrucciones: config.pago_instrucciones,
+  });
+  const [pending, startTransition] = useTransition();
+  const [saved, setSaved]          = useState(false);
+  const [error, setError]          = useState<string | null>(null);
+
+  const set = (k: keyof DatosPago) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setDatos(d => ({ ...d, [k]: e.target.value }));
+
+  const handleGuardar = () => {
+    setError(null);
+    startTransition(async () => {
+      const res = await guardarDatosPago(datos);
+      if (!res.ok) { setError(res.error); return; }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    });
+  };
+
+  return (
+    <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-4 max-w-lg">
+      <motion.div variants={fadeUp} className="glass-card p-5 space-y-4">
+        <div>
+          <p className="text-foreground font-medium text-sm">Cuenta para transferencias</p>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            El socio ve estos datos al confirmar el pedido, antes de adjuntar el comprobante.
+            Si alias y CBU están vacíos, no se muestra nada.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-xs text-foreground/80 font-medium">Alias</label>
+            <input value={datos.pago_alias} onChange={set('pago_alias')} className="input-club w-full" placeholder="club.nativa.mp" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-foreground/80 font-medium">CBU (22 dígitos)</label>
+            <input value={datos.pago_cbu} onChange={set('pago_cbu')} className="input-club w-full font-mono" inputMode="numeric" placeholder="0000000000000000000000" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-foreground/80 font-medium">Titular</label>
+            <input value={datos.pago_titular} onChange={set('pago_titular')} className="input-club w-full" placeholder="Asociación Civil María Nativa Club de Cultivo" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-foreground/80 font-medium">Banco</label>
+            <input value={datos.pago_banco} onChange={set('pago_banco')} className="input-club w-full" placeholder="Banco Nación" />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs text-foreground/80 font-medium">Instrucciones (opcional)</label>
+          <textarea value={datos.pago_instrucciones} onChange={set('pago_instrucciones')} rows={3}
+            className="input-club w-full resize-none" placeholder="Ej: poné tu nombre en el concepto de la transferencia." />
+        </div>
+
+        {error && (
+          <p className="px-4 py-2.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">{error}</p>
+        )}
+
+        <div className="flex justify-end">
+          <button onClick={handleGuardar} disabled={pending} className="btn-primary px-6 py-2.5 text-sm flex items-center gap-2">
+            {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : null}
+            {saved ? 'Guardado' : 'Guardar'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -264,6 +347,7 @@ function FranjasTab({ franjas: inicial }: { franjas: FranjaHoraria[] }) {
 
 // Traducción legible de cada acción registrada
 const ACCION_LABEL: Record<string, string> = {
+  editar_datos_pago:     'Cambió los datos de pago (alias / CBU)',
   editar_config:         'Editó la configuración',
   crear_ubicacion:       'Creó una ubicación',
   editar_ubicacion:      'Editó una ubicación',

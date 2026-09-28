@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ShoppingBag, ArrowLeft, Loader2, CheckCircle2, AlertTriangle,
-  CalendarClock, MapPin, Check, Receipt,
+  CalendarClock, MapPin, Check, Receipt, Landmark, Copy,
 } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
 import { crearPedido, subirComprobante } from '@/app/actions/pedidos';
@@ -41,6 +41,17 @@ export default function NuevoPedidoPage() {
   const [comprobante, setComprobante] = useState<File | null>(null);
   const [costoEnvio, setCostoEnvio] = useState(0);
   const [gratisDesde, setGratisDesde] = useState(0);
+  // Datos para transferir (los carga el superadmin en Configuración → Pagos)
+  const [pago, setPago] = useState({ alias: '', cbu: '', titular: '', banco: '', instrucciones: '' });
+  const [copiado, setCopiado] = useState<'alias' | 'cbu' | null>(null);
+
+  async function copiar(campo: 'alias' | 'cbu', valor: string) {
+    try {
+      await navigator.clipboard.writeText(valor);
+      setCopiado(campo);
+      setTimeout(() => setCopiado(null), 1500);
+    } catch { /* sin permiso de portapapeles: el socio lo copia a mano */ }
+  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -55,6 +66,13 @@ export default function NuevoPedidoPage() {
         setComprobanteObligatorio(map['comprobante_obligatorio'] === 'true');
         setCostoEnvio(parseFloat(map['costo_envio'] ?? '0') || 0);
         setGratisDesde(parseFloat(map['envio_gratis_desde'] ?? '0') || 0);
+        setPago({
+          alias:         map['pago_alias'] ?? '',
+          cbu:           map['pago_cbu'] ?? '',
+          titular:       map['pago_titular'] ?? '',
+          banco:         map['pago_banco'] ?? '',
+          instrucciones: map['pago_instrucciones'] ?? '',
+        });
       });
 
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -299,6 +317,60 @@ export default function NuevoPedidoPage() {
           </div>
         )}
       </motion.div>
+
+      {/* Cómo pagar: alias / CBU del club, solo si el superadmin los cargó */}
+      {comprobanteObligatorio && (pago.alias || pago.cbu) && (
+        <motion.div variants={fadeUp} className="glass-card p-5 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <p className="text-sm text-foreground/80 font-medium flex items-center gap-2">
+              <Landmark className="w-4 h-4 text-club-dorado" />
+              Cómo pagar
+            </p>
+            {totalMonto > 0 && (
+              <p className="text-sm">
+                <span className="text-muted-foreground">Transferí </span>
+                <span className="font-bold text-club-dorado">{formatPrecio(totalMonto)}</span>
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {pago.alias && (
+              <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Alias</p>
+                  <p className="text-foreground font-semibold truncate">{pago.alias}</p>
+                </div>
+                <button type="button" onClick={() => copiar('alias', pago.alias)}
+                  className="flex items-center gap-1 text-xs text-club-dorado hover:text-club-dorado/80 shrink-0">
+                  {copiado === 'alias' ? <><Check className="w-3.5 h-3.5" /> Copiado</> : <><Copy className="w-3.5 h-3.5" /> Copiar</>}
+                </button>
+              </div>
+            )}
+            {pago.cbu && (
+              <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-widest text-muted-foreground">CBU</p>
+                  <p className="text-foreground font-mono text-sm truncate">{pago.cbu}</p>
+                </div>
+                <button type="button" onClick={() => copiar('cbu', pago.cbu)}
+                  className="flex items-center gap-1 text-xs text-club-dorado hover:text-club-dorado/80 shrink-0">
+                  {copiado === 'cbu' ? <><Check className="w-3.5 h-3.5" /> Copiado</> : <><Copy className="w-3.5 h-3.5" /> Copiar</>}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {(pago.titular || pago.banco) && (
+            <p className="text-muted-foreground text-xs">
+              {[pago.titular, pago.banco].filter(Boolean).join(' · ')}
+            </p>
+          )}
+          {pago.instrucciones && (
+            <p className="text-foreground/80 text-xs whitespace-pre-wrap">{pago.instrucciones}</p>
+          )}
+        </motion.div>
+      )}
 
       {/* Comprobante de pago (si el club lo exige) */}
       {comprobanteObligatorio && (

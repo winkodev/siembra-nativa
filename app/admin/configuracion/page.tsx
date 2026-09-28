@@ -30,6 +30,7 @@ export default async function ConfiguracionPage() {
       franjas={(franjas as FranjaHoraria[]) ?? []}
       config={config}
       actividad={(actividad as any[]) ?? []}
+      superadmin={Boolean(profile.superadmin)}
     />
   );
 }

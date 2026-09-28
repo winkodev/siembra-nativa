@@ -51,3 +51,7 @@
 - **Error:** intenté correr `deploy.ps1` (push + hook de Render) sin que el usuario lo pidiera, solo porque entró a la URL de producción y vio un 404.
 - **Regla:** commit local está bien; push a main y deploy a Render los ejecuta el usuario, siempre. Un 404 en prod después de un cambio local se explica, no se "arregla" desplegando.
 - **Regla:** primero se prueba en local (`npm run dev`). La app está en producción con usuarios reales.
+
+## 2026-09-28 — El pedido se confirma con el comprobante
+- **Error:** propuse mostrar datos de pago en "Mis pedidos" para "pedir y pagar después". Ese flujo no existe.
+- **Regla:** con `comprobante_obligatorio` activo, el carrito se completa recién al adjuntar el comprobante en "Nuevo pedido". Todo lo relacionado con pagar va en esa pantalla, antes del campo de comprobante. No inventar flujos alternativos sin verificar cómo funciona el existente.

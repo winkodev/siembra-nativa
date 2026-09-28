@@ -5,8 +5,11 @@ import { revalidatePath } from 'next/cache';
 import { registrarAccion } from '@/lib/audit';
 import { formatFranja } from '@/lib/utils';
 import type { ActionResponse, Ubicacion, FranjaHoraria } from '@/lib/types/database';
+import { CLAVES_PAGO, type DatosPago } from '@/lib/supabase/config';
 
 export async function guardarConfigApp(clave: string, valor: string): Promise<ActionResponse> {
+  // Las claves de pago tienen su propia action con chequeo de superadmin
+  if (clave.startsWith('pago_')) return { ok: false, error: 'Usá la pestaña Pagos para estos datos' };
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'No autorizado' };
@@ -163,5 +166,35 @@ export async function eliminarFranja(id: string): Promise<ActionResponse> {
 
   await registrarAccion(supabase, 'eliminar_franja', 'franjas', { id });
   revalidatePath('/admin/configuracion');
+  return { ok: true, data: undefined };
+}
+
+// ------------------------------------------------------------
+// Datos de pago (alias / CBU): solo el superadmin los puede cambiar.
+// Se guardan en configuracion_app, así el cambio aplica al instante
+// en la pantalla de nuevo pedido del socio.
+// ------------------------------------------------------------
+
+export async function guardarDatosPago(datos: DatosPago): Promise<ActionResponse> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autorizado' };
+  const { data: p } = await supabase.from('profiles').select('rol, superadmin').eq('id', user.id).single();
+  if (p?.rol !== 'admin' || !p.superadmin) return { ok: false, error: 'Solo el superadmin puede cambiar los datos de pago' };
+
+  // CBU: 22 dígitos exactos si se carga (el alias es texto libre)
+  const cbu = datos.pago_cbu.replace(/\s/g, '');
+  if (cbu && !/^\d{22}$/.test(cbu)) return { ok: false, error: 'El CBU debe tener 22 dígitos' };
+
+  const filas = CLAVES_PAGO.map(clave => ({
+    clave,
+    valor: clave === 'pago_cbu' ? cbu : datos[clave].trim(),
+  }));
+  const { error } = await supabase.from('configuracion_app').upsert(filas, { onConflict: 'clave' });
+  if (error) return { ok: false, error: 'Error al guardar los datos de pago' };
+
+  await registrarAccion(supabase, 'editar_datos_pago', 'configuracion', { alias: datos.pago_alias.trim(), cbu });
+  revalidatePath('/admin/configuracion');
+  revalidatePath('/socio/pedidos/nuevo');
   return { ok: true, data: undefined };
 }
