@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Leaf, Package, Search, ShoppingBag, AlertTriangle, Plus, Minus, CheckCircle2, Star } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
 import { cn, labelTipo, labelCategoriaProducto, labelCalidad, labelCultivo, formatPrecio } from '@/lib/utils';
@@ -47,7 +48,9 @@ function BarraCannabinoide({ label, valor, max }: { label: string; valor: number
 }
 
 // Filtro unificado: flores secas + aceites + otros productos
-type Filtro = 'todos' | 'flores' | 'aceite' | 'otros';
+// 'productos' no tiene chip: lo activa el carrito por URL (?ver=productos)
+// y muestra solo productos, con los destacados arriba.
+type Filtro = 'todos' | 'flores' | 'aceite' | 'otros' | 'productos';
 
 // Entrada renderizable: una flor (genética) o un producto
 type Entry = { kind: 'flor'; data: StockPublico } | { kind: 'producto'; data: Producto };
@@ -61,7 +64,8 @@ interface Props {
 }
 
 export function TiendaClient({ flores, productos, puedeHacerPedidos, terminosPendientes }: Props) {
-  const [filtro, setFiltro]     = useState<Filtro>('todos');
+  const soloProductos = useSearchParams().get('ver') === 'productos';
+  const [filtro, setFiltro]     = useState<Filtro>(soloProductos ? 'productos' : 'todos');
   const [busqueda, setBusqueda] = useState('');
 
   // Lista combinada: flores primero, productos después (destacados primero)
@@ -77,12 +81,10 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos, terminosPen
     if (filtro === 'flores' && e.kind !== 'flor') return false;
     if (filtro === 'aceite' && !(e.kind === 'producto' && e.data.categoria === 'aceite')) return false;
     if (filtro === 'otros'  && !(e.kind === 'producto' && e.data.categoria !== 'aceite')) return false;
+    if (filtro === 'productos' && e.kind !== 'producto') return false;
     // Filtro por búsqueda
     return e.data.nombre.toLowerCase().includes(q);
   });
-
-  // Índice del primer producto en la grilla (lleva el ancla #productos)
-  const primerProducto = filtradas.findIndex(e => e.kind === 'producto');
 
   // Mostrar solo los filtros que tienen contenido
   const hayFlores  = flores.length > 0;
@@ -182,13 +184,10 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos, terminosPen
           animate="visible"
           className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
         >
-          {filtradas.map((e, i) =>
+          {filtradas.map(e =>
             e.kind === 'flor'
               ? <FlorCard key={`flor:${e.data.genetica_id}`} flor={e.data} puedeHacerPedidos={puedeHacerPedidos} />
-              // Ancla #productos en el primer producto: el carrito enlaza acá ("Ver todos los productos")
-              : <div key={`prod:${e.data.id}`} id={primerProducto === i ? 'productos' : undefined} className="scroll-mt-24">
-                  <ProductoCard producto={e.data} puedeHacerPedidos={puedeHacerPedidos} />
-                </div>
+              : <ProductoCard key={`prod:${e.data.id}`} producto={e.data} puedeHacerPedidos={puedeHacerPedidos} />
           )}
         </motion.div>
       )}
