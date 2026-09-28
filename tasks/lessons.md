@@ -55,3 +55,7 @@
 ## 2026-09-28 — El pedido se confirma con el comprobante
 - **Error:** propuse mostrar datos de pago en "Mis pedidos" para "pedir y pagar después". Ese flujo no existe.
 - **Regla:** con `comprobante_obligatorio` activo, el carrito se completa recién al adjuntar el comprobante en "Nuevo pedido". Todo lo relacionado con pagar va en esa pantalla, antes del campo de comprobante. No inventar flujos alternativos sin verificar cómo funciona el existente.
+
+## 2026-09-28 — No agregar UI que no se pidió
+- **Error:** el pedido fue "destacados primero en el catálogo" y agregué además un filtro "Destacados". El usuario lo rechazó.
+- **Regla:** implementar lo pedido tal cual. Un orden es un orden, no un filtro. Si se me ocurre un extra, mencionarlo en el plan, no meterlo.

@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { Leaf, Package, Search, ShoppingBag, AlertTriangle, Plus, Minus, CheckCircle2, Star } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
 import { cn, labelTipo, labelCategoriaProducto, labelCalidad, labelCultivo, formatPrecio } from '@/lib/utils';
@@ -47,9 +46,8 @@ function BarraCannabinoide({ label, valor, max }: { label: string; valor: number
   );
 }
 
-// Filtro unificado: flores secas + aceites + otros productos + destacados
-type Filtro = 'todos' | 'flores' | 'aceite' | 'otros' | 'destacados';
-const FILTROS_VALIDOS: Filtro[] = ['todos', 'flores', 'aceite', 'otros', 'destacados'];
+// Filtro unificado: flores secas + aceites + otros productos
+type Filtro = 'todos' | 'flores' | 'aceite' | 'otros';
 
 // Entrada renderizable: una flor (genética) o un producto
 type Entry = { kind: 'flor'; data: StockPublico } | { kind: 'producto'; data: Producto };
@@ -63,9 +61,7 @@ interface Props {
 }
 
 export function TiendaClient({ flores, productos, puedeHacerPedidos, terminosPendientes }: Props) {
-  // El filtro inicial puede venir por URL (?filtro=destacados desde el carrito)
-  const filtroUrl = useSearchParams().get('filtro') as Filtro | null;
-  const [filtro, setFiltro]     = useState<Filtro>(filtroUrl && FILTROS_VALIDOS.includes(filtroUrl) ? filtroUrl : 'todos');
+  const [filtro, setFiltro]     = useState<Filtro>('todos');
   const [busqueda, setBusqueda] = useState('');
 
   // Lista combinada: flores primero, productos después (destacados primero)
@@ -81,19 +77,19 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos, terminosPen
     if (filtro === 'flores' && e.kind !== 'flor') return false;
     if (filtro === 'aceite' && !(e.kind === 'producto' && e.data.categoria === 'aceite')) return false;
     if (filtro === 'otros'  && !(e.kind === 'producto' && e.data.categoria !== 'aceite')) return false;
-    if (filtro === 'destacados' && !(e.kind === 'producto' && e.data.destacado)) return false;
     // Filtro por búsqueda
     return e.data.nombre.toLowerCase().includes(q);
   });
 
+  // Índice del primer producto en la grilla (lleva el ancla #productos)
+  const primerProducto = filtradas.findIndex(e => e.kind === 'producto');
+
   // Mostrar solo los filtros que tienen contenido
-  const hayFlores     = flores.length > 0;
-  const hayAceite     = productos.some(p => p.categoria === 'aceite');
-  const hayOtros      = productos.some(p => p.categoria !== 'aceite');
-  const hayDestacados = productos.some(p => p.destacado);
+  const hayFlores  = flores.length > 0;
+  const hayAceite  = productos.some(p => p.categoria === 'aceite');
+  const hayOtros   = productos.some(p => p.categoria !== 'aceite');
   const filtros: { label: string; value: Filtro }[] = [
     { label: 'Todos', value: 'todos' },
-    ...(hayDestacados ? [{ label: 'Destacados', value: 'destacados' as const }] : []),
     ...(hayFlores ? [{ label: 'Flores secas', value: 'flores' as const }] : []),
     ...(hayAceite ? [{ label: 'Aceites',      value: 'aceite' as const }] : []),
     ...(hayOtros  ? [{ label: 'Otros',        value: 'otros'  as const }] : []),
@@ -186,10 +182,13 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos, terminosPen
           animate="visible"
           className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
         >
-          {filtradas.map(e =>
+          {filtradas.map((e, i) =>
             e.kind === 'flor'
               ? <FlorCard key={`flor:${e.data.genetica_id}`} flor={e.data} puedeHacerPedidos={puedeHacerPedidos} />
-              : <ProductoCard key={`prod:${e.data.id}`} producto={e.data} puedeHacerPedidos={puedeHacerPedidos} />
+              // Ancla #productos en el primer producto: el carrito enlaza acá ("Ver todos los productos")
+              : <div key={`prod:${e.data.id}`} id={primerProducto === i ? 'productos' : undefined} className="scroll-mt-24">
+                  <ProductoCard producto={e.data} puedeHacerPedidos={puedeHacerPedidos} />
+                </div>
           )}
         </motion.div>
       )}
