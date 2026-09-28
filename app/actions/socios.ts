@@ -271,3 +271,25 @@ export async function leerVencimientoCertificado(socioId: string): Promise<Actio
   await registrarAccion(createClient(), 'ver_certificado', 'reprocann_certificado', { path, motivo: 'leer_vencimiento' }, socioId);
   return { ok: true, data: { vencimiento: res.vencimiento } };
 }
+
+// Admin: habilita o deshabilita la tienda a mano, sin depender del REPROCANN.
+// Sirve para excepciones (socio sin certificado cargado todavía). El estado
+// REPROCANN no se toca: si después se aprueba/rechaza o vence, el automático manda.
+export async function habilitarCompraManual(socioId: string, habilitar: boolean): Promise<ActionResponse> {
+  const adminId = await verificarAdmin();
+  if (!adminId) return { ok: false, error: 'No autorizado' };
+
+  const service = createServiceClient();
+  const { data: target } = await service.from('profiles').select('estado').eq('id', socioId).single();
+  if (!target) return { ok: false, error: 'Socio no encontrado' };
+  if (habilitar && target.estado !== 'activo') {
+    return { ok: false, error: 'El socio está inactivo: activalo antes de habilitarle la tienda' };
+  }
+
+  const { error } = await service.from('profiles').update({ compra_habilitada: habilitar }).eq('id', socioId);
+  if (error) return { ok: false, error: `Error al actualizar la tienda: ${error.message}` };
+
+  await registrarAccion(createClient(), habilitar ? 'habilitar_compra_manual' : 'deshabilitar_compra_manual', 'socios', undefined, socioId);
+  revalidatePath('/admin/socios');
+  return { ok: true, data: undefined };
+}

@@ -22,10 +22,11 @@ import {
   eliminarNotaSocio,
   actualizarVencimientoReprocann,
   leerVencimientoCertificado,
+  habilitarCompraManual,
 } from '@/app/actions/socios';
 import { crearUsuario, cambiarPasswordAdmin, regenerarPasswordTemporal, type ModoAlta } from '@/app/actions/usuarios';
 
-type LoadingKey = `reprocann-${string}` | `estado-${string}` | `notas-${string}` | `cert-${string}` | `rol-${string}`;
+type LoadingKey = `reprocann-${string}` | `estado-${string}` | `tienda-${string}` | `notas-${string}` | `cert-${string}` | `rol-${string}`;
 
 // Tipos de nota del log interno
 const TIPO_NOTA: Record<TipoNotaSocio, { label: string; color: string }> = {
@@ -203,6 +204,16 @@ function SocioDrawer({
         estado: nuevo,
         compra_habilitada: nuevo === 'inactivo' ? false : s.compra_habilitada,
       }));
+      return res;
+    });
+  }
+
+  // Tienda manual: excepción para socios sin REPROCANN cargado
+  async function handleToggleTienda() {
+    const habilitar = !socio.compra_habilitada;
+    await run(`tienda-${socio.id}`, async () => {
+      const res = await habilitarCompraManual(socio.id, habilitar);
+      if (res.ok) setSocio(s => ({ ...s, compra_habilitada: habilitar }));
       return res;
     });
   }
@@ -474,7 +485,23 @@ function SocioDrawer({
               <p className={`text-xs font-medium ${socio.compra_habilitada ? 'text-green-400' : 'text-muted-foreground'}`}>
                 {socio.compra_habilitada ? 'Habilitada' : 'Deshabilitada'}
               </p>
-              <p className="text-xs text-muted-foreground/60">Auto por REPROCANN</p>
+              <p className="text-xs text-muted-foreground/60">
+                {socio.compra_habilitada && socio.reprocann_estado !== 'aprobado' ? 'Manual (sin REPROCANN)' : 'Auto por REPROCANN'}
+              </p>
+              <button
+                onClick={handleToggleTienda}
+                disabled={busy(`tienda-${socio.id}`) || (!socio.compra_habilitada && socio.estado !== 'activo')}
+                title={!socio.compra_habilitada && socio.estado !== 'activo' ? 'Activá al socio primero' : undefined}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border transition-colors disabled:opacity-50',
+                  socio.compra_habilitada
+                    ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-400'
+                    : 'bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-400'
+                )}
+              >
+                {busy(`tienda-${socio.id}`) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Store className="w-3 h-3" />}
+                {socio.compra_habilitada ? 'Deshabilitar' : 'Habilitar manual'}
+              </button>
             </div>
 
             {/* Términos y condiciones */}

@@ -304,3 +304,9 @@ Sin bloqueo total del sitio. Texto consultable desde el perfil (modal) una vez a
 - [x] Aprobar requiere vencimiento cargado
 - [x] Categoría fuera de la UI (todos son ONG): ReprocannStatus, admin socios, labelCategoria, ReprocannFormData
 - [x] tsc + prueba en local (aprobado por el usuario 2026-09-25)
+
+## ✅ 2026-09-28: Tienda habilitable a mano por el admin
+
+- Action `habilitarCompraManual(socioId, habilitar)`: cambia solo `compra_habilitada`, exige socio activo, audita.
+- Drawer del socio, tarjeta Tienda: botón Habilitar manual / Deshabilitar; leyenda "Manual (sin REPROCANN)".
+- No toca el estado REPROCANN: aprobar/rechazar/vencer siguen mandando después.

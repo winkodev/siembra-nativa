@@ -293,6 +293,8 @@ const ACCION_LABEL: Record<string, string> = {
   rechazar_reprocann:    'Rechazó documentación REPROCANN',
   activar_socio:         'Activó un socio',
   desactivar_socio:      'Desactivó un socio',
+  habilitar_compra_manual:    'Habilitó la tienda a mano (sin REPROCANN)',
+  deshabilitar_compra_manual: 'Deshabilitó la tienda a mano',
   agregar_nota:          'Agregó una nota de socio',
   ver_certificado:       'Vio un certificado REPROCANN',
   ver_comprobante_pago:  'Vio un comprobante de pago',
