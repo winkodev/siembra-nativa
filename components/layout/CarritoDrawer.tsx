@@ -11,8 +11,6 @@ import { cn, labelTipo, labelCategoriaProducto, formatPrecio } from '@/lib/utils
 import type { Producto } from '@/lib/types/database';
 
 const GRAMOS = [10, 20, 30, 40];
-// El paso "Sumá productos" se muestra una vez por sesión del navegador
-const UPSELL_VISTO_KEY = 'sn_upsell_visto';
 
 interface Props {
   upsellTitulo: string;
@@ -49,13 +47,10 @@ export function CarritoDrawer({ upsellTitulo, upsellTexto }: Props) {
     router.push('/socio/pedidos/nuevo');
   }
 
-  // "Continuar pedido": si hay destacados para ofrecer y no se mostró en esta
-  // sesión, pasa por el paso "Sumá productos"; si no, va directo a confirmar.
+  // "Continuar pedido": si hay destacados que no están en el carrito, pasa por
+  // el paso "Sumá productos"; si no, va directo a confirmar.
   function continuar() {
-    let visto = false;
-    try { visto = sessionStorage.getItem(UPSELL_VISTO_KEY) === '1'; } catch {}
-    if (paraOfrecer.length === 0 || visto) { irAConfirmar(); return; }
-    try { sessionStorage.setItem(UPSELL_VISTO_KEY, '1'); } catch {}
+    if (paraOfrecer.length === 0) { irAConfirmar(); return; }
     setPaso('sumar');
   }
 
