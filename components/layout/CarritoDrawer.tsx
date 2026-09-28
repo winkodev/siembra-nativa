@@ -27,9 +27,10 @@ export function CarritoDrawer({ upsellTitulo, upsellTexto }: Props) {
   const [paso, setPaso] = useState<'items' | 'sumar'>('items');
   const [destacados, setDestacados] = useState<Producto[]>([]);
 
-  // Destacados activos con stock: se cargan al abrir el carrito
+  // Destacados activos con stock: se cargan al montar (así ya están listos
+  // cuando el socio toca "Continuar pedido") y se refrescan al abrir el carrito
   useEffect(() => {
-    if (!abierto) { setPaso('items'); return; }
+    if (!abierto) setPaso('items');
     createClient()
       .from('productos_publico')
       .select('*')
