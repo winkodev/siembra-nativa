@@ -36,7 +36,7 @@ export default async function SocioLayout({ children }: { children: React.ReactN
           {/* Carrito flotante de verdad (fixed): no ocupa lugar en el flujo,
               así el contenido arranca arriba */}
           <div className="fixed top-3 right-4 sm:right-6 lg:right-8 z-30">
-            <CarritoDrawer />
+            <CarritoDrawer upsellTitulo={config.upsell_titulo} upsellTexto={config.upsell_texto} />
           </div>
 
           {/* Contacto directo con el club por WhatsApp */}

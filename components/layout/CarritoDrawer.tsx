@@ -1,16 +1,74 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
-import Link from 'next/link';
-import { ShoppingBag, X, Trash2, ArrowRight, AlertTriangle, Minus, Plus, Gift, BadgePercent } from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { ShoppingBag, X, Trash2, ArrowRight, AlertTriangle, Minus, Plus, Gift, BadgePercent, Sparkles, Package, Check } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
+import { createClient } from '@/lib/supabase/client';
 import { cn, labelTipo, labelCategoriaProducto, formatPrecio } from '@/lib/utils';
+import type { Producto } from '@/lib/types/database';
 
 const GRAMOS = [10, 20, 30, 40];
+// El paso "Sumá productos" se muestra una vez por sesión del navegador
+const UPSELL_VISTO_KEY = 'sn_upsell_visto';
 
-export function CarritoDrawer() {
-  const { items, totalItems, totalGramos, quitar, actualizar, vaciar, abierto, setAbierto, maxGramos, descuento20, descuento40, costoEnvio, envioGratisDesde, contadorAgregados } = useCarrito();
+interface Props {
+  upsellTitulo: string;
+  upsellTexto:  string;
+}
+
+export function CarritoDrawer({ upsellTitulo, upsellTexto }: Props) {
+  const { items, totalItems, totalGramos, quitar, actualizar, vaciar, abierto, setAbierto, maxGramos, descuento20, descuento40, costoEnvio, envioGratisDesde, contadorAgregados, agregar, tieneItem } = useCarrito();
+  const router = useRouter();
+
+  // Paso intermedio: 'items' (carrito) o 'sumar' (oferta de destacados)
+  const [paso, setPaso] = useState<'items' | 'sumar'>('items');
+  const [destacados, setDestacados] = useState<Producto[]>([]);
+
+  // Destacados activos con stock: se cargan al abrir el carrito
+  useEffect(() => {
+    if (!abierto) { setPaso('items'); return; }
+    createClient()
+      .from('productos_publico')
+      .select('*')
+      .eq('activo', true)
+      .eq('destacado', true)
+      .gt('stock', 0)
+      .order('nombre')
+      .then(({ data }) => setDestacados((data as Producto[]) ?? []));
+  }, [abierto]);
+
+  // Los que todavía no están en el pedido
+  const paraOfrecer = destacados.filter(p => !tieneItem({ tipo_item: 'producto', id: p.id }));
+
+  function irAConfirmar() {
+    setAbierto(false);
+    router.push('/socio/pedidos/nuevo');
+  }
+
+  // "Continuar pedido": si hay destacados para ofrecer y no se mostró en esta
+  // sesión, pasa por el paso "Sumá productos"; si no, va directo a confirmar.
+  function continuar() {
+    let visto = false;
+    try { visto = sessionStorage.getItem(UPSELL_VISTO_KEY) === '1'; } catch {}
+    if (paraOfrecer.length === 0 || visto) { irAConfirmar(); return; }
+    try { sessionStorage.setItem(UPSELL_VISTO_KEY, '1'); } catch {}
+    setPaso('sumar');
+  }
+
+  function agregarDestacado(p: Producto) {
+    agregar({
+      tipo_item:         'producto',
+      id:                p.id,
+      nombre:            p.nombre,
+      categoria:         p.categoria,
+      precio:            p.precio,
+      cantidad_unidades: 1,
+      stock_disponible:  p.stock,
+    });
+  }
   const total    = totalGramos; // el límite por pedido aplica solo a las flores
   const excede   = total > maxGramos;
   const porciento = Math.min((total / maxGramos) * 100, 100);
@@ -162,6 +220,19 @@ export function CarritoDrawer() {
                   </button>
                 </div>
 
+                {paso === 'sumar' ? (
+                  <SumarProductos
+                    titulo={upsellTitulo}
+                    texto={upsellTexto}
+                    productos={destacados}
+                    tieneItem={p => tieneItem({ tipo_item: 'producto', id: p.id })}
+                    onAgregar={agregarDestacado}
+                    onVerCatalogo={() => { setAbierto(false); router.push('/socio/tienda?filtro=destacados'); }}
+                    onContinuar={irAConfirmar}
+                    onVolver={() => setPaso('items')}
+                  />
+                ) : (
+                <>
                 {/* Items */}
                 <div className="px-5 py-4 space-y-3 max-h-[50vh] overflow-y-auto">
                   {items.length === 0 ? (
@@ -344,13 +415,12 @@ export function CarritoDrawer() {
                         El máximo por pedido es {maxGramos}g. Reducí alguna cantidad.
                       </div>
                     ) : (
-                      <Link
-                        href="/socio/pedidos/nuevo"
-                        onClick={() => setAbierto(false)}
+                      <button
+                        onClick={continuar}
                         className="btn-primary w-full py-3 text-sm flex items-center justify-center gap-2"
                       >
                         Continuar pedido <ArrowRight className="w-4 h-4" />
-                      </Link>
+                      </button>
                     )}
 
                     <button
@@ -361,11 +431,91 @@ export function CarritoDrawer() {
                     </button>
                   </div>
                 )}
+                </>
+                )}
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
+    </>
+  );
+}
+
+// ============================================================
+// Paso "Sumá productos": oferta de destacados antes de confirmar
+// ============================================================
+
+interface SumarProps {
+  titulo:        string;
+  texto:         string;
+  productos:     Producto[];
+  tieneItem:     (p: Producto) => boolean;
+  onAgregar:     (p: Producto) => void;
+  onVerCatalogo: () => void;
+  onContinuar:   () => void;
+  onVolver:      () => void;
+}
+
+function SumarProductos({ titulo, texto, productos, tieneItem, onAgregar, onVerCatalogo, onContinuar, onVolver }: SumarProps) {
+  return (
+    <>
+      <div className="px-5 py-4 space-y-3 max-h-[50vh] overflow-y-auto">
+        <div className="flex items-start gap-2">
+          <Sparkles className="w-5 h-5 text-club-dorado shrink-0 mt-0.5" />
+          <div>
+            <p className="text-foreground font-semibold">{titulo}</p>
+            {texto && <p className="text-muted-foreground text-xs mt-0.5">{texto}</p>}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {productos.map(p => {
+            const agregado = tieneItem(p);
+            return (
+              <div key={p.id} className="flex items-center gap-3 bg-club-verde-claro/20 rounded-xl p-2.5">
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-club-verde-claro/20 shrink-0">
+                  {p.imagen_url
+                    ? <Image src={p.imagen_url} alt={p.nombre} fill className="object-cover" />
+                    : <Package className="w-6 h-6 text-muted-foreground/30 absolute inset-0 m-auto" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-foreground text-sm font-semibold truncate">{p.nombre}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {labelCategoriaProducto(p.categoria)}
+                    {p.precio != null && <> · <span className="text-club-dorado font-semibold">{formatPrecio(p.precio)}</span></>}
+                  </p>
+                </div>
+                <button
+                  onClick={() => !agregado && onAgregar(p)}
+                  disabled={agregado}
+                  className={cn(
+                    'shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all',
+                    agregado
+                      ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                      : 'bg-club-dorado/15 border-club-dorado/40 text-club-dorado hover:bg-club-dorado/25'
+                  )}
+                >
+                  {agregado ? <><Check className="w-3.5 h-3.5" /> Agregado</> : <><Plus className="w-3.5 h-3.5" /> Agregar</>}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <button onClick={onVerCatalogo} className="w-full text-center text-xs text-club-dorado hover:text-club-dorado/80 transition-colors py-1">
+          Ver todos los productos
+        </button>
+      </div>
+
+      <div className="px-5 py-4 border-t border-club-verde-claro/30 space-y-2">
+        <button onClick={onContinuar} className="btn-primary w-full py-3 text-sm flex items-center justify-center gap-2">
+          Continuar con el pedido <ArrowRight className="w-4 h-4" />
+        </button>
+        <button onClick={onVolver} className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
+          Volver al pedido
+        </button>
+      </div>
     </>
   );
 }

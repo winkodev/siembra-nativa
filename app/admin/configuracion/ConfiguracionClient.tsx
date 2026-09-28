@@ -347,6 +347,8 @@ function FranjasTab({ franjas: inicial }: { franjas: FranjaHoraria[] }) {
 
 // Traducción legible de cada acción registrada
 const ACCION_LABEL: Record<string, string> = {
+  destacar_producto:     'Destacó un producto',
+  quitar_destacado_producto: 'Quitó un producto de destacados',
   editar_datos_pago:     'Cambió los datos de pago (alias / CBU)',
   editar_config:         'Editó la configuración',
   crear_ubicacion:       'Creó una ubicación',
@@ -502,6 +504,8 @@ function GeneralTab({ config }: { config: AppConfig }) {
   const [avisoDias, setAvisoDias]     = useState(config.reprocann_aviso_dias.toString());
   const [desc20, setDesc20]           = useState(config.descuento_20.toString());
   const [desc40, setDesc40]           = useState(config.descuento_40.toString());
+  const [upsellTitulo, setUpsellTitulo] = useState(config.upsell_titulo);
+  const [upsellTexto, setUpsellTexto]   = useState(config.upsell_texto);
   const [pending, startTransition]  = useTransition();
   const [saved, setSaved]           = useState(false);
 
@@ -516,6 +520,8 @@ function GeneralTab({ config }: { config: AppConfig }) {
         guardarConfigApp('reprocann_aviso_dias',    avisoDias || '30'),
         guardarConfigApp('descuento_20',            desc20 || '0'),
         guardarConfigApp('descuento_40',            desc40 || '0'),
+        guardarConfigApp('upsell_titulo',           upsellTitulo.trim() || 'Sumá productos a tu pedido'),
+        guardarConfigApp('upsell_texto',            upsellTexto.trim()),
       ]);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -658,6 +664,25 @@ function GeneralTab({ config }: { config: AppConfig }) {
             {comprobante ? <ToggleRight className="w-9 h-9" /> : <ToggleLeft className="w-9 h-9" />}
           </button>
         </div>
+      </motion.div>
+
+      {/* Paso "Sumá productos" al cerrar el carrito */}
+      <motion.div variants={fadeUp} className="glass-card p-5 space-y-3">
+        <div>
+          <p className="text-foreground font-medium text-sm">Oferta de productos destacados</p>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            Al tocar "Continuar pedido", el socio ve los productos marcados como destacados en Admin → Productos.
+            Estos son el título y la bajada de ese paso.
+          </p>
+        </div>
+        <input
+          value={upsellTitulo} onChange={e => setUpsellTitulo(e.target.value)}
+          className="input-club w-full" placeholder="Sumá productos a tu pedido"
+        />
+        <textarea
+          value={upsellTexto} onChange={e => setUpsellTexto(e.target.value)} rows={2}
+          className="input-club w-full resize-none" placeholder="Bajada opcional"
+        />
       </motion.div>
 
       {/* Guardar */}

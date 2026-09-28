@@ -124,3 +124,17 @@ export async function toggleProductoActivo(id: string, activo: boolean): Promise
   revalidatePath('/socio/tienda');
   return { ok: true, data: undefined };
 }
+
+// Destacado: se ofrece al socio al cerrar el carrito y va primero en el catálogo
+export async function toggleProductoDestacado(id: string, destacado: boolean): Promise<ActionResponse> {
+  const supabase = await verificarAdmin();
+  if (!supabase) return { ok: false, error: 'No autorizado' };
+
+  const { error } = await supabase.from('productos').update({ destacado }).eq('id', id);
+  if (error) return { ok: false, error: 'Error al actualizar el destacado' };
+
+  await registrarAccion(supabase, destacado ? 'destacar_producto' : 'quitar_destacado_producto', 'productos', { id });
+  revalidatePath('/admin/productos');
+  revalidatePath('/socio/tienda');
+  return { ok: true, data: undefined };
+}

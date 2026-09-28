@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Leaf, Package, Search, ShoppingBag, AlertTriangle, Plus, Minus, CheckCircle2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Leaf, Package, Search, ShoppingBag, AlertTriangle, Plus, Minus, CheckCircle2, Star } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
 import { cn, labelTipo, labelCategoriaProducto, labelCalidad, labelCultivo, formatPrecio } from '@/lib/utils';
 import type { StockPublico, Producto } from '@/lib/types/database';
@@ -46,8 +47,9 @@ function BarraCannabinoide({ label, valor, max }: { label: string; valor: number
   );
 }
 
-// Filtro unificado: flores secas + aceites + otros productos
-type Filtro = 'todos' | 'flores' | 'aceite' | 'otros';
+// Filtro unificado: flores secas + aceites + otros productos + destacados
+type Filtro = 'todos' | 'flores' | 'aceite' | 'otros' | 'destacados';
+const FILTROS_VALIDOS: Filtro[] = ['todos', 'flores', 'aceite', 'otros', 'destacados'];
 
 // Entrada renderizable: una flor (genética) o un producto
 type Entry = { kind: 'flor'; data: StockPublico } | { kind: 'producto'; data: Producto };
@@ -61,13 +63,16 @@ interface Props {
 }
 
 export function TiendaClient({ flores, productos, puedeHacerPedidos, terminosPendientes }: Props) {
-  const [filtro, setFiltro]     = useState<Filtro>('todos');
+  // El filtro inicial puede venir por URL (?filtro=destacados desde el carrito)
+  const filtroUrl = useSearchParams().get('filtro') as Filtro | null;
+  const [filtro, setFiltro]     = useState<Filtro>(filtroUrl && FILTROS_VALIDOS.includes(filtroUrl) ? filtroUrl : 'todos');
   const [busqueda, setBusqueda] = useState('');
 
-  // Lista combinada: flores primero, productos después
+  // Lista combinada: flores primero, productos después (destacados primero)
+  const productosOrdenados = [...productos].sort((a, b) => Number(b.destacado) - Number(a.destacado));
   const entradas: Entry[] = [
     ...flores.map(f => ({ kind: 'flor' as const, data: f })),
-    ...productos.map(p => ({ kind: 'producto' as const, data: p })),
+    ...productosOrdenados.map(p => ({ kind: 'producto' as const, data: p })),
   ];
 
   const q = busqueda.trim().toLowerCase();
@@ -76,16 +81,19 @@ export function TiendaClient({ flores, productos, puedeHacerPedidos, terminosPen
     if (filtro === 'flores' && e.kind !== 'flor') return false;
     if (filtro === 'aceite' && !(e.kind === 'producto' && e.data.categoria === 'aceite')) return false;
     if (filtro === 'otros'  && !(e.kind === 'producto' && e.data.categoria !== 'aceite')) return false;
+    if (filtro === 'destacados' && !(e.kind === 'producto' && e.data.destacado)) return false;
     // Filtro por búsqueda
     return e.data.nombre.toLowerCase().includes(q);
   });
 
   // Mostrar solo los filtros que tienen contenido
-  const hayFlores  = flores.length > 0;
-  const hayAceite  = productos.some(p => p.categoria === 'aceite');
-  const hayOtros   = productos.some(p => p.categoria !== 'aceite');
+  const hayFlores     = flores.length > 0;
+  const hayAceite     = productos.some(p => p.categoria === 'aceite');
+  const hayOtros      = productos.some(p => p.categoria !== 'aceite');
+  const hayDestacados = productos.some(p => p.destacado);
   const filtros: { label: string; value: Filtro }[] = [
     { label: 'Todos', value: 'todos' },
+    ...(hayDestacados ? [{ label: 'Destacados', value: 'destacados' as const }] : []),
     ...(hayFlores ? [{ label: 'Flores secas', value: 'flores' as const }] : []),
     ...(hayAceite ? [{ label: 'Aceites',      value: 'aceite' as const }] : []),
     ...(hayOtros  ? [{ label: 'Otros',        value: 'otros'  as const }] : []),
@@ -411,7 +419,8 @@ function ProductoCard({ producto, puedeHacerPedidos }: { producto: Producto; pue
         )}
         {/* Degradado inferior: da profundidad y legibilidad a los badges */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 opacity-70 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none" />
-        <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium border border-white/20 bg-black/40 text-white/90 backdrop-blur-sm">
+        <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium border border-white/20 bg-black/40 text-white/90 backdrop-blur-sm flex items-center gap-1">
+          {producto.destacado && <Star className="w-3 h-3 text-club-dorado fill-current" />}
           {labelCategoriaProducto(producto.categoria)}
         </span>
         {sinStock && (

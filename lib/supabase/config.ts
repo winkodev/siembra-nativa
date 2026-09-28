@@ -15,6 +15,9 @@ export interface AppConfig {
   pago_titular:             string;
   pago_banco:               string;
   pago_instrucciones:       string;
+  // Paso "Sumá productos" al cerrar el carrito
+  upsell_titulo:            string;
+  upsell_texto:             string;
 }
 
 export async function getAppConfig(): Promise<AppConfig> {
@@ -38,6 +41,8 @@ export async function getAppConfig(): Promise<AppConfig> {
     pago_titular:            map['pago_titular'] ?? '',
     pago_banco:              map['pago_banco'] ?? '',
     pago_instrucciones:      map['pago_instrucciones'] ?? '',
+    upsell_titulo:           map['upsell_titulo'] ?? 'Sumá productos a tu pedido',
+    upsell_texto:            map['upsell_texto'] ?? 'Aprovechá el envío y agregá alguno de estos productos.',
   };
 }
 

@@ -179,6 +179,8 @@ export interface Producto {
   imagen_url: string | null;
   activo: boolean;
   stock: number;
+  // Se ofrece al cerrar el carrito y va primero en el catálogo
+  destacado: boolean;
   created_at: string;
   updated_at: string;
 }

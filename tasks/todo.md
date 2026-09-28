@@ -317,3 +317,12 @@ Sin bloqueo total del sitio. Texto consultable desde el perfil (modal) una vez a
 - Claves `pago_*` en `configuracion_app`; action `guardarDatosPago` (solo superadmin, CBU 22 dígitos, auditado).
 - Pestaña "Pagos" en Configuración visible solo al superadmin.
 - "Nuevo pedido": tarjeta "Cómo pagar" con total, alias y CBU copiables, antes del comprobante. Solo si comprobante obligatorio y hay datos.
+
+## 🟢 EN LOCAL 2026-09-28: Productos destacados + paso "Sumá productos" al cerrar el carrito
+
+- [x] SQL `supabase/productos-destacados.sql`: columna `destacado`, vista `productos_publico`, textos upsell. **Pendiente de ejecutar en Supabase.**
+- [x] Admin → Productos: estrella para destacar, badge.
+- [x] Carrito: "Continuar pedido" pasa por el paso de destacados (una vez por sesión), con Agregar, Ver catálogo y Continuar.
+- [x] Catálogo: filtro "Destacados" (`?filtro=destacados`), destacados primero, estrella en el badge.
+- [x] Configuración → General: título y bajada del paso.
+- [ ] Probar en local y desplegar.

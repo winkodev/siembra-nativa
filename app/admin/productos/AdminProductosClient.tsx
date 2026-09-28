@@ -3,10 +3,10 @@
 import { useState, useMemo, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import { Package, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Loader2, Upload, Search } from 'lucide-react';
+import { Package, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Loader2, Upload, Search, Star } from 'lucide-react';
 import { cn, labelCategoriaProducto } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { crearProducto, actualizarProducto, eliminarProducto, toggleProductoActivo } from '@/app/actions/productos';
+import { crearProducto, actualizarProducto, eliminarProducto, toggleProductoActivo, toggleProductoDestacado } from '@/app/actions/productos';
 import type { Producto, CategoriaProducto } from '@/lib/types/database';
 
 const categorias: CategoriaProducto[] = ['aceite', 'merchandising', 'otro'];
@@ -119,6 +119,15 @@ export function AdminProductosClient({ productos: inicial }: { productos: Produc
     });
   };
 
+  // Destacado: se ofrece al socio al cerrar el carrito y va primero en el catálogo
+  const handleDestacado = (id: string, destacado: boolean) => {
+    startTransition(async () => {
+      const res = await toggleProductoDestacado(id, !destacado);
+      if (!res.ok) return;
+      setProductos(prev => prev.map(p => p.id === id ? { ...p, destacado: !destacado } : p));
+    });
+  };
+
   return (
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
 
@@ -207,9 +216,13 @@ export function AdminProductosClient({ productos: inicial }: { productos: Produc
                 <span className={cn('absolute top-2 left-2 px-2 py-0.5 rounded-full text-xs font-medium border', categoriaBadge[p.categoria])}>
                   {labelCategoriaProducto(p.categoria)}
                 </span>
-                {!p.activo && (
+                {!p.activo ? (
                   <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs border border-white/20 text-white/70 backdrop-blur-sm">
                     Inactivo
+                  </span>
+                ) : p.destacado && (
+                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-medium border border-club-dorado/50 bg-club-dorado/90 text-club-verde backdrop-blur-sm flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-current" /> Destacado
                   </span>
                 )}
               </div>
@@ -230,6 +243,19 @@ export function AdminProductosClient({ productos: inicial }: { productos: Produc
                 <div className="flex gap-2 pt-2">
                   <button onClick={() => abrirEditar(p)} className="flex-1 px-3 py-2 rounded-xl border border-club-verde-claro/30 text-muted-foreground hover:text-foreground hover:bg-club-verde-claro/10 text-xs transition-all flex items-center justify-center gap-1">
                     <Pencil className="w-3 h-3" /> Editar
+                  </button>
+                  <button
+                    onClick={() => handleDestacado(p.id, p.destacado)}
+                    disabled={pending}
+                    title={p.destacado ? 'Quitar de destacados' : 'Destacar (se ofrece al cerrar el carrito)'}
+                    className={cn(
+                      'px-3 py-2 rounded-xl border text-xs transition-all',
+                      p.destacado
+                        ? 'border-club-dorado/50 text-club-dorado bg-club-dorado/10'
+                        : 'border-club-verde-claro/30 text-muted-foreground hover:text-club-dorado hover:border-club-dorado/30'
+                    )}
+                  >
+                    <Star className={cn('w-4 h-4', p.destacado && 'fill-current')} />
                   </button>
                   <button onClick={() => handleToggle(p.id, p.activo)} disabled={pending} className="px-3 py-2 rounded-xl border border-club-verde-claro/30 text-muted-foreground hover:text-club-dorado hover:border-club-dorado/30 text-xs transition-all">
                     {p.activo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
