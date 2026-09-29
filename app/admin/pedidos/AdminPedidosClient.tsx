@@ -99,10 +99,9 @@ const filtrosEstado: { label: string; value: Filtro }[] = [
   { label: 'Cancelado', value: 'cancelado' },
 ];
 
-// Pago comprobado por el club y todavía sin aprobar: incluye los ya armados,
-// así el que lo armó lo ve en la misma lista y lo aprueba sin cambiar de filtro
+// Pago comprobado por el club pero todavía sin armar
 function esPorArmar(p: PedidoAdmin): boolean {
-  return p.estado === 'pendiente' && !!p.comprobante_ok_at;
+  return p.estado === 'pendiente' && !!p.comprobante_ok_at && !p.armado_at;
 }
 
 // Presets de período para la vista "Todos"
@@ -119,6 +118,9 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }:
     if (filtrosEstado.some(f => f.value === filtroInicial)) return filtroInicial as Filtro;
     return pedidosIniciales.some(p => p.estado === 'pendiente') ? 'pendiente' : 'todos';
   });
+  // Pedidos armados en esta sesión: siguen visibles en "Por armar" hasta que se
+  // aprueben o se cambie de filtro, para que el que armó lo apruebe ahí mismo
+  const [reciénArmados, setReciénArmados] = useState<Set<string>>(new Set());
   const [busqueda, setBusqueda]   = useState('');
   const [periodo, setPeriodo]     = useState<Periodo>('todo');
   const [desde, setDesde]         = useState('');
@@ -148,7 +150,8 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }:
 
     return pedidos.filter(p => {
       if (filtro === 'armar') {
-        if (!esPorArmar(p)) return false;
+        const pegado = reciénArmados.has(p.id) && p.estado === 'pendiente';
+        if (!esPorArmar(p) && !pegado) return false;
       } else if (filtro !== 'todos' && p.estado !== filtro) return false;
       if (minFecha && new Date(p.created_at) < minFecha) return false;
       if (maxFecha && new Date(p.created_at) > maxFecha) return false;
@@ -156,7 +159,7 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }:
       return (p.profiles?.nombre ?? '').toLowerCase().includes(q)
         || (p.profiles?.dni ?? '').includes(q);
     });
-  }, [pedidos, filtro, busqueda, periodo, desde, hasta]);
+  }, [pedidos, filtro, busqueda, periodo, desde, hasta, reciénArmados]);
 
   const handleCambiarEstado = (pedidoId: string, nuevoEstado: EstadoDestino) => {
     setLoadingId(pedidoId);
@@ -177,6 +180,7 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }:
     startTransition(async () => {
       const res = await marcarCheckPedido(pedidoId, tipo, marcar);
       if (!res.ok) { setError(res.error); return; }
+      if (tipo === 'armado') setReciénArmados(prev => { const s = new Set(prev); marcar ? s.add(pedidoId) : s.delete(pedidoId); return s; });
       setPedidos(prev => prev.map(p => p.id !== pedidoId ? p : (
         tipo === 'armado'
           ? { ...p, armado_at: res.data.at, armado: res.data.nombre ? { nombre: res.data.nombre } : null }
@@ -226,7 +230,7 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }:
             return (
               <button
                 key={f.value}
-                onClick={() => setFiltro(f.value)}
+                onClick={() => { setFiltro(f.value); setReciénArmados(new Set()); }}
                 className={cn(
                   'px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap',
                   filtro === f.value
