@@ -156,3 +156,139 @@ export async function marcarCuponVisto(cuponId: string): Promise<ActionResponse>
   if (error) return { ok: false, error: 'Error al marcar el cupón' };
   return { ok: true, data: undefined };
 }
+
+// ------------------------------------------------------------
+// Cupones masivos ("Cupón para todos"): un cupón individual por socio,
+// todos con el mismo lote_id. Cada uno sigue siendo personal y de un uso.
+// ------------------------------------------------------------
+
+export type DestinatariosLote = 'activos' | 'tienda' | 'reprocann';
+
+export interface NuevoCuponMasivo extends Omit<NuevoCupon, 'socio_id'> {
+  destinatarios: DestinatariosLote;
+}
+
+export interface LoteCupones {
+  lote_id:     string;
+  created_at:  string;
+  tipo:        TipoCupon;
+  valor:       number | null;
+  cantidad:    number | null;
+  producto:    string | null;
+  mensaje:     string;
+  total:       number;
+  usados:      number;
+  disponibles: number;
+  anulados:    number;
+}
+
+export async function crearCuponMasivo(input: NuevoCuponMasivo): Promise<ActionResponse<{ creados: number }>> {
+  const adminId = await verificarAdmin();
+  if (!adminId) return { ok: false, error: 'No autorizado' };
+
+  const mensaje = input.mensaje.trim();
+  if (!mensaje) return { ok: false, error: 'Escribí el mensaje para los socios' };
+
+  // Mismas validaciones que el cupón individual
+  const base: Record<string, unknown> = {
+    tipo: input.tipo, mensaje, creado_por: adminId,
+    vence_at: input.vence_at ? `${input.vence_at}T23:59:59-03:00` : null,
+  };
+  if (input.tipo === 'porcentaje') {
+    if (!input.valor || input.valor <= 0 || input.valor > 100) return { ok: false, error: 'El porcentaje tiene que estar entre 1 y 100' };
+    base.valor = input.valor;
+  } else if (input.tipo === 'monto') {
+    if (!input.valor || input.valor <= 0) return { ok: false, error: 'Ingresá un monto mayor a 0' };
+    base.valor = input.valor;
+  } else if (input.tipo === 'producto_gratis') {
+    if (!input.producto_id) return { ok: false, error: 'Elegí el producto de regalo' };
+    base.producto_id = input.producto_id;
+    base.cantidad = Math.max(1, Math.floor(input.cantidad ?? 1));
+  }
+
+  // Destinatarios: socios activos, y según el filtro con tienda o REPROCANN aprobado
+  const service = createServiceClient();
+  let q = service.from('profiles').select('id').eq('rol', 'socio').eq('estado', 'activo');
+  if (input.destinatarios === 'tienda')    q = q.eq('compra_habilitada', true);
+  if (input.destinatarios === 'reprocann') q = q.eq('reprocann_estado', 'aprobado');
+  const { data: socios, error: errSocios } = await q;
+  if (errSocios) return { ok: false, error: 'Error al buscar los socios' };
+  if (!socios || socios.length === 0) return { ok: false, error: 'No hay socios que cumplan el criterio' };
+
+  const loteId = crypto.randomUUID();
+  const filas = socios.map(s => ({ ...base, socio_id: s.id, lote_id: loteId }));
+  const { error } = await service.from('cupones').insert(filas);
+  if (error) return { ok: false, error: 'Error al crear los cupones' };
+
+  await service.from('notificaciones').insert(socios.map(s => ({
+    socio_id: s.id,
+    titulo:   'Tenés un regalo del club 🎁',
+    mensaje:  'Abrí tu carrito para usarlo en tu próximo pedido.',
+  })));
+
+  await registrarAccion(createClient(), 'crear_cupon_masivo', 'cupones', {
+    lote_id: loteId, tipo: input.tipo, destinatarios: input.destinatarios, cantidad_socios: socios.length,
+  });
+  revalidatePath('/admin/socios');
+  revalidatePath('/socio/dashboard');
+  return { ok: true, data: { creados: socios.length } };
+}
+
+// Últimos lotes con su uso (para el modal "Cupón para todos")
+export async function listarLotes(): Promise<ActionResponse<LoteCupones[]>> {
+  const adminId = await verificarAdmin();
+  if (!adminId) return { ok: false, error: 'No autorizado' };
+
+  const service = createServiceClient();
+  const { data, error } = await service
+    .from('cupones')
+    .select('lote_id, created_at, tipo, valor, cantidad, producto_id, mensaje, estado')
+    .not('lote_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(2000);
+  if (error) return { ok: false, error: 'Error al cargar los lotes' };
+
+  const ids = Array.from(new Set((data ?? []).map(c => c.producto_id).filter(Boolean))) as string[];
+  const { data: productos } = ids.length
+    ? await service.from('productos').select('id, nombre').in('id', ids)
+    : { data: [] as { id: string; nombre: string }[] };
+  const nombreProd = new Map((productos ?? []).map(p => [p.id, p.nombre]));
+
+  const lotes = new Map<string, LoteCupones>();
+  for (const c of data ?? []) {
+    const id = c.lote_id as string;
+    let l = lotes.get(id);
+    if (!l) {
+      l = {
+        lote_id: id, created_at: c.created_at, tipo: c.tipo as TipoCupon, valor: c.valor, cantidad: c.cantidad,
+        producto: c.producto_id ? nombreProd.get(c.producto_id) ?? null : null, mensaje: c.mensaje,
+        total: 0, usados: 0, disponibles: 0, anulados: 0,
+      };
+      lotes.set(id, l);
+    }
+    l.total++;
+    if (c.estado === 'usado') l.usados++;
+    else if (c.estado === 'disponible') l.disponibles++;
+    else l.anulados++;
+  }
+  return { ok: true, data: Array.from(lotes.values()).slice(0, 20) };
+}
+
+// Anula los cupones del lote que todavía no se usaron
+export async function anularLote(loteId: string): Promise<ActionResponse<{ anulados: number }>> {
+  const adminId = await verificarAdmin();
+  if (!adminId) return { ok: false, error: 'No autorizado' };
+
+  const service = createServiceClient();
+  const { data, error } = await service
+    .from('cupones')
+    .update({ estado: 'anulado' })
+    .eq('lote_id', loteId)
+    .eq('estado', 'disponible')
+    .select('id');
+  if (error) return { ok: false, error: 'Error al anular el lote' };
+
+  await registrarAccion(createClient(), 'anular_cupon_masivo', 'cupones', { lote_id: loteId, anulados: data?.length ?? 0 });
+  revalidatePath('/admin/socios');
+  return { ok: true, data: { anulados: data?.length ?? 0 } };
+}

@@ -5,6 +5,8 @@ export const ACCION_LABEL: Record<string, string> = {
   destacar_producto:     'Destacó un producto',
   quitar_destacado_producto: 'Quitó un producto de destacados',
   crear_cupon:           'Creó un cupón para un socio',
+  crear_cupon_masivo:    'Creó un cupón para todos los socios',
+  anular_cupon_masivo:   'Anuló un lote de cupones',
   anular_cupon:          'Anuló un cupón',
   editar_datos_pago:     'Cambió los datos de pago (alias / CBU)',
   editar_config:         'Editó la configuración',

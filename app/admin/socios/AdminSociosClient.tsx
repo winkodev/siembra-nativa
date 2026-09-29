@@ -7,11 +7,12 @@ import {
   UserCheck, UserX, Store, X, ChevronRight, ExternalLink,
   Loader2, AlertCircle, Clock, Search, Users,
   ShoppingBag, Leaf, Scale, CalendarDays, Plus, Trash2, NotebookPen,
-  UserPlus, Mail, KeyRound, Copy, Check, Shield, ScrollText, Sparkles,
+  UserPlus, Mail, KeyRound, Copy, Check, Shield, ScrollText, Sparkles, Gift,
 } from 'lucide-react';
 import type { Profile, FichaSocio, TipoNotaSocio, RolUsuario } from '@/lib/types/database';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CuponesSocio } from '@/components/admin/CuponesSocio';
+import { CuponMasivoModal } from '@/components/admin/CuponMasivoModal';
 import { cn, formatFecha, formatGramos, estadoEfectivoReprocann } from '@/lib/utils';
 import {
   toggleEstadoSocio,
@@ -719,6 +720,7 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
   const [search, setSearch] = useState('');
   const [filtroRep, setFiltroRep] = useState('todos');
   const [modalCrear, setModalCrear] = useState(false);
+  const [modalCupon, setModalCupon] = useState(false);
 
   // Sincronizar con los datos frescos del servidor tras crear un usuario
   useEffect(() => { setSocios(initialSocios); }, [initialSocios]);
@@ -769,9 +771,14 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
         title="Socios"
         subtitle={`${totalSocios} socio${totalSocios !== 1 ? 's' : ''} registrado${totalSocios !== 1 ? 's' : ''}`}
         action={
-          <button onClick={() => setModalCrear(true)} className="btn-primary text-sm px-5 py-2.5">
-            <UserPlus className="w-4 h-4" /> Crear usuario
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setModalCupon(true)} className="btn-secondary text-sm px-4 py-2.5 flex items-center gap-2">
+              <Gift className="w-4 h-4" /> Cupón para todos
+            </button>
+            <button onClick={() => setModalCrear(true)} className="btn-primary text-sm px-5 py-2.5">
+              <UserPlus className="w-4 h-4" /> Crear usuario
+            </button>
+          </div>
         }
       />
 
@@ -863,6 +870,7 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
       {/* key por socio: evita que estado sensible (contraseña generada) persista al cambiar de socio */}
       {selected && <SocioDrawer key={selected.id} socio={selected} onClose={handleClose} />}
       {modalCrear && <CrearUsuarioModal onClose={() => setModalCrear(false)} />}
+      {modalCupon && <CuponMasivoModal onClose={() => setModalCupon(false)} />}
     </div>
   );
 }

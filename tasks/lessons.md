@@ -59,3 +59,7 @@
 ## 2026-09-28 — No agregar UI que no se pidió
 - **Error:** el pedido fue "destacados primero en el catálogo" y agregué además un filtro "Destacados". El usuario lo rechazó.
 - **Regla:** implementar lo pedido tal cual. Un orden es un orden, no un filtro. Si se me ocurre un extra, mencionarlo en el plan, no meterlo.
+
+## 2026-09-29 — sed con `&` en el reemplazo
+- **Error:** un `sed s|...|...|` cuyo reemplazo contenía `&&` (JSX) duplicó el patrón y rompió la línea.
+- **Regla:** en sed, `&` en el reemplazo es "todo el match": escaparlo como `\&` o usar perl/Edit para líneas con JSX.

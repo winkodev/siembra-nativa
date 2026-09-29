@@ -218,6 +218,8 @@ export interface Cupon {
   pedido_id: string | null;
   usado_at: string | null;
   creado_por: string | null;
+  // Cupones masivos: todos los del mismo envío comparten lote
+  lote_id: string | null;
   created_at: string;
 }
 

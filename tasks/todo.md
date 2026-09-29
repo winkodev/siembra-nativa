@@ -348,4 +348,4 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - [x] Página /admin/actividad (menú): rango de fechas, filtros socios/admins, usuario y acción, gráfico día/mes/año solo socios
 - [x] Configuración: pestaña Actividad eliminada (movida)
 - [x] Bug: drawer de socios reabría el socio del deep-link ?socio= tras cada revalidación → se atiende una vez y se limpia la URL
-- [ ] Cupón masivo (pendiente de definir)
+- [x] Cupón masivo: botón "Cupón para todos" en Socios, un cupón por socio con lote_id, lista de envíos y anular no usados. SQL `cupones-lote.sql` pendiente de ejecutar.
