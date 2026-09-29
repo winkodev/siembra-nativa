@@ -2,6 +2,7 @@
 
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { registrarActividadSocio } from '@/lib/audit';
 import type { ActionResponse } from '@/lib/types/database';
 
 /** Subir certificado PDF/imagen al bucket privado */
@@ -52,6 +53,7 @@ export async function subirCertificado(
   if (updateError) {
     return { ok: false, error: 'Error al guardar referencia del certificado' };
   }
+  await registrarActividadSocio(user.id, 'subir_certificado', { archivo: archivo.name });
 
   revalidatePath('/socio/perfil');
   // También el Inicio: su alerta "subí tu certificado" quedaba cacheada

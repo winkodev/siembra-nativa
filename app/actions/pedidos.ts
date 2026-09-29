@@ -3,7 +3,7 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { getAppConfig } from '@/lib/supabase/config';
 import { revalidatePath } from 'next/cache';
-import { registrarAccion } from '@/lib/audit';
+import { registrarAccion, registrarActividadSocio } from '@/lib/audit';
 import type {
   ActionResponse, CarritoItem, EstadoPedido,
 } from '@/lib/types/database';
@@ -41,6 +41,8 @@ export async function crearPedido(
     // Los RAISE EXCEPTION de la función llegan con el mensaje ya legible
     return { ok: false, error: error?.message ?? 'Error al crear el pedido' };
   }
+
+  await registrarActividadSocio(user.id, 'crear_pedido', { numero: data.numero, items: items.length, cupon: Boolean(cuponId) });
 
   revalidatePath('/socio/pedidos');
   // El pedido pendiente reserva stock: la tienda debe reflejarlo
@@ -247,6 +249,7 @@ export async function subirComprobante(
     .from('pedidos')
     .update({ comprobante_path: path, comprobante_subido_at: subidoAt })
     .eq('id', pedidoId);
+  if (!updError) await registrarActividadSocio(user.id, 'subir_comprobante', { pedido_id: pedidoId });
 
   if (updError) return { ok: false, error: 'Error al registrar el comprobante' };
 

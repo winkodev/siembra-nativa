@@ -340,3 +340,12 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - [x] Cancelar pedido libera el cupón
 - [x] Admin pedidos + orden impresa: línea cupón
 - [x] tsc + prueba local. SQL ejecutado. Deploy 9f6a260.
+
+## 🟢 EN LOCAL 2026-09-29: Actividad al menú + registro de socios; bug drawer socios
+
+- [x] SQL `supabase/actividad-socios.sql` (tabla actividad_socios). **Pendiente de ejecutar en Supabase.**
+- [x] `registrarActividadSocio` en guardar_perfil, aceptar_terminos, subir_certificado, crear_pedido, subir_comprobante, crear_consulta
+- [x] Página /admin/actividad (menú): rango de fechas, filtros socios/admins, usuario y acción, gráfico día/mes/año solo socios
+- [x] Configuración: pestaña Actividad eliminada (movida)
+- [x] Bug: drawer de socios reabría el socio del deep-link ?socio= tras cada revalidación → se atiende una vez y se limpia la URL
+- [ ] Cupón masivo (pendiente de definir)

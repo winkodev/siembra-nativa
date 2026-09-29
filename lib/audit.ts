@@ -26,3 +26,25 @@ export async function registrarAccion(
     // El log de auditoría nunca debe romper la acción que lo origina
   }
 }
+
+/**
+ * Registra una acción de SOCIO en actividad_socios (Admin → Actividad).
+ * Se escribe con el service client: el socio no tiene permisos sobre la tabla.
+ * Best-effort: nunca interrumpe la acción principal.
+ */
+export async function registrarActividadSocio(
+  socioId: string,
+  accion: string,
+  detalle?: Record<string, unknown>
+): Promise<void> {
+  try {
+    const { createServiceClient } = await import('@/lib/supabase/server');
+    await createServiceClient().from('actividad_socios').insert({
+      socio_id: socioId,
+      accion,
+      detalle: detalle ?? null,
+    });
+  } catch {
+    // El log nunca debe romper la acción que lo origina
+  }
+}

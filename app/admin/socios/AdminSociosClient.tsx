@@ -723,15 +723,20 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
   // Sincronizar con los datos frescos del servidor tras crear un usuario
   useEffect(() => { setSocios(initialSocios); }, [initialSocios]);
 
-  // Abrir el drawer del socio si se llega con ?socio=<id> (deep-link desde el dashboard)
+  // Abrir el drawer del socio si se llega con ?socio=<id> (deep-link desde el dashboard).
+  // Se atiende UNA vez y se limpia la URL: antes, cada revalidación del server
+  // (aprobar REPROCANN, habilitar tienda) volvía a disparar este efecto y
+  // reabría el drawer con el socio del deep-link en vez del que estaba abierto.
   const searchParams = useSearchParams();
+  const router = useRouter();
   useEffect(() => {
     const id = searchParams.get('socio');
-    if (id) {
-      const s = initialSocios.find(x => x.id === id);
-      if (s) setSelected(s);
-    }
-  }, [searchParams, initialSocios]);
+    if (!id) return;
+    const s = initialSocios.find(x => x.id === id);
+    if (s) setSelected(s);
+    router.replace('/admin/socios', { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   function handleClose(updated?: Profile) {
     if (updated) setSocios(prev => prev.map(s => s.id === updated.id ? updated : s));

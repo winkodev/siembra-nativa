@@ -294,6 +294,15 @@ export interface AuditLog {
   fecha: string;
 }
 
+// Actividad de socios (Admin → Actividad): lo que hace cada socio en la app
+export interface ActividadSocio {
+  id: string;
+  socio_id: string;
+  accion: string;
+  detalle: Record<string, unknown> | null;
+  created_at: string;
+}
+
 // Tipos para el estado del carrito (solo client-side)
 // Un item del carrito es una genética (gramos) o un producto (unidades)
 export interface CarritoItemGenetica {
@@ -429,6 +438,12 @@ export interface Database {
         Row: SocioNota;
         Insert: Partial<Omit<SocioNota, 'id' | 'created_at'>> & { socio_id: string; contenido: string };
         Update: Partial<Omit<SocioNota, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      actividad_socios: {
+        Row: ActividadSocio;
+        Insert: Partial<Omit<ActividadSocio, 'id' | 'created_at'>> & { socio_id: string; accion: string };
+        Update: Partial<Omit<ActividadSocio, 'id' | 'created_at'>>;
         Relationships: [];
       };
       cupones: {

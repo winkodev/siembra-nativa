@@ -8,7 +8,7 @@ import { Logo } from '@/components/brand/Logo';
 import {
   LayoutDashboard, ShoppingBag, User, Newspaper,
   Users, Package, ClipboardList, LogOut, Menu, X, Shield, Settings, BarChart3,
-  HelpCircle,
+  HelpCircle, Activity,
 } from 'lucide-react';
 import { useState } from 'react';
 import { logout } from '@/app/actions/auth';
@@ -35,6 +35,7 @@ const navAdmin: NavItem[] = [
   { href: '/admin/consultas',   label: 'Consultas',    icon: <HelpCircle className="w-5 h-5" /> },
   { href: '/admin/productos',      label: 'Productos',      icon: <ShoppingBag className="w-5 h-5" /> },
   { href: '/admin/estadisticas',   label: 'Estadísticas',   icon: <BarChart3 className="w-5 h-5" /> },
+  { href: '/admin/actividad',      label: 'Actividad',      icon: <Activity className="w-5 h-5" /> },
   { href: '/admin/newsletter',     label: 'Newsletter',     icon: <Newspaper className="w-5 h-5" /> },
   { href: '/admin/configuracion',  label: 'Configuración',  icon: <Settings className="w-5 h-5" /> },
 ];

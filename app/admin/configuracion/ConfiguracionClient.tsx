@@ -4,27 +4,21 @@ import { useState, useMemo, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, MapPin, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Loader2, Check,
-  SlidersHorizontal, History, CalendarClock, Landmark,
+  SlidersHorizontal, CalendarClock, Landmark,
 } from 'lucide-react';
 import { cn, formatFecha, formatFranja } from '@/lib/utils';
 import {
   crearUbicacion, actualizarUbicacion, eliminarUbicacion, toggleUbicacionActiva, guardarConfigApp,
   crearFranja, actualizarFranja, eliminarFranja, toggleFranjaActiva, guardarDatosPago,
 } from '@/app/actions/configuracion';
-import type { Ubicacion, AuditLog, FranjaHoraria } from '@/lib/types/database';
+import type { Ubicacion, FranjaHoraria } from '@/lib/types/database';
 import type { AppConfig, DatosPago } from '@/lib/supabase/config';
 
-// Entrada de audit_log con los nombres resueltos
-export interface AuditEntry extends AuditLog {
-  admin: { nombre: string } | null;
-  socio: { nombre: string } | null;
-}
 
 const tabs = [
   { id: 'general',     label: 'General',     icon: <SlidersHorizontal className="w-4 h-4" /> },
   { id: 'horarios',    label: 'Horarios',    icon: <CalendarClock className="w-4 h-4" /> },
   { id: 'ubicaciones', label: 'Ubicaciones', icon: <MapPin className="w-4 h-4" /> },
-  { id: 'actividad',   label: 'Actividad',   icon: <History className="w-4 h-4" /> },
 ];
 // Solo la ve el superadmin: alias / CBU donde transfieren los socios
 const tabPagos = { id: 'pagos', label: 'Pagos', icon: <Landmark className="w-4 h-4" /> };
@@ -36,12 +30,11 @@ interface Props {
   ubicaciones: Ubicacion[];
   franjas:     FranjaHoraria[];
   config:      AppConfig;
-  actividad:   AuditEntry[];
   superadmin:  boolean;
 }
 
 
-export function ConfiguracionClient({ ubicaciones, franjas, config, actividad, superadmin }: Props) {
+export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin }: Props) {
   const [tab, setTab] = useState('general');
   const tabsVisibles = superadmin ? [...tabs, tabPagos] : tabs;
 
@@ -80,7 +73,6 @@ export function ConfiguracionClient({ ubicaciones, franjas, config, actividad, s
       {tab === 'general'     && <GeneralTab config={config} />}
       {tab === 'horarios'    && <FranjasTab franjas={franjas} />}
       {tab === 'ubicaciones' && <UbicacionesTab ubicaciones={ubicaciones} />}
-      {tab === 'actividad'   && <ActividadTab actividad={actividad} />}
       {tab === 'pagos' && superadmin && <PagosTab config={config} />}
     </div>
   );
@@ -343,157 +335,6 @@ function FranjasTab({ franjas: inicial }: { franjas: FranjaHoraria[] }) {
   );
 }
 
-// ── Tab Actividad (log de acciones de admin) ──────────────────
-
-// Traducción legible de cada acción registrada
-const ACCION_LABEL: Record<string, string> = {
-  destacar_producto:     'Destacó un producto',
-  quitar_destacado_producto: 'Quitó un producto de destacados',
-  crear_cupon:           'Creó un cupón para un socio',
-  anular_cupon:          'Anuló un cupón',
-  editar_datos_pago:     'Cambió los datos de pago (alias / CBU)',
-  editar_config:         'Editó la configuración',
-  crear_ubicacion:       'Creó una ubicación',
-  editar_ubicacion:      'Editó una ubicación',
-  eliminar_ubicacion:    'Eliminó una ubicación',
-  crear_genetica:        'Creó una genética',
-  editar_genetica:       'Editó una genética',
-  activar_genetica:      'Activó una genética',
-  desactivar_genetica:   'Desactivó una genética',
-  eliminar_genetica:     'Eliminó una genética',
-  agregar_stock:         'Registró un ingreso de stock',
-  editar_stock:          'Editó un ingreso de stock',
-  eliminar_stock:        'Eliminó un ingreso de stock',
-  crear_producto:        'Creó un producto',
-  editar_producto:       'Editó un producto',
-  activar_producto:      'Activó un producto',
-  desactivar_producto:   'Desactivó un producto',
-  eliminar_producto:     'Eliminó un producto',
-  pedido_aprobado:       'Aprobó un pedido',
-  pedido_entregado:      'Entregó un pedido',
-  pedido_cancelado:      'Canceló un pedido',
-  crear_articulo:        'Creó un artículo del newsletter',
-  editar_articulo:       'Editó un artículo del newsletter',
-  publicar_articulo:     'Publicó un artículo',
-  despublicar_articulo:  'Despublicó un artículo',
-  eliminar_articulo:     'Eliminó un artículo',
-  aprobar_reprocann:     'Aprobó documentación REPROCANN',
-  rechazar_reprocann:    'Rechazó documentación REPROCANN',
-  activar_socio:         'Activó un socio',
-  desactivar_socio:      'Desactivó un socio',
-  habilitar_compra_manual:    'Habilitó la tienda a mano (sin REPROCANN)',
-  deshabilitar_compra_manual: 'Deshabilitó la tienda a mano',
-  agregar_nota:          'Agregó una nota de socio',
-  ver_certificado:       'Vio un certificado REPROCANN',
-  ver_comprobante_pago:  'Vio un comprobante de pago',
-  crear_franja:          'Creó una franja horaria',
-  editar_franja:         'Editó una franja horaria',
-  activar_franja:        'Activó una franja horaria',
-  desactivar_franja:     'Desactivó una franja horaria',
-  eliminar_franja:       'Eliminó una franja horaria',
-  imprimir_pedido:       'Imprimió un pedido',
-  check_armado:          'Marcó un pedido como armado',
-  descheck_armado:       'Desmarcó el armado de un pedido',
-  check_comprobante:     'Chequeó el comprobante de un pedido',
-  descheck_comprobante:  'Desmarcó el chequeo de comprobante',
-  cambiar_password_admin:'Cambió la contraseña de un admin',
-  editar_vencimiento_reprocann: 'Editó el vencimiento REPROCANN',
-  crear_usuario:         'Creó un usuario',
-  promover_admin:        'Promovió a administrador',
-  degradar_admin:        'Quitó rol de administrador',
-};
-
-const RECURSO_LABEL: Record<string, string> = {
-  configuracion:          'Configuración',
-  ubicaciones:            'Ubicaciones',
-  geneticas:              'Genéticas',
-  stock:                  'Stock',
-  productos:              'Productos',
-  pedidos:                'Pedidos',
-  newsletter:             'Newsletter',
-  reprocann:              'REPROCANN',
-  socios:                 'Socios',
-  socio_notas:            'Notas',
-  reprocann_certificado:  'Certificados',
-  comprobante_pago:       'Comprobantes',
-  franjas:                'Horarios',
-  usuarios:               'Usuarios',
-};
-
-// Resumen compacto del metadata (omite ids, que no le dicen nada al admin)
-function resumenMetadata(metadata: Record<string, unknown> | null): string | null {
-  if (!metadata) return null;
-  const partes = Object.entries(metadata)
-    .filter(([k, v]) => v != null && !k.endsWith('id') && k !== 'path')
-    .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${String(v)}`);
-  return partes.length ? partes.join(' · ') : null;
-}
-
-function ActividadTab({ actividad }: { actividad: AuditEntry[] }) {
-  const [filtro, setFiltro] = useState('todos');
-
-  // Solo se ofrecen como filtro los recursos que aparecen en el log
-  const recursos = useMemo(
-    () => Array.from(new Set(actividad.map(a => a.recurso))),
-    [actividad]
-  );
-
-  const filtradas = filtro === 'todos' ? actividad : actividad.filter(a => a.recurso === filtro);
-
-  return (
-    <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-4 max-w-3xl">
-
-      <motion.div variants={fadeUp} className="flex items-center justify-between flex-wrap gap-3">
-        <p className="text-muted-foreground text-sm">Últimas {actividad.length} acciones de administración.</p>
-        {recursos.length > 1 && (
-          <select
-            value={filtro}
-            onChange={e => setFiltro(e.target.value)}
-            className="input-club bg-club-verde-medio appearance-none cursor-pointer py-2 text-xs"
-          >
-            <option value="todos">Todos los módulos</option>
-            {recursos.map(r => (
-              <option key={r} value={r}>{RECURSO_LABEL[r] ?? r}</option>
-            ))}
-          </select>
-        )}
-      </motion.div>
-
-      {filtradas.length === 0 ? (
-        <motion.div variants={fadeUp} className="glass-card p-12 text-center">
-          <History className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-muted-foreground text-sm">Sin actividad registrada todavía.</p>
-        </motion.div>
-      ) : (
-        <motion.div variants={fadeUp} className="glass-card divide-y divide-club-verde-claro/15">
-          {filtradas.map(a => {
-            const detalle = resumenMetadata(a.metadata);
-            return (
-              <div key={a.id} className="px-5 py-3.5 flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-foreground text-sm">
-                    <span className="font-semibold">{a.admin?.nombre ?? 'Admin'}</span>{' '}
-                    <span className="text-foreground/80">{ACCION_LABEL[a.accion] ?? a.accion.replace(/_/g, ' ')}</span>
-                    {a.socio?.nombre && <span className="text-muted-foreground"> — {a.socio.nombre}</span>}
-                  </p>
-                  {detalle && (
-                    <p className="text-muted-foreground text-xs mt-0.5 truncate">{detalle}</p>
-                  )}
-                </div>
-                <div className="text-right shrink-0">
-                  <span className="inline-block px-2 py-0.5 rounded-full text-[11px] border border-club-verde-claro/30 text-muted-foreground mb-1">
-                    {RECURSO_LABEL[a.recurso] ?? a.recurso}
-                  </span>
-                  <p className="text-muted-foreground text-[11px]">{formatFecha(a.fecha, 'dd MMM · HH:mm')}</p>
-                </div>
-              </div>
-            );
-          })}
-        </motion.div>
-      )}
-    </motion.div>
-  );
-}
 
 // ── Tab General ───────────────────────────────────────────────
 

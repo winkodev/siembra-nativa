@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { registrarActividadSocio } from '@/lib/audit';
 import { registrarAccion } from '@/lib/audit';
 import type { ActionResponse, TipoConsulta } from '@/lib/types/database';
 
@@ -36,6 +37,7 @@ export async function crearConsulta(
     .insert({ socio_id: user.id, tipo, mensaje: texto });
 
   if (error) return { ok: false, error: 'Error al enviar la consulta' };
+  await registrarActividadSocio(user.id, 'crear_consulta', { tipo });
 
   revalidatePath('/socio/consultas');
   return { ok: true, data: undefined };

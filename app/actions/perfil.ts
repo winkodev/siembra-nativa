@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { registrarActividadSocio } from '@/lib/audit';
 import { z } from 'zod';
 import type { ActionResponse } from '@/lib/types/database';
 
@@ -19,6 +20,7 @@ export async function aceptarTerminos(): Promise<ActionResponse> {
     .is('terminos_aceptados_at', null);
 
   if (error) return { ok: false, error: 'Error al registrar la aceptación' };
+  await registrarActividadSocio(user.id, 'aceptar_terminos');
 
   // La notificación "Aceptá los términos" deja de tener sentido
   await supabase
@@ -84,6 +86,12 @@ export async function guardarPerfil(
     .eq('id', user.id);
 
   if (error) return { ok: false, error: 'Error al guardar los datos' };
+
+  // Admin → Actividad: qué campos quedaron cargados (sin valores sensibles)
+  await registrarActividadSocio(user.id, 'guardar_perfil', {
+    campos: Object.entries(datos).filter(([, v]) => v != null && v !== '').map(([k]) => k).join(', '),
+    direccion_validada: validada,
+  });
 
   // Invalida el caché del Inicio: sin esto el banner "completá tu DNI y
   // teléfono" seguía mostrándose con los datos ya guardados
