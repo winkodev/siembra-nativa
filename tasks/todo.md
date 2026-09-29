@@ -349,3 +349,9 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - [x] Configuración: pestaña Actividad eliminada (movida)
 - [x] Bug: drawer de socios reabría el socio del deep-link ?socio= tras cada revalidación → se atiende una vez y se limpia la URL
 - [x] Cupón masivo: botón "Cupón para todos" en Socios, un cupón por socio con lote_id, lista de envíos y anular no usados. SQL ejecutado.
+
+## ✅ 2026-09-29 (desplegado a936377): Semáforo de socios + flujo Por armar
+
+- Socios: 4 íconos verde/rojo (datos, REPROCANN, términos, tienda), independientes.
+- Pedidos: "Por armar" estricto; el recién armado sigue visible hasta aprobar (estado local de sesión).
+- Dashboard: "Por entregar" abre ?filtro=aprobado.
