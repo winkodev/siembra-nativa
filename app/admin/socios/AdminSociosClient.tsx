@@ -848,14 +848,16 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
                   <p className="text-xs text-muted-foreground truncate">{socio.email ?? '—'}</p>
                 </div>
 
-                <div className="hidden sm:flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   {socio.rol === 'admin' ? (
                     <Badge text="Admin" color="text-club-dorado bg-club-dorado/10 border-club-dorado/30" />
                   ) : (
                     <>
-                      <Badge text={rep.label} color={rep.color} />
-                      <Badge text={est.label} color={est.color} />
-                      {socio.compra_habilitada && <Store className="w-3.5 h-3.5 text-green-400" />}
+                      <span className="hidden sm:contents">
+                        <Badge text={rep.label} color={rep.color} />
+                        <Badge text={est.label} color={est.color} />
+                      </span>
+                      <SemaforoSocio socio={socio} />
                     </>
                   )}
                 </div>
@@ -1062,6 +1064,44 @@ function CrearUsuarioModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Semáforo del socio: lo que tiene que completar para operar ──
+// Cuatro íconos independientes, verde o rojo cada uno por su propio criterio:
+// datos personales, certificado REPROCANN aprobado, términos aceptados y tienda.
+// Habilitar la tienda a mano NO pone en verde el REPROCANN (son criterios distintos).
+
+function SemaforoSocio({ socio }: { socio: Profile }) {
+  const datosOk    = Boolean(socio.dni?.trim() && socio.telefono?.trim() && socio.direccion?.trim());
+  const repOk      = estadoEfectivoReprocann(socio.reprocann_estado, socio.reprocann_vencimiento) === 'aprobado';
+  const terminosOk = Boolean(socio.terminos_aceptados_at);
+  const tiendaOk   = socio.compra_habilitada;
+
+  const items = [
+    { ok: datosOk,    Icono: User,       label: datosOk ? 'Datos personales completos' : 'Faltan datos personales (DNI, teléfono o dirección)' },
+    { ok: repOk,      Icono: FileText,   label: repOk ? 'REPROCANN aprobado' : 'REPROCANN sin aprobar' },
+    { ok: terminosOk, Icono: ScrollText, label: terminosOk ? 'Términos aceptados' : 'Términos sin aceptar' },
+    { ok: tiendaOk,   Icono: Store,      label: tiendaOk ? 'Tienda habilitada' : 'Tienda deshabilitada' },
+  ];
+
+  return (
+    <div className="flex items-center gap-1" aria-label="Estado del socio">
+      {items.map(({ ok, Icono, label }, i) => (
+        <span
+          key={i}
+          title={label}
+          className={cn(
+            'w-6 h-6 rounded-md border flex items-center justify-center',
+            ok
+              ? 'text-green-400 bg-green-400/10 border-green-400/30'
+              : 'text-red-400 bg-red-400/10 border-red-400/30'
+          )}
+        >
+          <Icono className="w-3.5 h-3.5" />
+        </span>
+      ))}
     </div>
   );
 }
