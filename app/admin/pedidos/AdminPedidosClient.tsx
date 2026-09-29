@@ -99,9 +99,10 @@ const filtrosEstado: { label: string; value: Filtro }[] = [
   { label: 'Cancelado', value: 'cancelado' },
 ];
 
-// Pago comprobado por el club pero todavía sin armar
+// Pago comprobado por el club y todavía sin aprobar: incluye los ya armados,
+// así el que lo armó lo ve en la misma lista y lo aprueba sin cambiar de filtro
 function esPorArmar(p: PedidoAdmin): boolean {
-  return p.estado === 'pendiente' && !!p.comprobante_ok_at && !p.armado_at;
+  return p.estado === 'pendiente' && !!p.comprobante_ok_at;
 }
 
 // Presets de período para la vista "Todos"
