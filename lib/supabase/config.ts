@@ -18,6 +18,8 @@ export interface AppConfig {
   // Paso "Sumá productos" al cerrar el carrito
   upsell_titulo:            string;
   upsell_texto:             string;
+  // Horas mínimas entre el pedido y la franja de entrega elegible
+  entrega_anticipacion_horas: number;
 }
 
 export async function getAppConfig(): Promise<AppConfig> {
@@ -43,6 +45,7 @@ export async function getAppConfig(): Promise<AppConfig> {
     pago_instrucciones:      map['pago_instrucciones'] ?? '',
     upsell_titulo:           map['upsell_titulo'] ?? 'Sumá productos a tu pedido',
     upsell_texto:            map['upsell_texto'] ?? 'Aprovechá el envío y agregá alguno de estos productos.',
+    entrega_anticipacion_horas: parseFloat(map['entrega_anticipacion_horas'] ?? '48') || 48,
   };
 }
 

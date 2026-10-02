@@ -6,7 +6,7 @@ import {
   Settings, MapPin, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Loader2, Check,
   SlidersHorizontal, CalendarClock, Landmark,
 } from 'lucide-react';
-import { cn, formatFecha, formatFranja } from '@/lib/utils';
+import { cn, formatFecha, formatFranja, labelDias, DIAS_CORTOS } from '@/lib/utils';
 import {
   crearUbicacion, actualizarUbicacion, eliminarUbicacion, toggleUbicacionActiva, guardarConfigApp,
   crearFranja, actualizarFranja, eliminarFranja, toggleFranjaActiva, guardarDatosPago,
@@ -71,7 +71,7 @@ export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin }
       </div>
 
       {tab === 'general'     && <GeneralTab config={config} />}
-      {tab === 'horarios'    && <FranjasTab franjas={franjas} />}
+      {tab === 'horarios'    && <FranjasTab franjas={franjas} config={config} />}
       {tab === 'ubicaciones' && <UbicacionesTab ubicaciones={ubicaciones} />}
       {tab === 'pagos' && superadmin && <PagosTab config={config} />}
     </div>
@@ -158,22 +158,38 @@ function PagosTab({ config }: { config: AppConfig }) {
 
 // ── Tab Horarios (franjas de entrega) ─────────────────────────
 
-function FranjasTab({ franjas: inicial }: { franjas: FranjaHoraria[] }) {
+function FranjasTab({ franjas: inicial, config }: { franjas: FranjaHoraria[]; config: AppConfig }) {
   const [items, setItems]          = useState(inicial);
   const [modal, setModal]          = useState(false);
   const [editando, setEditando]    = useState<FranjaHoraria | null>(null);
-  const [dia, setDia]              = useState('');
+  // Días de la semana de la franja (0 = domingo ... 6 = sábado)
+  const [dias, setDias]            = useState<number[]>([]);
   const [desde, setDesde]          = useState('09:00');
   const [hasta, setHasta]          = useState('18:00');
   const [pending, startTransition] = useTransition();
   const [error, setError]          = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
 
+  // Anticipación mínima (horas) entre el pedido y la entrega
+  const [anticipacion, setAnticipacion] = useState(String(config.entrega_anticipacion_horas));
+  const [anticipacionOk, setAnticipacionOk] = useState(false);
+  const guardarAnticipacion = () => {
+    startTransition(async () => {
+      const res = await guardarConfigApp('entrega_anticipacion_horas', String(Math.max(0, parseFloat(anticipacion) || 0)));
+      if (!res.ok) { setError(res.error); return; }
+      setAnticipacionOk(true);
+      setTimeout(() => setAnticipacionOk(false), 2000);
+    });
+  };
+
+  const toggleDia = (d: number) =>
+    setDias(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d].sort((a, b) => a - b));
+
   const abrirCrear = () => {
-    setEditando(null); setDia(''); setDesde('09:00'); setHasta('18:00'); setError(null); setModal(true);
+    setEditando(null); setDias([]); setDesde('09:00'); setHasta('18:00'); setError(null); setModal(true);
   };
   const abrirEditar = (f: FranjaHoraria) => {
-    setEditando(f); setDia(f.dia); setDesde(f.hora_desde.slice(0, 5)); setHasta(f.hora_hasta.slice(0, 5));
+    setEditando(f); setDias(f.dias_semana ?? []); setDesde(f.hora_desde.slice(0, 5)); setHasta(f.hora_hasta.slice(0, 5));
     setError(null); setModal(true);
   };
 
@@ -181,11 +197,11 @@ function FranjasTab({ franjas: inicial }: { franjas: FranjaHoraria[] }) {
     setError(null);
     startTransition(async () => {
       if (editando) {
-        const res = await actualizarFranja(editando.id, dia, desde, hasta);
+        const res = await actualizarFranja(editando.id, dias, desde, hasta);
         if (!res.ok) { setError(res.error); return; }
         setItems(prev => prev.map(f => f.id === editando.id ? res.data : f));
       } else {
-        const res = await crearFranja(dia, desde, hasta);
+        const res = await crearFranja(dias, desde, hasta);
         if (!res.ok) { setError(res.error); return; }
         setItems(prev => [...prev, res.data]);
       }
@@ -225,6 +241,29 @@ function FranjasTab({ franjas: inicial }: { franjas: FranjaHoraria[] }) {
       {error && !modal && (
         <div className="px-4 py-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-sm">{error}</div>
       )}
+
+      {/* Anticipación mínima: las fechas más cercanas se grisan para el socio */}
+      <motion.div variants={fadeUp} className="glass-card p-5 space-y-3">
+        <div>
+          <p className="text-foreground font-medium text-sm">Anticipación mínima de entrega</p>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            Horas entre que el socio confirma el pedido y la primera franja que puede elegir.
+            Con 48, si pide un lunes la primera entrega posible es el miércoles.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="number" min="0" step="1" value={anticipacion}
+            onChange={e => setAnticipacion(e.target.value)}
+            className="input-club w-28 text-center text-lg font-bold text-club-dorado"
+          />
+          <span className="text-muted-foreground text-sm">horas</span>
+          <button onClick={guardarAnticipacion} disabled={pending || anticipacion === String(config.entrega_anticipacion_horas)}
+            className="ml-auto px-4 py-2 rounded-lg bg-club-dorado/15 border border-club-dorado/30 text-club-dorado text-sm font-semibold hover:bg-club-dorado/25 transition-colors disabled:opacity-40">
+            {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : anticipacionOk ? <Check className="w-4 h-4" /> : 'Guardar'}
+          </button>
+        </div>
+      </motion.div>
 
       {items.length === 0 ? (
         <motion.div variants={fadeUp} className="glass-card p-12 text-center">
@@ -280,9 +319,21 @@ function FranjasTab({ franjas: inicial }: { franjas: FranjaHoraria[] }) {
               </div>
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Día *</label>
-                  <input value={dia} onChange={e => setDia(e.target.value)} className="input-club w-full"
-                    placeholder="Ej: Sábados, Lunes a Viernes" />
+                  <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Días *</label>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[1, 2, 3, 4, 5, 6, 0].map(d => (
+                      <button key={d} type="button" onClick={() => toggleDia(d)}
+                        className={cn(
+                          'w-11 py-2 rounded-lg text-xs font-semibold border transition-all',
+                          dias.includes(d)
+                            ? 'bg-club-dorado text-club-verde border-club-dorado'
+                            : 'bg-white/5 text-muted-foreground border-white/10 hover:border-club-dorado/40'
+                        )}>
+                        {DIAS_CORTOS[d]}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-muted-foreground text-[11px] mt-1.5">{labelDias(dias)}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>

@@ -355,3 +355,11 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - Socios: 4 íconos verde/rojo (datos, REPROCANN, términos, tienda), independientes.
 - Pedidos: "Por armar" estricto; el recién armado sigue visible hasta aprobar (estado local de sesión).
 - Dashboard: "Por entregar" abre ?filtro=aprobado.
+
+## 🟢 EN LOCAL 2026-10-02: Piso en Socios, Copiar datos en Pedidos, franjas por día + anticipación
+
+- [x] Socios: dirección con piso/depto; etiqueta del campo "Piso / Depto / Timbre"
+- [x] Pedidos: botón "Copiar datos" (nombre, tel, dirección completa, mapa)
+- [x] Franjas por días de la semana (checkboxes), anticipación mínima configurable (48 hs), socio elige fecha concreta, fechas cercanas grisadas
+- [x] SQL `supabase/franjas-dias.sql` (dias_semana, config, entrega_fecha, crear_pedido v6). **Pendiente de ejecutar.**
+- [ ] Probar en local y desplegar

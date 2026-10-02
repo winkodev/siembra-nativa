@@ -104,7 +104,24 @@ export function formatNumeroPedido(numero: number | null | undefined): string {
   return numero != null ? `#${String(numero).padStart(4, '0')}` : '#—';
 }
 
-// Etiqueta legible de una franja horaria: "Sábados · 09:00–18:00 hs"
-export function formatFranja(f: { dia: string; hora_desde: string; hora_hasta: string }): string {
-  return `${f.dia} · ${f.hora_desde.slice(0, 5)}–${f.hora_hasta.slice(0, 5)} hs`;
+// Etiqueta legible de una franja horaria: "Sábados · 09:00–18:00 hs".
+// Si la franja tiene días como dato, la etiqueta sale de ahí; si no, del texto viejo.
+export function formatFranja(f: { dia: string; dias_semana?: number[] | null; hora_desde: string; hora_hasta: string }): string {
+  const dia = f.dias_semana && f.dias_semana.length > 0 ? labelDias(f.dias_semana) : f.dia;
+  return `${dia} · ${f.hora_desde.slice(0, 5)}–${f.hora_hasta.slice(0, 5)} hs`;
+}
+
+// Días de la semana (0 = domingo, como EXTRACT(DOW) en Postgres y getDay() en JS)
+export const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'] as const;
+export const DIAS_CORTOS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'] as const;
+
+// Etiqueta legible de un conjunto de días: "Sábados", "Lunes a Viernes", "Lun, Mié, Vie"
+export function labelDias(dias: number[]): string {
+  const d = Array.from(new Set(dias)).filter(n => n >= 0 && n <= 6).sort((a, b) => a - b);
+  if (d.length === 0) return 'Sin día';
+  if (d.length === 7) return 'Todos los días';
+  if (d.length === 1) return DIAS_SEMANA[d[0]] + 's';
+  const esRango = d.every((n, i) => i === 0 || n === d[i - 1] + 1);
+  if (esRango && d.length >= 3) return `${DIAS_SEMANA[d[0]]} a ${DIAS_SEMANA[d[d.length - 1]]}`;
+  return d.map(n => DIAS_CORTOS[n]).join(', ');
 }

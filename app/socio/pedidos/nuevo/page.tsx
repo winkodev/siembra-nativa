@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -11,7 +11,7 @@ import {
 import { useCarrito } from '@/lib/context/CarritoContext';
 import { crearPedido, subirComprobante } from '@/app/actions/pedidos';
 import { createClient } from '@/lib/supabase/client';
-import { cn, formatGramos, formatFranja, formatPrecio, labelTipo, labelCategoriaProducto } from '@/lib/utils';
+import { cn, formatGramos, formatPrecio, labelTipo, labelCategoriaProducto, DIAS_SEMANA } from '@/lib/utils';
 import { montoCupon, motivoCuponNoAplica, labelCupon } from '@/lib/utils/cupones';
 import type { FranjaHoraria, CarritoItem } from '@/lib/types/database';
 
@@ -36,6 +36,8 @@ export default function NuevoPedidoPage() {
   // Datos del club: franjas activas, config de envío/comprobante y dirección del socio
   const [franjas, setFranjas]   = useState<FranjaHoraria[]>([]);
   const [franjaId, setFranjaId] = useState<string | null>(null);
+  const [fechaEntrega, setFechaEntrega] = useState<string | null>(null);   // YYYY-MM-DD
+  const [anticipacionHoras, setAnticipacionHoras] = useState(48);
   const [direccion, setDireccion] = useState<string | null>(null);
   const [direccionOk, setDireccionOk] = useState(false);
   const [comprobanteObligatorio, setComprobanteObligatorio] = useState(false);
@@ -67,6 +69,7 @@ export default function NuevoPedidoPage() {
         setComprobanteObligatorio(map['comprobante_obligatorio'] === 'true');
         setCostoEnvio(parseFloat(map['costo_envio'] ?? '0') || 0);
         setGratisDesde(parseFloat(map['envio_gratis_desde'] ?? '0') || 0);
+        setAnticipacionHoras(parseFloat(map['entrega_anticipacion_horas'] ?? '48') || 48);
         setPago({
           alias:         map['pago_alias'] ?? '',
           cbu:           map['pago_cbu'] ?? '',
@@ -107,15 +110,38 @@ export default function NuevoPedidoPage() {
   const cuponMonto  = cupon ? montoCupon(cupon, baseCupon) : 0;
   const totalMonto  = subtotal - descMonto + montoEnvio - cuponMonto;
 
+  // Opciones de entrega: cada franja activa en cada uno de los próximos 14 días
+  // que le corresponden. Disponible solo si el inicio respeta la anticipación.
+  const opcionesEntrega = useMemo(() => {
+    const ahora  = new Date();
+    const minimo = new Date(ahora.getTime() + anticipacionHoras * 3600 * 1000);
+    const out: { franja: FranjaHoraria; fecha: string; label: string; disponible: boolean }[] = [];
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + i);
+      const fecha = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      for (const f of franjas) {
+        if (!f.activa || !(f.dias_semana ?? []).includes(d.getDay())) continue;
+        const [h, m] = f.hora_desde.split(':').map(Number);
+        const inicio = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
+        out.push({
+          franja: f, fecha,
+          label: `${DIAS_SEMANA[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} · ${f.hora_desde.slice(0, 5)}–${f.hora_hasta.slice(0, 5)} hs`,
+          disponible: inicio >= minimo,
+        });
+      }
+    }
+    return out;
+  }, [franjas, anticipacionHoras]);
+
   const handleConfirmar = async () => {
-    if (franjas.length > 0 && !franjaId) { setError('Elegí un horario de entrega'); return; }
+    if (franjas.length > 0 && (!franjaId || !fechaEntrega)) { setError('Elegí el día y horario de entrega'); return; }
     if (!direccion) { setError('Cargá tu dirección en Mi Perfil antes de confirmar el pedido'); return; }
     if (!direccionOk) { setError('Confirmá que la dirección de entrega es correcta'); return; }
     if (comprobanteObligatorio && !comprobante) { setError('Adjuntá el comprobante de pago para confirmar'); return; }
 
     setLoading(true);
     setError(null);
-    const res = await crearPedido(items, notas, franjaId, cupon && !cuponMotivo ? cupon.id : null);
+    const res = await crearPedido(items, notas, franjaId, cupon && !cuponMotivo ? cupon.id : null, fechaEntrega);
 
     if (!res.ok) {
       setLoading(false);
@@ -261,29 +287,43 @@ export default function NuevoPedidoPage() {
         </div>
       </motion.div>
 
-      {/* Horario de entrega */}
+      {/* Día y horario de entrega: fechas concretas de los próximos días.
+          Las que caen dentro de la anticipación mínima se ven grisadas. */}
       {franjas.length > 0 && (
         <motion.div variants={fadeUp} className="glass-card p-5 space-y-3">
           <label className="text-sm text-foreground/80 font-medium flex items-center gap-2">
             <CalendarClock className="w-4 h-4 text-club-dorado" />
-            Horario de entrega *
+            Día y horario de entrega *
           </label>
-          <div className="flex flex-wrap gap-2">
-            {franjas.map(f => (
-              <button
-                key={f.id}
-                onClick={() => setFranjaId(f.id)}
-                className={cn(
-                  'px-4 py-2.5 rounded-xl text-sm font-medium border transition-all',
-                  franjaId === f.id
-                    ? 'bg-club-dorado text-club-verde border-club-dorado shadow-dorado-sm'
-                    : 'bg-club-verde-claro/15 text-muted-foreground border-white/10 hover:border-club-dorado/40 hover:text-foreground'
-                )}
-              >
-                {formatFranja(f)}
-              </button>
-            ))}
-          </div>
+          {opcionesEntrega.length === 0 ? (
+            <p className="text-muted-foreground text-sm">Las franjas de entrega todavía no tienen días asignados. Contactá al club.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {opcionesEntrega.map(o => {
+                const activa = franjaId === o.franja.id && fechaEntrega === o.fecha;
+                return (
+                  <button
+                    key={`${o.franja.id}:${o.fecha}`}
+                    onClick={() => { if (o.disponible) { setFranjaId(o.franja.id); setFechaEntrega(o.fecha); } }}
+                    disabled={!o.disponible}
+                    title={o.disponible ? undefined : `Muy pronto: la entrega se programa con ${anticipacionHoras} hs de anticipación`}
+                    className={cn(
+                      'px-4 py-2.5 rounded-xl text-sm font-medium border transition-all',
+                      !o.disponible && 'opacity-35 cursor-not-allowed line-through bg-white/5 text-muted-foreground border-white/10',
+                      o.disponible && (activa
+                        ? 'bg-club-dorado text-club-verde border-club-dorado shadow-dorado-sm'
+                        : 'bg-club-verde-claro/15 text-muted-foreground border-white/10 hover:border-club-dorado/40 hover:text-foreground')
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <p className="text-muted-foreground text-xs">
+            La entrega se programa con al menos {anticipacionHoras} hs de anticipación.
+          </p>
         </motion.div>
       )}
 

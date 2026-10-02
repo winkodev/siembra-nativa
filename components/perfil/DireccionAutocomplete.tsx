@@ -161,7 +161,7 @@ export function DireccionAutocomplete({ profile }: { profile: Profile }) {
 
       {/* Piso / departamento: lo completa el socio (no es dato geolocalizado) */}
       <div className="space-y-1.5">
-        <label className="text-sm text-foreground/80 font-medium">Piso / Departamento</label>
+        <label className="text-sm text-foreground/80 font-medium">Piso / Depto / Timbre</label>
         <input
           name="piso_depto" type="text"
           defaultValue={profile.piso_depto ?? ''}

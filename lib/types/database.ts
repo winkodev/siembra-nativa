@@ -118,6 +118,8 @@ export interface Pedido {
   fecha_entregado: string | null;
   // Foto del horario de entrega elegido (ej: "Sábados · 09:00–18:00 hs")
   entrega_franja: string | null;
+  // Fecha concreta de entrega elegida por el socio
+  entrega_fecha: string | null;
   // Foto de los montos al confirmar (precios de ese momento)
   monto_total: number | null;
   monto_envio: number | null;
@@ -158,6 +160,8 @@ export type CategoriaProducto = 'aceite' | 'merchandising' | 'otro';
 export interface FranjaHoraria {
   id: string;
   dia: string;
+  // 0 = domingo ... 6 = sábado
+  dias_semana: number[];
   hora_desde: string;   // formato TIME "09:00:00"
   hora_hasta: string;
   activa: boolean;
@@ -499,6 +503,7 @@ export interface Database {
           p_notas: string | null;
           p_franja_id: string | null;
           p_cupon_id?: string | null;
+          p_fecha_entrega?: string | null;
         };
         Returns: { pedido_id: string; numero: number };
       };

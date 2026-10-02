@@ -261,7 +261,7 @@ function SocioDrawer({
   const estKey = `estado-${socio.id}` as LoadingKey;
   const notKey = `notas-${socio.id}` as LoadingKey;
 
-  const direccionCompleta = [socio.direccion, socio.localidad, socio.provincia, socio.codigo_postal]
+  const direccionCompleta = [[socio.direccion, socio.piso_depto].filter(Boolean).join(', '), socio.localidad, socio.provincia, socio.codigo_postal]
     .filter(Boolean).join(', ') || null;
 
   return (

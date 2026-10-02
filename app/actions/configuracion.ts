@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { registrarAccion } from '@/lib/audit';
-import { formatFranja } from '@/lib/utils';
+import { formatFranja, labelDias } from '@/lib/utils';
 import type { ActionResponse, Ubicacion, FranjaHoraria } from '@/lib/types/database';
 import { CLAVES_PAGO, type DatosPago } from '@/lib/supabase/config';
 
@@ -97,23 +97,24 @@ export async function toggleUbicacionActiva(id: string, activa: boolean): Promis
 // Franjas horarias de entrega
 // ------------------------------------------------------------
 
-function validarFranja(dia: string, desde: string, hasta: string): string | null {
-  if (!dia.trim()) return 'Indicá el día (ej: Sábados)';
+function validarFranja(dias: number[], desde: string, hasta: string): string | null {
+  if (dias.length === 0 || dias.some(d => d < 0 || d > 6)) return 'Elegí al menos un día de la semana';
   if (!desde || !hasta) return 'Indicá el horario desde y hasta';
   if (hasta <= desde) return 'El horario "hasta" debe ser mayor que "desde"';
   return null;
 }
 
-export async function crearFranja(dia: string, desde: string, hasta: string): Promise<ActionResponse<FranjaHoraria>> {
+export async function crearFranja(dias: number[], desde: string, hasta: string): Promise<ActionResponse<FranjaHoraria>> {
   const supabase = await verificarAdmin();
   if (!supabase) return { ok: false, error: 'No autorizado' };
 
-  const invalida = validarFranja(dia, desde, hasta);
+  const invalida = validarFranja(dias, desde, hasta);
   if (invalida) return { ok: false, error: invalida };
 
+  // `dia` queda como etiqueta derivada de los días (compatibilidad con pedidos viejos)
   const { data, error } = await supabase
     .from('franjas_horarias')
-    .insert({ dia: dia.trim(), hora_desde: desde, hora_hasta: hasta })
+    .insert({ dia: labelDias(dias), dias_semana: dias, hora_desde: desde, hora_hasta: hasta })
     .select()
     .single();
 
@@ -124,16 +125,16 @@ export async function crearFranja(dia: string, desde: string, hasta: string): Pr
   return { ok: true, data };
 }
 
-export async function actualizarFranja(id: string, dia: string, desde: string, hasta: string): Promise<ActionResponse<FranjaHoraria>> {
+export async function actualizarFranja(id: string, dias: number[], desde: string, hasta: string): Promise<ActionResponse<FranjaHoraria>> {
   const supabase = await verificarAdmin();
   if (!supabase) return { ok: false, error: 'No autorizado' };
 
-  const invalida = validarFranja(dia, desde, hasta);
+  const invalida = validarFranja(dias, desde, hasta);
   if (invalida) return { ok: false, error: invalida };
 
   const { data, error } = await supabase
     .from('franjas_horarias')
-    .update({ dia: dia.trim(), hora_desde: desde, hora_hasta: hasta })
+    .update({ dia: labelDias(dias), dias_semana: dias, hora_desde: desde, hora_hasta: hasta })
     .eq('id', id)
     .select()
     .single();

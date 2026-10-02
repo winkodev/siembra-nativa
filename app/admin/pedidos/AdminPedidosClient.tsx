@@ -4,7 +4,7 @@ import { useState, useMemo, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingBag, ChevronDown, Clock, Loader2, Search, Receipt, ExternalLink,
-  Printer, CalendarClock, PackageCheck, Check, MapPin,
+  Printer, CalendarClock, PackageCheck, Check, MapPin, Copy,
 } from 'lucide-react';
 import { cn, formatFecha, formatGramos, formatNumeroPedido, formatPrecio, labelTipo, labelCategoriaProducto, badgePedido } from '@/lib/utils';
 import { cambiarEstadoPedido, verComprobante, marcarCheckPedido, type TipoCheck } from '@/app/actions/pedidos';
@@ -122,6 +122,15 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }:
   // aprueben o se cambie de filtro, para que el que armó lo apruebe ahí mismo
   const [reciénArmados, setReciénArmados] = useState<Set<string>>(new Set());
   const [busqueda, setBusqueda]   = useState('');
+  // Feedback del botón "Copiar datos" de entrega
+  const [copiadoId, setCopiadoId] = useState<string | null>(null);
+  async function copiarDatosEntrega(pedidoId: string, texto: string) {
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiadoId(pedidoId);
+      setTimeout(() => setCopiadoId(null), 1500);
+    } catch { /* sin permiso de portapapeles: el admin copia a mano */ }
+  }
   const [periodo, setPeriodo]     = useState<Periodo>('todo');
   const [desde, setDesde]         = useState('');
   const [hasta, setHasta]         = useState('');
@@ -459,7 +468,7 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }:
                                     <span className="text-foreground">{dir}</span>
                                   </p>
                                 )}
-                                <div className="flex items-center gap-4 pl-5">
+                                <div className="flex items-center gap-4 pl-5 flex-wrap">
                                   {p?.telefono && (
                                     <span className="text-xs text-muted-foreground">Tel: {p.telefono}</span>
                                   )}
@@ -472,6 +481,21 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }:
                                       <ExternalLink className="w-3 h-3" /> Ver en el mapa
                                     </a>
                                   )}
+                                  {/* Copia nombre, teléfono, dirección completa y mapa, listo para pegar al cadete */}
+                                  <button
+                                    type="button"
+                                    onClick={() => copiarDatosEntrega(pedido.id, [
+                                      p?.nombre,
+                                      p?.telefono ? `Tel: ${p.telefono}` : null,
+                                      [[p?.direccion, p?.piso_depto].filter(Boolean).join(', '), p?.localidad, p?.provincia, p?.codigo_postal].filter(Boolean).join(', ') || null,
+                                      p?.latitud && p?.longitud ? `Mapa: https://www.google.com/maps?q=${p.latitud},${p.longitud}` : null,
+                                    ].filter(Boolean).join('\n'))}
+                                    className="text-xs text-club-dorado hover:text-club-dorado/70 transition-colors inline-flex items-center gap-1 ml-auto"
+                                  >
+                                    {copiadoId === pedido.id
+                                      ? <><Check className="w-3 h-3" /> Copiado</>
+                                      : <><Copy className="w-3 h-3" /> Copiar datos</>}
+                                  </button>
                                 </div>
                               </div>
                             );

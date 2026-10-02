@@ -12,7 +12,8 @@ export async function crearPedido(
   items: CarritoItem[],
   notas: string,
   franjaId?: string | null,
-  cuponId?: string | null
+  cuponId?: string | null,
+  fechaEntrega?: string | null   // YYYY-MM-DD
 ): Promise<ActionResponse<{ pedido_id: string }>> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -35,6 +36,7 @@ export async function crearPedido(
     p_franja_id: franjaId ?? null,
     // Cupón personal: la base lo valida (dueño, disponible, vencimiento, flores) y lo marca usado
     p_cupon_id: cuponId ?? null,
+    p_fecha_entrega: fechaEntrega ?? null,
   });
 
   if (error || !data) {
