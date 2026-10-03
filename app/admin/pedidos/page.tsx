@@ -28,5 +28,5 @@ export default async function AdminPedidosPage({ searchParams }: {
     `)
     .order('created_at', { ascending: false });
 
-  return <AdminPedidosClient pedidos={(pedidos as any[]) ?? []} filtroInicial={searchParams?.filtro} />;
+  return <AdminPedidosClient pedidos={(pedidos as any[]) ?? []} filtroInicial={searchParams?.filtro} superadmin={Boolean(profile.superadmin)} />;
 }

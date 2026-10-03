@@ -35,7 +35,7 @@ export function labelReprocann(estado: ReprocannEstado): string {
   const map: Record<ReprocannEstado, string> = {
     pendiente: 'Pendiente',
     aprobado:  'Aprobado',
-    rechazado: 'Rechazado',
+    rechazado: 'Deshabilitado',
     vencido:   'Vencido',
   };
   return map[estado];

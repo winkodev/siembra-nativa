@@ -227,3 +227,61 @@ export async function cambiarPasswordAdmin(userId: string, nueva: string): Promi
   revalidatePath('/admin/socios');
   return { ok: true, data: undefined };
 }
+// Verifica que quien ejecuta sea el superadmin y devuelve su ID
+async function verificarSuperadmin(): Promise<string | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase.from('profiles').select('rol, superadmin').eq('id', user.id).single();
+  return data?.rol === 'admin' && data.superadmin ? user.id : null;
+}
+
+// Superadmin: pasar un socio a admin o un admin a socio.
+// Al volver a socio queda con la tienda deshabilitada hasta que se revise su REPROCANN.
+export async function cambiarRolUsuario(userId: string, rol: RolUsuario): Promise<ActionResponse> {
+  const adminId = await verificarSuperadmin();
+  if (!adminId) return { ok: false, error: 'Solo el superadmin puede cambiar roles' };
+  if (userId === adminId) return { ok: false, error: 'No podés cambiar tu propio rol' };
+
+  const service = createServiceClient();
+  const { data: perfil } = await service.from('profiles').select('rol, superadmin, nombre').eq('id', userId).single();
+  if (!perfil) return { ok: false, error: 'Usuario no encontrado' };
+  if (perfil.superadmin) return { ok: false, error: 'La cuenta principal del club no se puede modificar' };
+  if (perfil.rol === rol) return { ok: true, data: undefined };
+
+  const patch = rol === 'admin' ? { rol } : { rol, compra_habilitada: false };
+  const { error } = await service.from('profiles').update(patch).eq('id', userId);
+  if (error) return { ok: false, error: 'Error al cambiar el rol' };
+
+  await registrarAccion(createClient(), rol === 'admin' ? 'promover_admin' : 'degradar_admin', 'usuarios', { nombre: perfil.nombre }, userId);
+  revalidatePath('/admin/socios');
+  return { ok: true, data: undefined };
+}
+
+// Superadmin: eliminar un usuario de forma definitiva (auth + perfil en cascada).
+// Un usuario con pedidos no se puede borrar (la base lo impide para no perder
+// el historial): en ese caso hay que desactivarlo.
+export async function eliminarUsuario(userId: string): Promise<ActionResponse> {
+  const adminId = await verificarSuperadmin();
+  if (!adminId) return { ok: false, error: 'Solo el superadmin puede eliminar usuarios' };
+  if (userId === adminId) return { ok: false, error: 'No podés eliminar tu propia cuenta' };
+
+  const service = createServiceClient();
+  const { data: perfil } = await service.from('profiles').select('nombre, email, rol, superadmin').eq('id', userId).single();
+  if (!perfil) return { ok: false, error: 'Usuario no encontrado' };
+  if (perfil.superadmin) return { ok: false, error: 'La cuenta principal del club no se puede eliminar' };
+
+  const { count } = await service.from('pedidos').select('id', { count: 'exact', head: true }).eq('socio_id', userId);
+  if ((count ?? 0) > 0) {
+    return { ok: false, error: `Tiene ${count} pedido${count === 1 ? '' : 's'} en el historial: no se puede eliminar, desactivalo.` };
+  }
+
+  // El log de auditoría va ANTES del borrado: después el perfil ya no existe
+  await registrarAccion(createClient(), 'eliminar_usuario', 'usuarios', { nombre: perfil.nombre, email: perfil.email, rol: perfil.rol });
+
+  const { error } = await service.auth.admin.deleteUser(userId);
+  if (error) return { ok: false, error: 'Error al eliminar el usuario: ' + error.message };
+
+  revalidatePath('/admin/socios');
+  return { ok: true, data: undefined };
+}

@@ -16,5 +16,5 @@ export default async function AdminSociosPage() {
     .select('*')
     .order('fecha_alta', { ascending: false });
 
-  return <AdminSociosClient socios={(socios as Profile[]) ?? []} />;
+  return <AdminSociosClient socios={(socios as Profile[]) ?? []} superadmin={Boolean(profile.superadmin)} />;
 }

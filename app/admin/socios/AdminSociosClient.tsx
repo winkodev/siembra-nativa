@@ -26,7 +26,7 @@ import {
   leerVencimientoCertificado,
   habilitarCompraManual,
 } from '@/app/actions/socios';
-import { crearUsuario, cambiarPasswordAdmin, regenerarPasswordTemporal, type ModoAlta } from '@/app/actions/usuarios';
+import { crearUsuario, cambiarPasswordAdmin, regenerarPasswordTemporal, cambiarRolUsuario, eliminarUsuario, type ModoAlta } from '@/app/actions/usuarios';
 
 type LoadingKey = `reprocann-${string}` | `estado-${string}` | `tienda-${string}` | `notas-${string}` | `cert-${string}` | `rol-${string}`;
 
@@ -38,12 +38,12 @@ const TIPO_NOTA: Record<TipoNotaSocio, { label: string; color: string }> = {
   pago:            { label: 'Pago',            color: 'text-club-dorado bg-club-dorado/10 border-club-dorado/30' },
 };
 
-interface Props { socios: Profile[] }
+interface Props { socios: Profile[]; superadmin?: boolean }
 
 const REPROCANN_LABEL: Record<string, { label: string; color: string }> = {
   pendiente:  { label: 'Pendiente',  color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' },
   aprobado:   { label: 'Aprobado',   color: 'text-green-400  bg-green-400/10  border-green-400/30'  },
-  rechazado:  { label: 'Rechazado',  color: 'text-red-400    bg-red-400/10    border-red-400/30'    },
+  rechazado:  { label: 'Deshabilitado', color: 'text-red-400    bg-red-400/10    border-red-400/30'    },
   vencido:    { label: 'Vencido',    color: 'text-orange-400 bg-orange-400/10 border-orange-400/30' },
 };
 
@@ -56,7 +56,7 @@ const filtrosReprocann = [
   { label: 'Todos',     value: 'todos'     },
   { label: 'Pendiente', value: 'pendiente' },
   { label: 'Aprobado',  value: 'aprobado'  },
-  { label: 'Rechazado', value: 'rechazado' },
+  { label: 'Deshabilitado', value: 'rechazado' },
   { label: 'Admins',    value: 'admins'    },
 ];
 
@@ -74,11 +74,34 @@ function Badge({ text, color }: { text: string; color: string }) {
 function SocioDrawer({
   socio: initial,
   onClose,
+  superadmin = false,
 }: {
   socio: Profile;
-  onClose: (updated?: Profile) => void;
+  onClose: (updated?: Profile, eliminado?: boolean) => void;
+  superadmin?: boolean;   // habilita cambiar rol y eliminar
 }) {
   const [socio, setSocio] = useState<Profile>(initial);
+  const [confirmEliminar, setConfirmEliminar] = useState(false);
+
+  // Superadmin: socio ↔ admin
+  async function handleCambiarRol() {
+    const nuevo: RolUsuario = socio.rol === 'admin' ? 'socio' : 'admin';
+    await run(`rol-${socio.id}`, async () => {
+      const res = await cambiarRolUsuario(socio.id, nuevo);
+      if (res.ok) setSocio(s => ({ ...s, rol: nuevo, ...(nuevo === 'socio' ? { compra_habilitada: false } : {}) }));
+      return res;
+    });
+  }
+
+  // Superadmin: eliminar definitivamente (solo sin pedidos)
+  async function handleEliminar() {
+    await run(`rol-${socio.id}`, async () => {
+      const res = await eliminarUsuario(socio.id);
+      if (res.ok) onClose(socio, true);
+      else setConfirmEliminar(false);
+      return res;
+    });
+  }
   const [loading, setLoading] = useState<LoadingKey | null>(null);
   const [error, setError]     = useState<string | null>(null);
   const [certLoading, setCertLoading] = useState(false);
@@ -588,6 +611,58 @@ function SocioDrawer({
             </section>
           )}
 
+          {/* Superadmin: rol y eliminación */}
+          {superadmin && !socio.superadmin && (
+            <section className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5" /> Superadmin
+              </p>
+              <div className="rounded-xl bg-white/5 p-3 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-foreground font-medium">
+                      {socio.rol === 'admin' ? 'Es administrador' : 'Es socio'}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {socio.rol === 'admin'
+                        ? 'Al volver a socio queda con la tienda deshabilitada hasta revisar su REPROCANN.'
+                        : 'Como admin ve y opera todo el panel del club.'}
+                    </p>
+                  </div>
+                  <button onClick={handleCambiarRol} disabled={busy(`rol-${socio.id}` as LoadingKey)}
+                    className="shrink-0 px-3 py-1.5 text-xs rounded-lg bg-club-dorado/15 hover:bg-club-dorado/25 border border-club-dorado/30 text-club-dorado transition-colors disabled:opacity-50">
+                    {busy(`rol-${socio.id}` as LoadingKey)
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : socio.rol === 'admin' ? 'Volver a socio' : 'Pasar a admin'}
+                  </button>
+                </div>
+
+                {!confirmEliminar ? (
+                  <button onClick={() => setConfirmEliminar(true)}
+                    className="flex items-center gap-1.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" /> Eliminar usuario definitivamente
+                  </button>
+                ) : (
+                  <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-3 space-y-2">
+                    <p className="text-xs text-red-300">
+                      Se borra la cuenta, el perfil, sus cupones y notificaciones. No se puede deshacer.
+                      Si tiene pedidos no se va a poder: en ese caso desactivalo.
+                    </p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setConfirmEliminar(false)} className="flex-1 py-1.5 text-xs rounded-lg border border-white/15 text-muted-foreground hover:text-foreground">
+                        Cancelar
+                      </button>
+                      <button onClick={handleEliminar} disabled={busy(`rol-${socio.id}` as LoadingKey)}
+                        className="flex-1 py-1.5 text-xs rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 font-semibold disabled:opacity-50">
+                        {busy(`rol-${socio.id}` as LoadingKey) ? <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" /> : 'Sí, eliminar'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
           {/* Cupones personales (solo socios) */}
           {socio.rol === 'socio' && <CuponesSocio socioId={socio.id} socioNombre={socio.nombre} />}
 
@@ -714,7 +789,7 @@ function SocioDrawer({
 // ------------------------------------------------------------------
 // Página principal
 // ------------------------------------------------------------------
-export function AdminSociosClient({ socios: initialSocios }: Props) {
+export function AdminSociosClient({ socios: initialSocios, superadmin = false }: Props) {
   const [socios, setSocios] = useState<Profile[]>(initialSocios);
   const [selected, setSelected] = useState<Profile | null>(null);
   const [search, setSearch] = useState('');
@@ -740,8 +815,9 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  function handleClose(updated?: Profile) {
-    if (updated) setSocios(prev => prev.map(s => s.id === updated.id ? updated : s));
+  function handleClose(updated?: Profile, eliminado = false) {
+    if (updated && eliminado) setSocios(prev => prev.filter(s => s.id !== updated.id));
+    else if (updated) setSocios(prev => prev.map(s => s.id === updated.id ? updated : s));
     setSelected(null);
   }
 
@@ -870,7 +946,7 @@ export function AdminSociosClient({ socios: initialSocios }: Props) {
       )}
 
       {/* key por socio: evita que estado sensible (contraseña generada) persista al cambiar de socio */}
-      {selected && <SocioDrawer key={selected.id} socio={selected} onClose={handleClose} />}
+      {selected && <SocioDrawer key={selected.id} socio={selected} onClose={handleClose} superadmin={superadmin} />}
       {modalCrear && <CrearUsuarioModal onClose={() => setModalCrear(false)} />}
       {modalCupon && <CuponMasivoModal onClose={() => setModalCupon(false)} />}
     </div>

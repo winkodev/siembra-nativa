@@ -4,10 +4,10 @@ import { useState, useMemo, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingBag, ChevronDown, Clock, Loader2, Search, Receipt, ExternalLink,
-  Printer, CalendarClock, PackageCheck, Check, MapPin, Copy,
+  Printer, CalendarClock, PackageCheck, Check, MapPin, Copy, Undo2, AlertTriangle,
 } from 'lucide-react';
 import { cn, formatFecha, formatGramos, formatNumeroPedido, formatPrecio, labelTipo, labelCategoriaProducto, badgePedido } from '@/lib/utils';
-import { cambiarEstadoPedido, verComprobante, marcarCheckPedido, type TipoCheck } from '@/app/actions/pedidos';
+import { cambiarEstadoPedido, verComprobante, marcarCheckPedido, revertirEstadoPedido, type TipoCheck } from '@/app/actions/pedidos';
 import { PageHeader } from '@/components/layout/PageHeader';
 import type { EstadoPedido } from '@/lib/types/database';
 
@@ -16,6 +16,14 @@ const labelEstado: Record<EstadoPedido, string> = {
   aprobado:  'Aprobado',
   entregado: 'Entregado',
   cancelado: 'Cancelado',
+};
+
+// A qué estado vuelve cada uno al revertir (superadmin); espeja la action
+const reversionDe: Record<EstadoPedido, EstadoPedido> = {
+  pendiente: 'pendiente',
+  aprobado:  'pendiente',
+  entregado: 'aprobado',
+  cancelado: 'pendiente',
 };
 
 // Transiciones de estado permitidas
@@ -107,11 +115,28 @@ function esPorArmar(p: PedidoAdmin): boolean {
 // Presets de período para la vista "Todos"
 type Periodo = 'todo' | 'hoy' | '7' | '30' | 'rango';
 
-export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }: {
+export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, superadmin = false }: {
   pedidos: PedidoAdmin[];
   filtroInicial?: string;  // llega por query param (?filtro=armar) desde el dashboard
+  superadmin?: boolean;    // habilita "Revertir estado"
 }) {
   const [pedidos, setPedidos]     = useState(pedidosIniciales);
+  // Confirmación antes de entregar o cancelar (son cambios que no se deshacen con un clic)
+  const [confirmar, setConfirmar] = useState<{ pedidoId: string; estado: EstadoDestino; numero: number | null } | null>(null);
+  const [revirtiendo, setRevirtiendo] = useState<string | null>(null);
+
+  const handleRevertir = (pedidoId: string) => {
+    setRevirtiendo(pedidoId);
+    setError(null);
+    startTransition(async () => {
+      const res = await revertirEstadoPedido(pedidoId);
+      setRevirtiendo(null);
+      if (!res.ok) { setError(res.error); return; }
+      setPedidos(prev => prev.map(p => p.id === pedidoId
+        ? { ...p, estado: res.data.estado, ...(res.data.estado === 'aprobado' ? { fecha_entregado: null } : {}) }
+        : p));
+    });
+  };
   const [expandido, setExpandido] = useState<string | null>(null);
   // Arranca con el filtro pedido por URL; si no, muestra lo accionable
   const [filtro, setFiltro]       = useState<Filtro>(() => {
@@ -605,7 +630,9 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }:
                                 return (
                                   <button
                                     key={estado}
-                                    onClick={() => handleCambiarEstado(pedido.id, estado)}
+                                    onClick={() => estado === 'aprobado'
+                                      ? handleCambiarEstado(pedido.id, estado)
+                                      : setConfirmar({ pedidoId: pedido.id, estado, numero: pedido.numero })}
                                     disabled={(pending && loadingId === pedido.id) || bloqueado}
                                     title={bloqueado ? 'Marcá los controles previos para habilitar la aprobación' : undefined}
                                     className={cn(
@@ -625,6 +652,23 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }:
                               })}
                             </div>
                           )}
+
+                          {/* Superadmin: deshacer el último cambio de estado */}
+                          {superadmin && pedido.estado !== 'pendiente' && (
+                            <button
+                              onClick={() => handleRevertir(pedido.id)}
+                              disabled={pending && revirtiendo === pedido.id}
+                              className="text-xs text-muted-foreground hover:text-amber-300 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+                              title={
+                                pedido.estado === 'entregado' ? 'Vuelve a Aprobado (el stock no cambia)'
+                                : pedido.estado === 'aprobado' ? 'Vuelve a Pendiente y devuelve el stock descontado'
+                                : 'Reabre el pedido como Pendiente'
+                              }
+                            >
+                              {pending && revirtiendo === pedido.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
+                              Revertir a {labelEstado[reversionDe[pedido.estado]].toLowerCase()} (superadmin)
+                            </button>
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -635,6 +679,46 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial }:
           })}
         </div>
       )}
+
+      {/* Confirmación de entregar / cancelar */}
+      <AnimatePresence>
+        {confirmar && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setConfirmar(null)}>
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 18, stiffness: 320 }}
+              onClick={e => e.stopPropagation()}
+              className="glass-card w-full max-w-sm p-6 text-center space-y-4">
+              {confirmar.estado === 'entregado'
+                ? <PackageCheck className="w-10 h-10 text-club-dorado mx-auto" />
+                : <AlertTriangle className="w-10 h-10 text-red-400 mx-auto" />}
+              <p className="text-foreground font-semibold">
+                ¿Marcar el pedido {formatNumeroPedido(confirmar.numero)} como {labelEstado[confirmar.estado].toLowerCase()}?
+              </p>
+              <p className="text-muted-foreground text-xs">
+                {confirmar.estado === 'entregado'
+                  ? 'Se registra la fecha de entrega y se avisa al socio.'
+                  : 'Se libera el stock reservado y el cupón si tenía. El socio no recibe aviso automático.'}
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmar(null)} className="btn-secondary flex-1 py-2.5">Volver</button>
+                <button
+                  onClick={() => { handleCambiarEstado(confirmar.pedidoId, confirmar.estado); setConfirmar(null); }}
+                  className={cn(
+                    'flex-1 py-2.5 rounded-xl font-semibold border transition-all',
+                    confirmar.estado === 'entregado'
+                      ? 'bg-club-dorado/20 text-club-dorado border-club-dorado/30 hover:bg-club-dorado/30'
+                      : 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30'
+                  )}
+                >
+                  Sí, marcar {labelEstado[confirmar.estado].toLowerCase()}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

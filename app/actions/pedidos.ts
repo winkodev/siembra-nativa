@@ -293,3 +293,52 @@ export async function verComprobante(pedidoId: string): Promise<ActionResponse<{
   if (!signed?.signedUrl) return { ok: false, error: 'No se pudo generar el acceso al comprobante' };
   return { ok: true, data: { url: signed.signedUrl } };
 }
+
+// ------------------------------------------------------------
+// Superadmin: revertir un cambio de estado hecho por error.
+//   entregado → aprobado : solo limpia la fecha de entrega (el stock no cambia)
+//   aprobado  → pendiente: devuelve el stock descontado (igual que cancelar);
+//                          los controles quedan marcados, se puede re-aprobar
+//   cancelado → pendiente: reabre el pedido; vuelve a reservar stock virtual.
+//                          El cupón que se liberó al cancelar NO se vuelve a aplicar.
+// ------------------------------------------------------------
+const reversiones: Record<string, EstadoPedido> = {
+  entregado: 'aprobado',
+  aprobado:  'pendiente',
+  cancelado: 'pendiente',
+};
+
+export async function revertirEstadoPedido(pedidoId: string): Promise<ActionResponse<{ estado: EstadoPedido }>> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const { data: yo } = await supabase.from('profiles').select('rol, superadmin').eq('id', user.id).single();
+  if (yo?.rol !== 'admin' || !yo.superadmin) return { ok: false, error: 'Solo el superadmin puede revertir estados' };
+
+  const { data: pedido } = await supabase
+    .from('pedidos').select('estado, socio_id').eq('id', pedidoId).single();
+  if (!pedido) return { ok: false, error: 'Pedido no encontrado' };
+
+  const destino = reversiones[pedido.estado];
+  if (!destino) return { ok: false, error: 'Este pedido no tiene nada que revertir' };
+
+  // Devolver stock si el pedido había descontado (solo aprobado → pendiente)
+  if (pedido.estado === 'aprobado') {
+    const { error: restError } = await supabase.rpc('restaurar_stock_pedido', { p_pedido_id: pedidoId });
+    if (restError) return { ok: false, error: 'No se pudo devolver el stock: ' + restError.message };
+  }
+
+  const cambios: { estado: EstadoPedido; fecha_entregado?: null } = { estado: destino };
+  if (pedido.estado === 'entregado') cambios.fecha_entregado = null;
+
+  // Lock optimista: solo si el estado no cambió desde la lectura
+  const { data: actualizado } = await supabase
+    .from('pedidos').update(cambios).eq('id', pedidoId).eq('estado', pedido.estado).select('id').single();
+  if (!actualizado) return { ok: false, error: 'El pedido cambió desde otra sesión. Recargá la página.' };
+
+  await registrarAccion(supabase, 'pedido_revertido', 'pedidos', { pedido_id: pedidoId, de: pedido.estado, a: destino }, pedido.socio_id);
+  revalidatePath('/admin/pedidos');
+  revalidatePath('/socio/pedidos');
+  revalidatePath('/socio/tienda');
+  return { ok: true, data: { estado: destino } };
+}
