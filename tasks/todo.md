@@ -356,18 +356,18 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - Pedidos: "Por armar" estricto; el recién armado sigue visible hasta aprobar (estado local de sesión).
 - Dashboard: "Por entregar" abre ?filtro=aprobado.
 
-## 🟢 EN LOCAL 2026-10-02: Piso en Socios, Copiar datos en Pedidos, franjas por día + anticipación
+## ✅ 2026-10-02 (desplegado 2577812): Piso en Socios, Copiar datos en Pedidos, franjas por día + anticipación
 
 - [x] Socios: dirección con piso/depto; etiqueta del campo "Piso / Depto / Timbre"
 - [x] Pedidos: botón "Copiar datos" (nombre, tel, dirección completa, mapa)
 - [x] Franjas por días de la semana (checkboxes), anticipación mínima configurable (48 hs), socio elige fecha concreta, fechas cercanas grisadas
-- [x] SQL `supabase/franjas-dias.sql` (dias_semana, config, entrega_fecha, crear_pedido v6). **Pendiente de ejecutar.**
-- [ ] Probar en local y desplegar
+- [x] SQL `supabase/franjas-dias.sql` (dias_semana, config, entrega_fecha, crear_pedido v6). Ejecutado.
+- [x] Probado y desplegado
 
-## 🟢 EN LOCAL 2026-10-03: Confirmación entregar/cancelar, reversión superadmin, rol y eliminación, "Deshabilitado"
+## ✅ 2026-10-03 (desplegado cc3b488): Confirmación entregar/cancelar, reversión superadmin, rol y eliminación, "Deshabilitado"
 
 - [x] Pedidos: confirmación antes de Marcar entregado / cancelado (antes era un clic directo)
 - [x] Pedidos: superadmin puede revertir (entregado→aprobado, aprobado→pendiente devolviendo stock, cancelado→pendiente)
 - [x] Socios: superadmin puede pasar a admin / volver a socio, y eliminar (solo sin pedidos)
 - [x] REPROCANN "Rechazado" pasa a "Deshabilitado" (badge y filtro admin, label compartido)
-- [ ] Probar en local y desplegar
+- [x] Probado y desplegado
