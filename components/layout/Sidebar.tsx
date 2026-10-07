@@ -8,7 +8,7 @@ import { Logo } from '@/components/brand/Logo';
 import {
   LayoutDashboard, ShoppingBag, User, Newspaper,
   Users, Package, ClipboardList, LogOut, Menu, X, Shield, Settings, BarChart3,
-  HelpCircle, Activity,
+  HelpCircle, Activity, Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 import { logout } from '@/app/actions/auth';
@@ -40,15 +40,19 @@ const navAdmin: NavItem[] = [
   { href: '/admin/configuracion',  label: 'Configuración',  icon: <Settings className="w-5 h-5" /> },
 ];
 
+// Finanzas: solo la ve el superadmin
+const navFinanzas = { href: '/admin/finanzas', label: 'Finanzas', icon: <Wallet className="w-5 h-5" /> };
+
 interface SidebarProps {
   rol: 'socio' | 'admin';
   nombre: string;
+  superadmin?: boolean;
 }
 
-export function Sidebar({ rol, nombre }: SidebarProps) {
+export function Sidebar({ rol, nombre, superadmin = false }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const items = rol === 'admin' ? navAdmin : navSocio;
+  const items = rol === 'admin' ? (superadmin ? [...navAdmin, navFinanzas] : navAdmin) : navSocio;
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">

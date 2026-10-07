@@ -18,7 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen">
       <FondoClub />
-      <Sidebar rol="admin" nombre={profile.nombre} />
+      <Sidebar rol="admin" nombre={profile.nombre} superadmin={Boolean(profile.superadmin)} />
 
       <main className="lg:pl-64">
         {/* Header admin con indicador de rol */}

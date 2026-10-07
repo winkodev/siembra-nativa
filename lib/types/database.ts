@@ -144,6 +144,9 @@ export interface PedidoItem {
   cantidad_gramos: number | null;
   producto_id: string | null;
   cantidad_unidades: number | null;
+  // Precio por gramo / por unidad al momento del pedido (trigger); estimado = completado después
+  precio_unitario: number | null;
+  precio_estimado: boolean;
   created_at: string;
 }
 
@@ -493,6 +496,10 @@ export interface Database {
         Args: { p_pedido_id: string };
         Returns: void;
       };
+      finanzas_club: {
+        Args: { p_desde: string; p_hasta: string; p_estados?: string[]; p_agrupacion?: string };
+        Returns: FinanzasClub;
+      };
       estadisticas_club: {
         Args: { p_desde: string; p_hasta: string; p_agrupacion: string };
         Returns: EstadisticasClub;
@@ -509,4 +516,30 @@ export interface Database {
       };
     };
   };
+}
+
+// Finanzas (solo superadmin): resultado de finanzas_club()
+export interface FinanzasClub {
+  resumen: {
+    ingresos: number;         // neto: suma de monto_total
+    pedidos: number;
+    ticket_promedio: number;
+    descuentos: number;       // por cantidad + cupones
+    envios: number;
+    sin_monto: number;        // pedidos anteriores a agosto 2026 sin total guardado
+    gramos: number;
+    unidades: number;
+    estimados: number;        // pedidos con algún ítem a precio estimado
+  };
+  serie: { periodo: string; ingresos: number; pedidos: number }[];
+  por_genetica: { nombre: string; gramos: number; bruto: number; pedidos: number; estimado: boolean }[];
+  por_producto: { nombre: string; unidades: number; bruto: number; pedidos: number; estimado: boolean }[];
+  por_socio: {
+    socio_id: string; nombre: string; pedidos: number; gramos: number; total: number;
+    detalle: { nombre: string; gramos: number; bruto: number }[];
+  }[];
+  pedidos: {
+    id: string; numero: number; fecha: string; estado: string; socio: string;
+    gramos: number; unidades: number; descuentos: number; envio: number; total: number | null;
+  }[];
 }
