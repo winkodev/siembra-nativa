@@ -372,9 +372,9 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - [x] REPROCANN "Rechazado" pasa a "Deshabilitado" (badge y filtro admin, label compartido)
 - [x] Probado y desplegado
 
-## 🟢 EN LOCAL 2026-10-07: Módulo Finanzas (superadmin)
+## ✅ 2026-10-07 (desplegado ba0953e): Módulo Finanzas (superadmin)
 
-- [x] SQL `supabase/finanzas.sql`: precio_unitario + precio_estimado en pedido_items (trigger), backfill, RPC finanzas_club. **Pendiente de ejecutar.**
+- [x] SQL `supabase/finanzas.sql`: precio_unitario + precio_estimado en pedido_items (trigger), backfill, RPC finanzas_club. Ejecutado.
 - [x] /admin/finanzas: filtros (período, cobrados/entregados/todos, día/semana/mes), KPIs, serie de ingresos, por genética (+productos), por socio con detalle, pedidos; CSV de cada tabla
 - [x] Link Finanzas en el menú solo superadmin; la página redirige a los demás admins
-- [ ] Probar en local y desplegar
+- [x] Probado y desplegado
