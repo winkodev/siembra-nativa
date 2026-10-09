@@ -2,8 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { registrarActividadSocio } from '@/lib/audit';
-import { registrarAccion } from '@/lib/audit';
+import { registrarActividadSocio, registrarAccion } from '@/lib/audit';
+import { avisarAdmins } from '@/lib/email';
 import type { ActionResponse, TipoConsulta } from '@/lib/types/database';
 
 const TIPOS_VALIDOS: TipoConsulta[] = ['general', 'pedidos', 'reprocann', 'pagos'];
@@ -38,6 +38,12 @@ export async function crearConsulta(
 
   if (error) return { ok: false, error: 'Error al enviar la consulta' };
   await registrarActividadSocio(user.id, 'crear_consulta', { tipo });
+  const { data: socioCons } = await supabase.from('profiles').select('nombre').eq('id', user.id).single();
+  await avisarAdmins('consulta', 'Consulta nueva de un socio', [
+    `Socio: ${socioCons?.nombre ?? '—'}`,
+    `Tipo: ${tipo}`,
+    texto.length > 160 ? texto.slice(0, 160) + '…' : texto,
+  ], { label: 'Ver consultas', href: '/admin/consultas' });
 
   revalidatePath('/socio/consultas');
   return { ok: true, data: undefined };

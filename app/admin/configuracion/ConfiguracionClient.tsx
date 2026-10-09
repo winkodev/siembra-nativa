@@ -4,8 +4,9 @@ import { useState, useMemo, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, MapPin, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Loader2, Check,
-  SlidersHorizontal, CalendarClock, Landmark,
+  SlidersHorizontal, CalendarClock, Landmark, Mail,
 } from 'lucide-react';
+import { EVENTOS_AVISO } from '@/lib/avisos';
 import { cn, formatFecha, formatFranja, labelDias, DIAS_CORTOS } from '@/lib/utils';
 import {
   crearUbicacion, actualizarUbicacion, eliminarUbicacion, toggleUbicacionActiva, guardarConfigApp,
@@ -22,6 +23,8 @@ const tabs = [
 ];
 // Solo la ve el superadmin: alias / CBU donde transfieren los socios
 const tabPagos = { id: 'pagos', label: 'Pagos', icon: <Landmark className="w-4 h-4" /> };
+// Avisos por email a los admins
+const tabAvisos = { id: 'avisos', label: 'Avisos', icon: <Mail className="w-4 h-4" /> };
 
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
 const fadeUp  = { hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: { duration: 0.25 } } };
@@ -36,7 +39,7 @@ interface Props {
 
 export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin }: Props) {
   const [tab, setTab] = useState('general');
-  const tabsVisibles = superadmin ? [...tabs, tabPagos] : tabs;
+  const tabsVisibles = superadmin ? [...tabs, tabAvisos, tabPagos] : [...tabs, tabAvisos];
 
   return (
     <div className="space-y-6">
@@ -73,8 +76,99 @@ export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin }
       {tab === 'general'     && <GeneralTab config={config} />}
       {tab === 'horarios'    && <FranjasTab franjas={franjas} config={config} />}
       {tab === 'ubicaciones' && <UbicacionesTab ubicaciones={ubicaciones} />}
+      {tab === 'avisos' && <AvisosTab config={config} />}
       {tab === 'pagos' && superadmin && <PagosTab config={config} />}
     </div>
+  );
+}
+
+// ── Tab Avisos: emails a los admins por eventos ───────────────
+
+function AvisosTab({ config }: { config: AppConfig }) {
+  const [emails, setEmails] = useState(config.avisos_emails);
+  const [eventos, setEventos] = useState<Record<string, boolean>>({
+    nuevo_pedido: config.avisos_nuevo_pedido,
+    comprobante:  config.avisos_comprobante,
+    certificado:  config.avisos_certificado,
+    consulta:     config.avisos_consulta,
+  });
+  const [pending, startTransition] = useTransition();
+  const [saved, setSaved]          = useState(false);
+  const [error, setError]          = useState<string | null>(null);
+
+  const listaEmails = emails.split(/[,;\s]+/).map(e => e.trim()).filter(Boolean);
+  const invalidos   = listaEmails.filter(e => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
+
+  const handleGuardar = () => {
+    setError(null);
+    if (invalidos.length > 0) { setError(`Revisá estas direcciones: ${invalidos.join(', ')}`); return; }
+    startTransition(async () => {
+      const res = await Promise.all([
+        guardarConfigApp('avisos_emails', listaEmails.join(', ')),
+        ...EVENTOS_AVISO.map(ev => guardarConfigApp(`avisos_${ev.clave}`, eventos[ev.clave] ? 'true' : 'false')),
+      ]);
+      const fallo = res.find(r => !r.ok);
+      if (fallo && !fallo.ok) { setError(fallo.error); return; }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    });
+  };
+
+  return (
+    <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-4 max-w-lg">
+      <motion.div variants={fadeUp} className="glass-card p-5 space-y-4">
+        <div>
+          <p className="text-foreground font-medium text-sm">Avisos por email a los administradores</p>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            Cuando pasa alguno de estos eventos, se manda un email a las direcciones de abajo.
+            Los socios no reciben nada por acá.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs text-foreground/80 font-medium">Direcciones (separadas por coma)</label>
+          <textarea value={emails} onChange={e => setEmails(e.target.value)} rows={2}
+            className="input-club w-full resize-none" placeholder="admin@siembranativa.com.ar, otro@gmail.com" />
+          {listaEmails.length > 0 && (
+            <p className="text-muted-foreground text-[11px]">{listaEmails.length} direcci{listaEmails.length === 1 ? 'ón' : 'ones'}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs text-foreground/80 font-medium">Eventos</p>
+          {EVENTOS_AVISO.map(ev => (
+            <button key={ev.clave} type="button" onClick={() => setEventos(prev => ({ ...prev, [ev.clave]: !prev[ev.clave] }))}
+              className={cn(
+                'w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border text-left transition-all',
+                eventos[ev.clave] ? 'bg-club-dorado/10 border-club-dorado/40' : 'bg-white/5 border-white/10 hover:border-club-dorado/30'
+              )}>
+              <span>
+                <span className="block text-sm text-foreground font-medium">{ev.label}</span>
+                <span className="block text-xs text-muted-foreground">{ev.desc}</span>
+              </span>
+              <span className={cn('shrink-0', eventos[ev.clave] ? 'text-club-dorado' : 'text-muted-foreground')}>
+                {eventos[ev.clave] ? <ToggleRight className="w-7 h-7" /> : <ToggleLeft className="w-7 h-7" />}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <p className="text-muted-foreground text-[11px]">
+          Requiere la clave de Resend y la dirección de origen configuradas en el servidor. Si faltan, los avisos se saltan sin afectar nada.
+        </p>
+
+        {error && (
+          <p className="px-4 py-2.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">{error}</p>
+        )}
+
+        <div className="flex justify-end">
+          <button onClick={handleGuardar} disabled={pending} className="btn-primary px-6 py-2.5 text-sm flex items-center gap-2">
+            {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : null}
+            {saved ? 'Guardado' : 'Guardar'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

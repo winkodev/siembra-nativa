@@ -63,3 +63,8 @@
 ## 2026-09-29 — sed con `&` en el reemplazo
 - **Error:** un `sed s|...|...|` cuyo reemplazo contenía `&&` (JSX) duplicó el patrón y rompió la línea.
 - **Regla:** en sed, `&` en el reemplazo es "todo el match": escaparlo como `\&` o usar perl/Edit para líneas con JSX.
+
+## 2026-10-09 — Módulos de servidor importados desde client components
+- **Error:** puse una constante de UI en `lib/email.ts` (que importa el service client de Supabase) y la importé desde un client component.
+- **Regla:** todo lo que importe `@/lib/supabase/server` es solo servidor. Las constantes compartidas con la UI van en un módulo aparte sin imports de servidor.
+- **Bash:** los inserts con template literals (`\`…\${}\``) no van por perl en doble comilla: usar el tool Edit.

@@ -378,3 +378,11 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - [x] /admin/finanzas: filtros (período, cobrados/entregados/todos, día/semana/mes), KPIs, serie de ingresos, por genética (+productos), por socio con detalle, pedidos; CSV de cada tabla
 - [x] Link Finanzas en el menú solo superadmin; la página redirige a los demás admins
 - [x] Probado y desplegado
+
+## 🟢 EN LOCAL 2026-10-09: Avisos por email a los admins
+
+- [x] lib/email.ts (Resend, best-effort) + lib/avisos.ts (eventos); claves avisos_* en configuracion_app (sin SQL: se crean al guardar)
+- [x] Configuración → Avisos: direcciones y eventos (pedido nuevo, comprobante, certificado, consulta)
+- [x] Enganches en crearPedido, subirComprobante, subirCertificado, crearConsulta
+- [ ] Variables en Render y .env.local: RESEND_API_KEY, EMAIL_FROM (dominio verificado en Resend)
+- [ ] Probar y desplegar

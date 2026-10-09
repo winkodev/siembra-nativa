@@ -20,6 +20,12 @@ export interface AppConfig {
   upsell_texto:             string;
   // Horas mínimas entre el pedido y la franja de entrega elegible
   entrega_anticipacion_horas: number;
+  // Avisos por email a los admins (Configuración → Avisos)
+  avisos_emails:            string;   // direcciones separadas por coma
+  avisos_nuevo_pedido:      boolean;
+  avisos_comprobante:       boolean;
+  avisos_certificado:       boolean;
+  avisos_consulta:          boolean;
 }
 
 export async function getAppConfig(): Promise<AppConfig> {
@@ -46,6 +52,11 @@ export async function getAppConfig(): Promise<AppConfig> {
     upsell_titulo:           map['upsell_titulo'] ?? 'Sumá productos a tu pedido',
     upsell_texto:            map['upsell_texto'] ?? 'Aprovechá el envío y agregá alguno de estos productos.',
     entrega_anticipacion_horas: parseFloat(map['entrega_anticipacion_horas'] ?? '48') || 48,
+    avisos_emails:           map['avisos_emails'] ?? '',
+    avisos_nuevo_pedido:     map['avisos_nuevo_pedido'] === 'true',
+    avisos_comprobante:      map['avisos_comprobante'] === 'true',
+    avisos_certificado:      map['avisos_certificado'] === 'true',
+    avisos_consulta:         map['avisos_consulta'] === 'true',
   };
 }
 

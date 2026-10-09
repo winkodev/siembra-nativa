@@ -3,6 +3,7 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { registrarActividadSocio } from '@/lib/audit';
+import { avisarAdmins } from '@/lib/email';
 import type { ActionResponse } from '@/lib/types/database';
 
 /** Subir certificado PDF/imagen al bucket privado */
@@ -54,6 +55,11 @@ export async function subirCertificado(
     return { ok: false, error: 'Error al guardar referencia del certificado' };
   }
   await registrarActividadSocio(user.id, 'subir_certificado', { archivo: archivo.name });
+  const { data: socioCert } = await supabase.from('profiles').select('nombre').eq('id', user.id).single();
+  await avisarAdmins('certificado', 'Certificado REPROCANN subido', [
+    `Socio: ${socioCert?.nombre ?? '—'}`,
+    'Revisalo, cargá el vencimiento y aprobalo desde su ficha.',
+  ], { label: 'Ver socios', href: '/admin/socios' });
 
   revalidatePath('/socio/perfil');
   // También el Inicio: su alerta "subí tu certificado" quedaba cacheada

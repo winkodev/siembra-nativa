@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { getAppConfig } from '@/lib/supabase/config';
 import { revalidatePath } from 'next/cache';
 import { registrarAccion, registrarActividadSocio } from '@/lib/audit';
+import { avisarAdmins } from '@/lib/email';
 import type {
   ActionResponse, CarritoItem, EstadoPedido,
 } from '@/lib/types/database';
@@ -45,6 +46,15 @@ export async function crearPedido(
   }
 
   await registrarActividadSocio(user.id, 'crear_pedido', { numero: data.numero, items: items.length, cupon: Boolean(cuponId) });
+
+  // Aviso por email a los admins (si está activado en Configuración → Avisos)
+  const { data: socioPedido } = await supabase.from('profiles').select('nombre').eq('id', user.id).single();
+  const gramosPedido = items.reduce((a, i) => a + (i.tipo_item === 'genetica' ? i.cantidad_gramos : 0), 0);
+  await avisarAdmins('nuevo_pedido', `Pedido nuevo #${String(data.numero).padStart(4, '0')}`, [
+    `Socio: ${socioPedido?.nombre ?? '—'}`,
+    `Flores: ${gramosPedido} g · ${items.length} ítem${items.length === 1 ? '' : 's'}`,
+    cuponId ? 'Con cupón aplicado' : '',
+  ].filter(Boolean), { label: 'Ver pedidos', href: '/admin/pedidos' });
 
   revalidatePath('/socio/pedidos');
   // El pedido pendiente reserva stock: la tienda debe reflejarlo
@@ -251,7 +261,14 @@ export async function subirComprobante(
     .from('pedidos')
     .update({ comprobante_path: path, comprobante_subido_at: subidoAt })
     .eq('id', pedidoId);
-  if (!updError) await registrarActividadSocio(user.id, 'subir_comprobante', { pedido_id: pedidoId });
+  if (!updError) {
+    await registrarActividadSocio(user.id, 'subir_comprobante', { pedido_id: pedidoId });
+    const { data: socioComp } = await supabase.from('profiles').select('nombre').eq('id', user.id).single();
+    await avisarAdmins('comprobante', 'Comprobante de pago subido', [
+      `Socio: ${socioComp?.nombre ?? '—'}`,
+      'Revisalo y marcá el control en el pedido.',
+    ], { label: 'Ver pedidos', href: '/admin/pedidos' });
+  }
 
   if (updError) return { ok: false, error: 'Error al registrar el comprobante' };
 
