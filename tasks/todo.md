@@ -397,3 +397,4 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 
 - Tabla `secretos_app` (RLS sin políticas) con GMAIL_USER / GMAIL_APP_PASSWORD cargadas por SQL; avisos_proveedor = gmail.
 - Env vars de Render siguen mandando si existen. Formulario de credenciales en Avisos solo superadmin.
+- Verificado en producción 2026-10-09: email de prueba por Gmail llegó. Avisos activos para montamatmariano@gmail.com y facundogaray.ac@gmail.com.
