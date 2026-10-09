@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import { createServiceClient } from '@/lib/supabase/server';
-import type { EventoAviso, ProveedorEmail } from '@/lib/avisos';
+import { CLAVES_SECRETO_EMAIL, type ClaveSecretoEmail, type EventoAviso, type ProveedorEmail } from '@/lib/avisos';
 
 // ------------------------------------------------------------
 // Avisos por email a los ADMINS (no a los socios).
@@ -12,40 +12,63 @@ import type { EventoAviso, ProveedorEmail } from '@/lib/avisos';
 // la acción que lo origina nunca se interrumpe.
 // ------------------------------------------------------------
 
-// Qué métodos tienen sus variables cargadas en el servidor
-export function proveedoresDisponibles(): Record<Exclude<ProveedorEmail, 'auto'>, boolean> {
+type Credenciales = Partial<Record<ClaveSecretoEmail, string>>;
+
+// Credenciales de envío: la variable de entorno manda; si no existe, se usa lo
+// que el superadmin cargó en secretos_app (tabla sin políticas: solo service role).
+export async function leerCredenciales(): Promise<Credenciales> {
+  const cred: Credenciales = {};
+  for (const k of CLAVES_SECRETO_EMAIL) if (process.env[k]) cred[k] = process.env[k];
+  const faltan = CLAVES_SECRETO_EMAIL.filter(k => !cred[k]);
+  if (faltan.length === 0) return cred;
+  try {
+    const { data } = await createServiceClient().from('secretos_app').select('clave, valor').in('clave', faltan);
+    for (const r of data ?? []) if (r.valor) cred[r.clave as ClaveSecretoEmail] = r.valor;
+  } catch { /* sin tabla todavía: solo env */ }
+  return cred;
+}
+
+// Qué métodos tienen credenciales (env o tabla)
+export async function proveedoresDisponibles(cred?: Credenciales): Promise<Record<Exclude<ProveedorEmail, 'auto'>, boolean>> {
+  const c = cred ?? await leerCredenciales();
   return {
-    resend: Boolean(process.env.RESEND_API_KEY),
-    gmail:  Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD),
+    resend: Boolean(c.RESEND_API_KEY),
+    gmail:  Boolean(c.GMAIL_USER && c.GMAIL_APP_PASSWORD),
   };
 }
 
-function resolverProveedor(preferido: ProveedorEmail): Exclude<ProveedorEmail, 'auto'> | null {
-  const disp = proveedoresDisponibles();
+// Qué credenciales están cargadas (para la UI, nunca el valor)
+export async function estadoCredenciales(): Promise<Record<ClaveSecretoEmail, boolean>> {
+  const c = await leerCredenciales();
+  return Object.fromEntries(CLAVES_SECRETO_EMAIL.map(k => [k, Boolean(c[k])])) as Record<ClaveSecretoEmail, boolean>;
+}
+
+async function resolverProveedor(preferido: ProveedorEmail, cred: Credenciales): Promise<Exclude<ProveedorEmail, 'auto'> | null> {
+  const disp = await proveedoresDisponibles(cred);
   if (preferido === 'gmail')  return disp.gmail  ? 'gmail'  : null;
   if (preferido === 'resend') return disp.resend ? 'resend' : null;
   return disp.gmail ? 'gmail' : disp.resend ? 'resend' : null;
 }
 
-async function enviarPorResend(to: string[], subject: string, html: string): Promise<boolean> {
+async function enviarPorResend(to: string[], subject: string, html: string, cred: Credenciales): Promise<boolean> {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${cred.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: process.env.EMAIL_FROM ?? 'Siembra Nativa Club <onboarding@resend.dev>',
+      from: cred.EMAIL_FROM ?? 'Siembra Nativa Club <onboarding@resend.dev>',
       to, subject, html,
     }),
   });
   return res.ok;
 }
 
-async function enviarPorGmail(to: string[], subject: string, html: string): Promise<boolean> {
+async function enviarPorGmail(to: string[], subject: string, html: string, cred: Credenciales): Promise<boolean> {
   const transporte = nodemailer.createTransport({
     service: 'gmail',
-    auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+    auth: { user: cred.GMAIL_USER, pass: cred.GMAIL_APP_PASSWORD },
   });
   await transporte.sendMail({
-    from: `Siembra Nativa Club <${process.env.GMAIL_USER}>`,
+    from: `Siembra Nativa Club <${cred.GMAIL_USER}>`,
     to: to.join(', '),
     subject,
     html,
@@ -58,12 +81,13 @@ export async function enviarEmail(
   to: string[], subject: string, html: string, preferido: ProveedorEmail = 'auto'
 ): Promise<boolean> {
   if (to.length === 0) return false;
-  const proveedor = resolverProveedor(preferido);
+  const cred = await leerCredenciales();
+  const proveedor = await resolverProveedor(preferido, cred);
   if (!proveedor) return false;
   try {
     return proveedor === 'gmail'
-      ? await enviarPorGmail(to, subject, html)
-      : await enviarPorResend(to, subject, html);
+      ? await enviarPorGmail(to, subject, html, cred)
+      : await enviarPorResend(to, subject, html, cred);
   } catch {
     return false;
   }

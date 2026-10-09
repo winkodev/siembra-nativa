@@ -6,11 +6,11 @@ import {
   Settings, MapPin, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Loader2, Check,
   SlidersHorizontal, CalendarClock, Landmark, Mail,
 } from 'lucide-react';
-import { EVENTOS_AVISO, PROVEEDORES_EMAIL, type ProveedorEmail } from '@/lib/avisos';
+import { EVENTOS_AVISO, PROVEEDORES_EMAIL, type ProveedorEmail, type ClaveSecretoEmail } from '@/lib/avisos';
 import { cn, formatFecha, formatFranja, labelDias, DIAS_CORTOS } from '@/lib/utils';
 import {
   crearUbicacion, actualizarUbicacion, eliminarUbicacion, toggleUbicacionActiva, guardarConfigApp,
-  crearFranja, actualizarFranja, eliminarFranja, toggleFranjaActiva, guardarDatosPago, probarEmailAviso,
+  crearFranja, actualizarFranja, eliminarFranja, toggleFranjaActiva, guardarDatosPago, probarEmailAviso, guardarCredencialesEmail,
 } from '@/app/actions/configuracion';
 import type { Ubicacion, FranjaHoraria } from '@/lib/types/database';
 import type { AppConfig, DatosPago } from '@/lib/supabase/config';
@@ -36,10 +36,12 @@ interface Props {
   superadmin:  boolean;
   // Qué métodos de email tienen sus variables cargadas en el servidor
   proveedoresEmail: { resend: boolean; gmail: boolean };
+  // Qué credenciales están cargadas (env o tabla); nunca el valor
+  credencialesEmail: Record<ClaveSecretoEmail, boolean>;
 }
 
 
-export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin, proveedoresEmail }: Props) {
+export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin, proveedoresEmail, credencialesEmail }: Props) {
   const [tab, setTab] = useState('general');
   const tabsVisibles = superadmin ? [...tabs, tabAvisos, tabPagos] : [...tabs, tabAvisos];
 
@@ -78,7 +80,7 @@ export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin, 
       {tab === 'general'     && <GeneralTab config={config} />}
       {tab === 'horarios'    && <FranjasTab franjas={franjas} config={config} />}
       {tab === 'ubicaciones' && <UbicacionesTab ubicaciones={ubicaciones} />}
-      {tab === 'avisos' && <AvisosTab config={config} proveedores={proveedoresEmail} />}
+      {tab === 'avisos' && <AvisosTab config={config} proveedores={proveedoresEmail} credenciales={credencialesEmail} superadmin={superadmin} />}
       {tab === 'pagos' && superadmin && <PagosTab config={config} />}
     </div>
   );
@@ -86,8 +88,26 @@ export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin, 
 
 // ── Tab Avisos: emails a los admins por eventos ───────────────
 
-function AvisosTab({ config, proveedores }: { config: AppConfig; proveedores: { resend: boolean; gmail: boolean } }) {
+function AvisosTab({ config, proveedores, credenciales, superadmin }: {
+  config: AppConfig;
+  proveedores: { resend: boolean; gmail: boolean };
+  credenciales: Record<ClaveSecretoEmail, boolean>;
+  superadmin: boolean;
+}) {
   const [emails, setEmails] = useState(config.avisos_emails);
+  // Credenciales (solo superadmin): se escriben, nunca se leen de vuelta
+  const [cred, setCred] = useState<Partial<Record<ClaveSecretoEmail, string>>>({});
+  const [guardandoCred, setGuardandoCred] = useState(false);
+  const [credMsg, setCredMsg] = useState<string | null>(null);
+  const handleGuardarCred = async () => {
+    setGuardandoCred(true);
+    setCredMsg(null);
+    const res = await guardarCredencialesEmail(cred);
+    setGuardandoCred(false);
+    if (!res.ok) { setCredMsg(res.error); return; }
+    setCred({});
+    setCredMsg('Guardado. Recargá la página para ver el estado actualizado.');
+  };
   const [proveedor, setProveedor] = useState<ProveedorEmail>(config.avisos_proveedor);
   // Email de prueba
   const [emailPrueba, setEmailPrueba] = useState('');
@@ -179,10 +199,47 @@ function AvisosTab({ config, proveedores }: { config: AppConfig; proveedores: { 
               );
             })}
           </div>
-          <p className="text-muted-foreground text-[11px]">
-            Gmail: variables <code>GMAIL_USER</code> y <code>GMAIL_APP_PASSWORD</code>. Resend: <code>RESEND_API_KEY</code> y <code>EMAIL_FROM</code>. Se cargan en el servidor, no acá.
-          </p>
         </div>
+
+        {/* Credenciales: solo superadmin. Se guardan en una tabla que solo lee el servidor. */}
+        {superadmin && (
+          <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-3">
+            <div>
+              <p className="text-xs text-foreground/80 font-medium">Credenciales de envío (superadmin)</p>
+              <p className="text-muted-foreground text-[11px] mt-0.5">
+                Se guardan en el servidor y no se vuelven a mostrar. Dejá vacío lo que no quieras cambiar.
+                Si la misma clave existe como variable de entorno en Render, esa manda.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {([
+                ['GMAIL_USER', 'Gmail: cuenta', 'avisos@gmail.com', 'text'],
+                ['GMAIL_APP_PASSWORD', 'Gmail: contraseña de aplicación (16 letras)', '••••••••••••••••', 'password'],
+                ['RESEND_API_KEY', 'Resend: API key', 're_…', 'password'],
+                ['EMAIL_FROM', 'Resend: remitente', 'Siembra Nativa Club <avisos@siembranativa.com.ar>', 'text'],
+              ] as const).map(([k, label, ph, type]) => (
+                <div key={k} className="space-y-1">
+                  <label className="text-[11px] text-foreground/80 font-medium flex items-center gap-1.5">
+                    {label}
+                    <span className={cn('text-[10px] px-1.5 rounded-full border',
+                      credenciales[k] ? 'text-emerald-400 border-emerald-400/30' : 'text-muted-foreground border-white/10')}>
+                      {credenciales[k] ? 'cargada' : 'vacía'}
+                    </span>
+                  </label>
+                  <input type={type} autoComplete="off" value={cred[k] ?? ''} onChange={e => setCred(c => ({ ...c, [k]: e.target.value }))}
+                    className="input-club w-full py-1.5 text-sm" placeholder={ph} />
+                </div>
+              ))}
+            </div>
+            {credMsg && <p className="text-xs text-muted-foreground">{credMsg}</p>}
+            <div className="flex justify-end">
+              <button type="button" onClick={handleGuardarCred} disabled={guardandoCred || Object.values(cred).every(v => !v?.trim())}
+                className="px-4 py-2 rounded-lg bg-club-dorado/15 border border-club-dorado/30 text-club-dorado text-sm font-semibold hover:bg-club-dorado/25 transition-colors disabled:opacity-40 flex items-center gap-2">
+                {guardandoCred ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Guardar credenciales
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Prueba */}
         <div className="space-y-1.5">

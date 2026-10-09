@@ -1,13 +1,13 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { registrarAccion } from '@/lib/audit';
 import { formatFranja, labelDias } from '@/lib/utils';
 import type { ActionResponse, Ubicacion, FranjaHoraria } from '@/lib/types/database';
 import { CLAVES_PAGO, type DatosPago } from '@/lib/supabase/config';
 import { enviarEmailPrueba } from '@/lib/email';
-import type { ProveedorEmail } from '@/lib/avisos';
+import { CLAVES_SECRETO_EMAIL, type ProveedorEmail, type ClaveSecretoEmail } from '@/lib/avisos';
 
 export async function guardarConfigApp(clave: string, valor: string): Promise<ActionResponse> {
   // Las claves de pago tienen su propia action con chequeo de superadmin
@@ -213,5 +213,27 @@ export async function probarEmailAviso(to: string, proveedor: ProveedorEmail): P
 
   const ok = await enviarEmailPrueba(to.trim(), proveedor);
   if (!ok) return { ok: false, error: 'No se pudo enviar. Revisá que el método elegido tenga sus variables cargadas en el servidor.' };
+  return { ok: true, data: undefined };
+}
+
+// Superadmin: guardar credenciales de envío en secretos_app (solo si no hay
+// variable de entorno para esa clave). Un valor vacío no toca lo guardado.
+export async function guardarCredencialesEmail(valores: Partial<Record<ClaveSecretoEmail, string>>): Promise<ActionResponse> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autorizado' };
+  const { data: p } = await supabase.from('profiles').select('rol, superadmin').eq('id', user.id).single();
+  if (p?.rol !== 'admin' || !p.superadmin) return { ok: false, error: 'Solo el superadmin puede cargar credenciales' };
+
+  const filas = CLAVES_SECRETO_EMAIL
+    .filter(k => (valores[k] ?? '').trim() !== '')
+    .map(k => ({ clave: k, valor: k === 'GMAIL_APP_PASSWORD' ? valores[k]!.replace(/\s/g, '') : valores[k]!.trim(), updated_at: new Date().toISOString() }));
+  if (filas.length === 0) return { ok: true, data: undefined };
+
+  const { error } = await createServiceClient().from('secretos_app').upsert(filas, { onConflict: 'clave' });
+  if (error) return { ok: false, error: 'Error al guardar. ¿Se ejecutó secretos-app.sql en Supabase?' };
+
+  await registrarAccion(supabase, 'editar_credenciales_email', 'configuracion', { claves: filas.map(f => f.clave).join(', ') });
+  revalidatePath('/admin/configuracion');
   return { ok: true, data: undefined };
 }

@@ -9,6 +9,7 @@ export const ACCION_LABEL: Record<string, string> = {
   anular_cupon_masivo:   'Anuló un lote de cupones',
   anular_cupon:          'Anuló un cupón',
   editar_datos_pago:     'Cambió los datos de pago (alias / CBU)',
+  editar_credenciales_email: 'Cargó credenciales de envío de email',
   editar_config:         'Editó la configuración',
   crear_ubicacion:       'Creó una ubicación',
   editar_ubicacion:      'Editó una ubicación',

@@ -16,3 +16,8 @@ export const PROVEEDORES_EMAIL: { clave: ProveedorEmail; label: string; desc: st
   { clave: 'gmail',  label: 'Gmail',      desc: 'Sale desde la cuenta de Gmail del club (contraseña de aplicación)' },
   { clave: 'resend', label: 'Resend',     desc: 'Sale desde el dominio verificado en Resend' },
 ];
+
+// Credenciales de envío que el superadmin puede cargar desde la app
+// (si la variable de entorno existe en el servidor, esa manda)
+export const CLAVES_SECRETO_EMAIL = ['GMAIL_USER', 'GMAIL_APP_PASSWORD', 'RESEND_API_KEY', 'EMAIL_FROM'] as const;
+export type ClaveSecretoEmail = (typeof CLAVES_SECRETO_EMAIL)[number];
