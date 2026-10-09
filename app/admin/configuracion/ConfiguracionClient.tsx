@@ -152,23 +152,29 @@ function AvisosTab({ config, proveedores }: { config: AppConfig; proveedores: { 
         {/* Método de envío */}
         <div className="space-y-2">
           <p className="text-xs text-foreground/80 font-medium">Método de envío</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="space-y-1.5">
             {PROVEEDORES_EMAIL.map(pv => {
               const disponible = pv.clave === 'auto' ? (proveedores.gmail || proveedores.resend) : proveedores[pv.clave];
+              const activo = proveedor === pv.clave;
               return (
                 <button key={pv.clave} type="button" onClick={() => setProveedor(pv.clave)}
                   className={cn(
-                    'text-left px-3 py-2.5 rounded-xl border transition-all',
-                    proveedor === pv.clave ? 'bg-club-dorado/10 border-club-dorado/40' : 'bg-white/5 border-white/10 hover:border-club-dorado/30'
+                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all',
+                    activo ? 'bg-club-dorado/10 border-club-dorado/40' : 'bg-white/5 border-white/10 hover:border-club-dorado/30'
                   )}>
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-foreground font-medium">{pv.label}</span>
-                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border',
-                      disponible ? 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10' : 'text-muted-foreground border-white/10')}>
-                      {disponible ? 'configurado' : 'sin configurar'}
-                    </span>
+                  {/* Radio */}
+                  <span className={cn('w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center',
+                    activo ? 'border-club-dorado' : 'border-white/25')}>
+                    {activo && <span className="w-2 h-2 rounded-full bg-club-dorado" />}
                   </span>
-                  <span className="block text-[11px] text-muted-foreground mt-0.5">{pv.desc}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm text-foreground font-medium">{pv.label}</span>
+                    <span className="block text-[11px] text-muted-foreground truncate">{pv.desc}</span>
+                  </span>
+                  <span className={cn('shrink-0 text-[10px] px-2 py-0.5 rounded-full border whitespace-nowrap',
+                    disponible ? 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10' : 'text-muted-foreground border-white/10')}>
+                    {disponible ? 'Configurado' : 'Sin configurar'}
+                  </span>
                 </button>
               );
             })}
