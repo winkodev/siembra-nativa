@@ -386,3 +386,9 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - [x] Enganches en crearPedido, subirComprobante, subirCertificado, crearConsulta
 - [x] .env.local con RESEND_API_KEY y EMAIL_FROM (remitente de prueba onboarding@resend.dev). Pendiente: variables en Render y verificar dominio en Resend (DNS en Hostinger, lo carga otra persona)
 - [x] Probado en local (llegó a Gmail, en spam por el remitente de prueba) y desplegado
+
+## ✅ 2026-10-09: Método de envío Gmail/Resend + semáforo REPROCANN amarillo
+
+- Avisos: selector Automático / Gmail / Resend con estado y botón Probar; Gmail por SMTP con contraseña de aplicación (GMAIL_USER, GMAIL_APP_PASSWORD).
+- Socios: ícono REPROCANN en amarillo cuando hay certificado subido pendiente de revisión.
+- Pendiente del usuario: cargar GMAIL_USER y GMAIL_APP_PASSWORD en Render y elegir Gmail en Avisos.

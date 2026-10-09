@@ -1150,30 +1150,45 @@ function CrearUsuarioModal({ onClose }: { onClose: () => void }) {
 // Habilitar la tienda a mano NO pone en verde el REPROCANN (son criterios distintos).
 
 function SemaforoSocio({ socio }: { socio: Profile }) {
+  type Semaforo = 'ok' | 'pendiente' | 'falta';
   const datosOk    = Boolean(socio.dni?.trim() && socio.telefono?.trim() && socio.direccion?.trim());
-  const repOk      = estadoEfectivoReprocann(socio.reprocann_estado, socio.reprocann_vencimiento) === 'aprobado';
   const terminosOk = Boolean(socio.terminos_aceptados_at);
   const tiendaOk   = socio.compra_habilitada;
 
-  const items = [
-    { ok: datosOk,    Icono: User,       label: datosOk ? 'Datos personales completos' : 'Faltan datos personales (DNI, teléfono o dirección)' },
-    { ok: repOk,      Icono: FileText,   label: repOk ? 'REPROCANN aprobado' : 'REPROCANN sin aprobar' },
-    { ok: terminosOk, Icono: ScrollText, label: terminosOk ? 'Términos aceptados' : 'Términos sin aceptar' },
-    { ok: tiendaOk,   Icono: Store,      label: tiendaOk ? 'Tienda habilitada' : 'Tienda deshabilitada' },
+  // REPROCANN: verde aprobado y vigente; amarillo si subió certificado y
+  // el club todavía no lo revisó; rojo sin certificado, deshabilitado o vencido
+  const repEstado = estadoEfectivoReprocann(socio.reprocann_estado, socio.reprocann_vencimiento);
+  const rep: Semaforo =
+    repEstado === 'aprobado' ? 'ok'
+    : repEstado === 'pendiente' && socio.reprocann_certificado_path ? 'pendiente'
+    : 'falta';
+  const repLabel =
+    rep === 'ok' ? 'REPROCANN aprobado'
+    : rep === 'pendiente' ? 'Certificado subido, pendiente de revisión'
+    : repEstado === 'vencido' ? 'REPROCANN vencido'
+    : repEstado === 'rechazado' ? 'REPROCANN deshabilitado'
+    : 'Sin certificado REPROCANN';
+
+  const items: { estado: Semaforo; Icono: typeof User; label: string }[] = [
+    { estado: datosOk ? 'ok' : 'falta',    Icono: User,       label: datosOk ? 'Datos personales completos' : 'Faltan datos personales (DNI, teléfono o dirección)' },
+    { estado: rep,                         Icono: FileText,   label: repLabel },
+    { estado: terminosOk ? 'ok' : 'falta', Icono: ScrollText, label: terminosOk ? 'Términos aceptados' : 'Términos sin aceptar' },
+    { estado: tiendaOk ? 'ok' : 'falta',   Icono: Store,      label: tiendaOk ? 'Tienda habilitada' : 'Tienda deshabilitada' },
   ];
+
+  const color: Record<Semaforo, string> = {
+    ok:        'text-green-400 bg-green-400/10 border-green-400/30',
+    pendiente: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
+    falta:     'text-red-400 bg-red-400/10 border-red-400/30',
+  };
 
   return (
     <div className="flex items-center gap-1" aria-label="Estado del socio">
-      {items.map(({ ok, Icono, label }, i) => (
+      {items.map(({ estado, Icono, label }, i) => (
         <span
           key={i}
           title={label}
-          className={cn(
-            'w-6 h-6 rounded-md border flex items-center justify-center',
-            ok
-              ? 'text-green-400 bg-green-400/10 border-green-400/30'
-              : 'text-red-400 bg-red-400/10 border-red-400/30'
-          )}
+          className={cn('w-6 h-6 rounded-md border flex items-center justify-center', color[estado])}
         >
           <Icono className="w-3.5 h-3.5" />
         </span>
