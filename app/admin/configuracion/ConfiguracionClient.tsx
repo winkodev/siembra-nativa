@@ -226,7 +226,10 @@ function AvisosTab({ config, proveedores, credenciales, superadmin }: {
                       {credenciales[k] ? 'cargada' : 'vacía'}
                     </span>
                   </label>
-                  <input type={type} autoComplete="off" value={cred[k] ?? ''} onChange={e => setCred(c => ({ ...c, [k]: e.target.value }))}
+                  {/* name/autocomplete raros: evitan que el navegador autocomplete con una cuenta guardada */}
+                  <input type={type} name={`sn-cred-${k.toLowerCase()}`} autoComplete={type === 'password' ? 'new-password' : 'off'}
+                    data-lpignore="true" data-1p-ignore="true"
+                    value={cred[k] ?? ''} onChange={e => setCred(c => ({ ...c, [k]: e.target.value }))}
                     className="input-club w-full py-1.5 text-sm" placeholder={ph} />
                 </div>
               ))}
