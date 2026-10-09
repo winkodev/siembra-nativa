@@ -379,10 +379,10 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - [x] Link Finanzas en el menú solo superadmin; la página redirige a los demás admins
 - [x] Probado y desplegado
 
-## 🟢 EN LOCAL 2026-10-09: Avisos por email a los admins
+## ✅ 2026-10-09 (desplegado 159d527): Avisos por email a los admins
 
 - [x] lib/email.ts (Resend, best-effort) + lib/avisos.ts (eventos); claves avisos_* en configuracion_app (sin SQL: se crean al guardar)
 - [x] Configuración → Avisos: direcciones y eventos (pedido nuevo, comprobante, certificado, consulta)
 - [x] Enganches en crearPedido, subirComprobante, subirCertificado, crearConsulta
-- [ ] Variables en Render y .env.local: RESEND_API_KEY, EMAIL_FROM (dominio verificado en Resend)
-- [ ] Probar y desplegar
+- [x] .env.local con RESEND_API_KEY y EMAIL_FROM (remitente de prueba onboarding@resend.dev). Pendiente: variables en Render y verificar dominio en Resend (DNS en Hostinger, lo carga otra persona)
+- [x] Probado en local (llegó a Gmail, en spam por el remitente de prueba) y desplegado
