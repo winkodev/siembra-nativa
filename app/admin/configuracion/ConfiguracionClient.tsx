@@ -6,11 +6,11 @@ import {
   Settings, MapPin, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Loader2, Check,
   SlidersHorizontal, CalendarClock, Landmark, Mail,
 } from 'lucide-react';
-import { EVENTOS_AVISO } from '@/lib/avisos';
+import { EVENTOS_AVISO, PROVEEDORES_EMAIL, type ProveedorEmail } from '@/lib/avisos';
 import { cn, formatFecha, formatFranja, labelDias, DIAS_CORTOS } from '@/lib/utils';
 import {
   crearUbicacion, actualizarUbicacion, eliminarUbicacion, toggleUbicacionActiva, guardarConfigApp,
-  crearFranja, actualizarFranja, eliminarFranja, toggleFranjaActiva, guardarDatosPago,
+  crearFranja, actualizarFranja, eliminarFranja, toggleFranjaActiva, guardarDatosPago, probarEmailAviso,
 } from '@/app/actions/configuracion';
 import type { Ubicacion, FranjaHoraria } from '@/lib/types/database';
 import type { AppConfig, DatosPago } from '@/lib/supabase/config';
@@ -34,10 +34,12 @@ interface Props {
   franjas:     FranjaHoraria[];
   config:      AppConfig;
   superadmin:  boolean;
+  // Qué métodos de email tienen sus variables cargadas en el servidor
+  proveedoresEmail: { resend: boolean; gmail: boolean };
 }
 
 
-export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin }: Props) {
+export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin, proveedoresEmail }: Props) {
   const [tab, setTab] = useState('general');
   const tabsVisibles = superadmin ? [...tabs, tabAvisos, tabPagos] : [...tabs, tabAvisos];
 
@@ -76,7 +78,7 @@ export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin }
       {tab === 'general'     && <GeneralTab config={config} />}
       {tab === 'horarios'    && <FranjasTab franjas={franjas} config={config} />}
       {tab === 'ubicaciones' && <UbicacionesTab ubicaciones={ubicaciones} />}
-      {tab === 'avisos' && <AvisosTab config={config} />}
+      {tab === 'avisos' && <AvisosTab config={config} proveedores={proveedoresEmail} />}
       {tab === 'pagos' && superadmin && <PagosTab config={config} />}
     </div>
   );
@@ -84,8 +86,20 @@ export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin }
 
 // ── Tab Avisos: emails a los admins por eventos ───────────────
 
-function AvisosTab({ config }: { config: AppConfig }) {
+function AvisosTab({ config, proveedores }: { config: AppConfig; proveedores: { resend: boolean; gmail: boolean } }) {
   const [emails, setEmails] = useState(config.avisos_emails);
+  const [proveedor, setProveedor] = useState<ProveedorEmail>(config.avisos_proveedor);
+  // Email de prueba
+  const [emailPrueba, setEmailPrueba] = useState('');
+  const [probando, setProbando]       = useState(false);
+  const [resultadoPrueba, setResultadoPrueba] = useState<string | null>(null);
+  const handleProbar = async () => {
+    setProbando(true);
+    setResultadoPrueba(null);
+    const res = await probarEmailAviso(emailPrueba, proveedor);
+    setProbando(false);
+    setResultadoPrueba(res.ok ? `Enviado a ${emailPrueba.trim()}. Revisá la bandeja (y spam).` : res.error);
+  };
   const [eventos, setEventos] = useState<Record<string, boolean>>({
     nuevo_pedido: config.avisos_nuevo_pedido,
     comprobante:  config.avisos_comprobante,
@@ -105,6 +119,7 @@ function AvisosTab({ config }: { config: AppConfig }) {
     startTransition(async () => {
       const res = await Promise.all([
         guardarConfigApp('avisos_emails', listaEmails.join(', ')),
+        guardarConfigApp('avisos_proveedor', proveedor),
         ...EVENTOS_AVISO.map(ev => guardarConfigApp(`avisos_${ev.clave}`, eventos[ev.clave] ? 'true' : 'false')),
       ]);
       const fallo = res.find(r => !r.ok);
@@ -134,6 +149,49 @@ function AvisosTab({ config }: { config: AppConfig }) {
           )}
         </div>
 
+        {/* Método de envío */}
+        <div className="space-y-2">
+          <p className="text-xs text-foreground/80 font-medium">Método de envío</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {PROVEEDORES_EMAIL.map(pv => {
+              const disponible = pv.clave === 'auto' ? (proveedores.gmail || proveedores.resend) : proveedores[pv.clave];
+              return (
+                <button key={pv.clave} type="button" onClick={() => setProveedor(pv.clave)}
+                  className={cn(
+                    'text-left px-3 py-2.5 rounded-xl border transition-all',
+                    proveedor === pv.clave ? 'bg-club-dorado/10 border-club-dorado/40' : 'bg-white/5 border-white/10 hover:border-club-dorado/30'
+                  )}>
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-foreground font-medium">{pv.label}</span>
+                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border',
+                      disponible ? 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10' : 'text-muted-foreground border-white/10')}>
+                      {disponible ? 'configurado' : 'sin configurar'}
+                    </span>
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground mt-0.5">{pv.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-muted-foreground text-[11px]">
+            Gmail: variables <code>GMAIL_USER</code> y <code>GMAIL_APP_PASSWORD</code>. Resend: <code>RESEND_API_KEY</code> y <code>EMAIL_FROM</code>. Se cargan en el servidor, no acá.
+          </p>
+        </div>
+
+        {/* Prueba */}
+        <div className="space-y-1.5">
+          <p className="text-xs text-foreground/80 font-medium">Mandar un email de prueba con el método elegido</p>
+          <div className="flex gap-2">
+            <input type="email" value={emailPrueba} onChange={e => setEmailPrueba(e.target.value)}
+              className="input-club flex-1 py-2 text-sm" placeholder="tu@email.com" />
+            <button type="button" onClick={handleProbar} disabled={probando || !emailPrueba.trim()}
+              className="px-4 py-2 rounded-lg bg-club-dorado/15 border border-club-dorado/30 text-club-dorado text-sm font-semibold hover:bg-club-dorado/25 transition-colors disabled:opacity-40 flex items-center gap-2">
+              {probando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />} Probar
+            </button>
+          </div>
+          {resultadoPrueba && <p className="text-xs text-muted-foreground">{resultadoPrueba}</p>}
+        </div>
+
         <div className="space-y-2">
           <p className="text-xs text-foreground/80 font-medium">Eventos</p>
           {EVENTOS_AVISO.map(ev => (
@@ -154,7 +212,7 @@ function AvisosTab({ config }: { config: AppConfig }) {
         </div>
 
         <p className="text-muted-foreground text-[11px]">
-          Requiere la clave de Resend y la dirección de origen configuradas en el servidor. Si faltan, los avisos se saltan sin afectar nada.
+          Si el método elegido no tiene sus variables cargadas en el servidor, los avisos se saltan sin afectar nada.
         </p>
 
         {error && (

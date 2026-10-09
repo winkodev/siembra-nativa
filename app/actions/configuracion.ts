@@ -6,6 +6,8 @@ import { registrarAccion } from '@/lib/audit';
 import { formatFranja, labelDias } from '@/lib/utils';
 import type { ActionResponse, Ubicacion, FranjaHoraria } from '@/lib/types/database';
 import { CLAVES_PAGO, type DatosPago } from '@/lib/supabase/config';
+import { enviarEmailPrueba } from '@/lib/email';
+import type { ProveedorEmail } from '@/lib/avisos';
 
 export async function guardarConfigApp(clave: string, valor: string): Promise<ActionResponse> {
   // Las claves de pago tienen su propia action con chequeo de superadmin
@@ -197,5 +199,19 @@ export async function guardarDatosPago(datos: DatosPago): Promise<ActionResponse
   await registrarAccion(supabase, 'editar_datos_pago', 'configuracion', { alias: datos.pago_alias.trim(), cbu });
   revalidatePath('/admin/configuracion');
   revalidatePath('/socio/pedidos/nuevo');
+  return { ok: true, data: undefined };
+}
+
+// Configuración → Avisos: manda un email de prueba con el método elegido
+export async function probarEmailAviso(to: string, proveedor: ProveedorEmail): Promise<ActionResponse> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autorizado' };
+  const { data: p } = await supabase.from('profiles').select('rol').eq('id', user.id).single();
+  if (p?.rol !== 'admin') return { ok: false, error: 'No autorizado' };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to.trim())) return { ok: false, error: 'Dirección inválida' };
+
+  const ok = await enviarEmailPrueba(to.trim(), proveedor);
+  if (!ok) return { ok: false, error: 'No se pudo enviar. Revisá que el método elegido tenga sus variables cargadas en el servidor.' };
   return { ok: true, data: undefined };
 }

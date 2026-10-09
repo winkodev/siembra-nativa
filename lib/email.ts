@@ -1,31 +1,69 @@
+import nodemailer from 'nodemailer';
 import { createServiceClient } from '@/lib/supabase/server';
+import type { EventoAviso, ProveedorEmail } from '@/lib/avisos';
 
 // ------------------------------------------------------------
-// Avisos por email a los ADMINS (no a los socios), vía Resend.
-// Las direcciones y qué eventos avisan se configuran en
-// Configuración → Avisos (claves avisos_* en configuracion_app).
-// Best-effort: si falta la clave de Resend o falla el envío, no pasa
-// nada; la acción que lo origina nunca se interrumpe.
+// Avisos por email a los ADMINS (no a los socios).
+// Dos métodos de envío, se elige en Configuración → Avisos:
+//   - resend: API de Resend (RESEND_API_KEY + EMAIL_FROM)
+//   - gmail : SMTP de Gmail con contraseña de aplicación (GMAIL_USER + GMAIL_APP_PASSWORD)
+//   - auto  : Gmail si está configurado, si no Resend
+// Best-effort: si falta la configuración o falla el envío, no pasa nada;
+// la acción que lo origina nunca se interrumpe.
 // ------------------------------------------------------------
 
-import type { EventoAviso } from '@/lib/avisos';
+// Qué métodos tienen sus variables cargadas en el servidor
+export function proveedoresDisponibles(): Record<Exclude<ProveedorEmail, 'auto'>, boolean> {
+  return {
+    resend: Boolean(process.env.RESEND_API_KEY),
+    gmail:  Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD),
+  };
+}
 
-// Envío crudo por Resend. Devuelve false si no está configurado o falla.
-export async function enviarEmail(to: string[], subject: string, html: string): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey || to.length === 0) return false;
+function resolverProveedor(preferido: ProveedorEmail): Exclude<ProveedorEmail, 'auto'> | null {
+  const disp = proveedoresDisponibles();
+  if (preferido === 'gmail')  return disp.gmail  ? 'gmail'  : null;
+  if (preferido === 'resend') return disp.resend ? 'resend' : null;
+  return disp.gmail ? 'gmail' : disp.resend ? 'resend' : null;
+}
+
+async function enviarPorResend(to: string[], subject: string, html: string): Promise<boolean> {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: process.env.EMAIL_FROM ?? 'Siembra Nativa Club <onboarding@resend.dev>',
+      to, subject, html,
+    }),
+  });
+  return res.ok;
+}
+
+async function enviarPorGmail(to: string[], subject: string, html: string): Promise<boolean> {
+  const transporte = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+  });
+  await transporte.sendMail({
+    from: `Siembra Nativa Club <${process.env.GMAIL_USER}>`,
+    to: to.join(', '),
+    subject,
+    html,
+  });
+  return true;
+}
+
+// Envío con el método elegido. Devuelve false si no hay método disponible o falla.
+export async function enviarEmail(
+  to: string[], subject: string, html: string, preferido: ProveedorEmail = 'auto'
+): Promise<boolean> {
+  if (to.length === 0) return false;
+  const proveedor = resolverProveedor(preferido);
+  if (!proveedor) return false;
   try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: process.env.EMAIL_FROM ?? 'Siembra Nativa Club <onboarding@resend.dev>',
-        to,
-        subject,
-        html,
-      }),
-    });
-    return res.ok;
+    return proveedor === 'gmail'
+      ? await enviarPorGmail(to, subject, html)
+      : await enviarPorResend(to, subject, html);
   } catch {
     return false;
   }
@@ -66,7 +104,7 @@ export async function avisarAdmins(
     const { data } = await service
       .from('configuracion_app')
       .select('clave, valor')
-      .in('clave', ['avisos_emails', `avisos_${evento}`]);
+      .in('clave', ['avisos_emails', 'avisos_proveedor', `avisos_${evento}`]);
 
     const map: Record<string, string> = {};
     for (const r of data ?? []) map[r.clave] = r.valor;
@@ -78,8 +116,19 @@ export async function avisarAdmins(
       .filter(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
     if (emails.length === 0) return;
 
-    await enviarEmail(emails, `[Club] ${titulo}`, plantillaAdmin(titulo, lineas, enlace));
+    const preferido = (map['avisos_proveedor'] ?? 'auto') as ProveedorEmail;
+    await enviarEmail(emails, `[Club] ${titulo}`, plantillaAdmin(titulo, lineas, enlace), preferido);
   } catch {
     // Nunca interrumpe la acción principal
   }
+}
+
+// Email de prueba desde Configuración → Avisos (solo admin, lo llama la action)
+export async function enviarEmailPrueba(to: string, preferido: ProveedorEmail): Promise<boolean> {
+  return enviarEmail(
+    [to],
+    '[Club] Prueba de avisos',
+    plantillaAdmin('Prueba de avisos por email', ['Si leés esto, los avisos están funcionando.'], { label: 'Ir al panel', href: '/admin/dashboard' }),
+    preferido
+  );
 }

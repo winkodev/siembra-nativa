@@ -26,6 +26,7 @@ export interface AppConfig {
   avisos_comprobante:       boolean;
   avisos_certificado:       boolean;
   avisos_consulta:          boolean;
+  avisos_proveedor:         'auto' | 'resend' | 'gmail';
 }
 
 export async function getAppConfig(): Promise<AppConfig> {
@@ -57,6 +58,7 @@ export async function getAppConfig(): Promise<AppConfig> {
     avisos_comprobante:      map['avisos_comprobante'] === 'true',
     avisos_certificado:      map['avisos_certificado'] === 'true',
     avisos_consulta:         map['avisos_consulta'] === 'true',
+    avisos_proveedor:        (['auto', 'resend', 'gmail'].includes(map['avisos_proveedor'] ?? '') ? map['avisos_proveedor'] : 'auto') as 'auto' | 'resend' | 'gmail',
   };
 }
 

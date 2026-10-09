@@ -2,6 +2,7 @@ import { createClient, getProfile } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { ConfiguracionClient } from './ConfiguracionClient';
 import { getAppConfig } from '@/lib/supabase/config';
+import { proveedoresDisponibles } from '@/lib/email';
 import type { Ubicacion, FranjaHoraria } from '@/lib/types/database';
 
 export const metadata = { title: 'Configuración' };
@@ -24,6 +25,7 @@ export default async function ConfiguracionPage() {
       franjas={(franjas as FranjaHoraria[]) ?? []}
       config={config}
       superadmin={Boolean(profile.superadmin)}
+      proveedoresEmail={proveedoresDisponibles()}
     />
   );
 }

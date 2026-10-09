@@ -8,3 +8,11 @@ export const EVENTOS_AVISO: { clave: EventoAviso; label: string; desc: string }[
   { clave: 'certificado',  label: 'Certificado REPROCANN', desc: 'Un socio subió o reemplazó su certificado' },
   { clave: 'consulta',     label: 'Consulta nueva',        desc: 'Un socio envió una consulta' },
 ];
+
+// Método de envío: se elige en Configuración → Avisos (clave avisos_proveedor)
+export type ProveedorEmail = 'auto' | 'resend' | 'gmail';
+export const PROVEEDORES_EMAIL: { clave: ProveedorEmail; label: string; desc: string }[] = [
+  { clave: 'auto',   label: 'Automático', desc: 'Usa Gmail si está configurado, si no Resend' },
+  { clave: 'gmail',  label: 'Gmail',      desc: 'Sale desde la cuenta de Gmail del club (contraseña de aplicación)' },
+  { clave: 'resend', label: 'Resend',     desc: 'Sale desde el dominio verificado en Resend' },
+];
