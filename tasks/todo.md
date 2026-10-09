@@ -392,3 +392,8 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - Avisos: selector Automático / Gmail / Resend con estado y botón Probar; Gmail por SMTP con contraseña de aplicación (GMAIL_USER, GMAIL_APP_PASSWORD).
 - Socios: ícono REPROCANN en amarillo cuando hay certificado subido pendiente de revisión.
 - Pendiente del usuario: cargar GMAIL_USER y GMAIL_APP_PASSWORD en Render y elegir Gmail en Avisos.
+
+## ✅ 2026-10-09 (desplegado 0955583): Credenciales de envío desde la app
+
+- Tabla `secretos_app` (RLS sin políticas) con GMAIL_USER / GMAIL_APP_PASSWORD cargadas por SQL; avisos_proveedor = gmail.
+- Env vars de Render siguen mandando si existen. Formulario de credenciales en Avisos solo superadmin.
