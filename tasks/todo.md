@@ -399,19 +399,19 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - Env vars de Render siguen mandando si existen. Formulario de credenciales en Avisos solo superadmin.
 - Verificado en producción 2026-10-09: email de prueba por Gmail llegó. Avisos activos para montamatmariano@gmail.com y facundogaray.ac@gmail.com.
 
-## 🟢 EN LOCAL 2026-10-20: lote de cambios
+## ✅ 2026-10-20 (desplegado 3542ebb): lote de cambios
 
 - [x] Admin pedidos: cantidad como chip pegado al nombre del ítem
 - [x] Comprobante obligatorio validado en servidor, subido antes de crear el pedido; bodySizeLimit 15 MB (causa: fotos > 1 MB fallaban en silencio)
 - [x] Salida manual de stock (superadmin): botón en Inventario → Stock, FIFO, motivo, listado. SQL ejecutado
 - [x] Notificaciones del socio como campana con popup en el header (estilo YouTube); bloque del Inicio eliminado
 
-## 🟢 EN CURSO 2026-10-20: Finanzas → Tesorería (superadmin)
+## ✅ 2026-10-20 (desplegado 3542ebb): Finanzas → Tesorería (superadmin)
 
 Decisiones: cuentas con saldo en ARS y USD; cobros de pedidos automáticos a cuenta configurable (al aprobar; se revierte al cancelar/revertir); categorías iniciales editables; solo deudas con terceros.
 
-- [x] SQL supabase/tesoreria.sql (pendiente de ejecutar)`supabase/tesoreria.sql`: tes_cuentas, tes_categorias (seed), tes_deudas, tes_movimientos, RPC tes_saldos; RLS superadmin
+- [x] SQL supabase/tesoreria.sql ejecutado`supabase/tesoreria.sql`: tes_cuentas, tes_categorias (seed), tes_deudas, tes_movimientos, RPC tes_saldos; RLS superadmin
 - [x] Tipos + actions (cuentas, movimientos, transferencia, cambio, deudas, categorías, cuenta de cobros)
 - [x] lib/tesoreria.ts: registrar/revertir cobro de pedido desde cambiarEstadoPedido y revertirEstadoPedido
 - [x] /admin/finanzas (Ventas) + /admin/finanzas/tesoreria con tabs; pantalla: resumen, cuentas, deudas, movimientos, filtros, CSV
-- [ ] tsc + prueba local
+- [x] tsc + prueba local
