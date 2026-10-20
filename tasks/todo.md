@@ -416,10 +416,10 @@ Decisiones: cuentas con saldo en ARS y USD; cobros de pedidos automáticos a cue
 - [x] /admin/finanzas (Ventas) + /admin/finanzas/tesoreria con tabs; pantalla: resumen, cuentas, deudas, movimientos, filtros, CSV
 - [x] tsc + prueba local
 
-## 🟢 EN LOCAL 2026-10-20 (2): deudas a favor, pedido manual, armado en bolsas
+## ✅ 2026-10-20 (desplegado 9020b1e): deudas a favor, pedido manual, armado en bolsas
 
 - [x] Deudas con sentido (a_pagar rojo / a_cobrar verde); cobro con ingreso; resumen "El club debe" / "Le deben al club"
 - [x] Pedido manual (admin): genéticas con stock, total libre, nombre y dirección opcionales; sin comprobante adjunto obligatorio; etiqueta Manual
 - [x] Armar en bolsas: popup en filtro Por armar, bolsas ≤30 g parejas en múltiplos de 10, checks y resumen por genética
 - [x] SQL ejecutado
-- [ ] Probar en local y desplegar
+- [x] Probado y desplegado. Modales nuevos sin animación de salida (parpadeo)

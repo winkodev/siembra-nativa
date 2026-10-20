@@ -68,3 +68,7 @@
 - **Error:** puse una constante de UI en `lib/email.ts` (que importa el service client de Supabase) y la importé desde un client component.
 - **Regla:** todo lo que importe `@/lib/supabase/server` es solo servidor. Las constantes compartidas con la UI van en un módulo aparte sin imports de servidor.
 - **Bash:** los inserts con template literals (`\`…\${}\``) no van por perl en doble comilla: usar el tool Edit.
+
+## 2026-10-20 — Modales: sin animación de salida sobre fondo desenfocado
+- **Síntoma:** al cerrar un modal "parpadeaba" (reaparecía un instante). Darle `key` a cada hijo de AnimatePresence no alcanzó.
+- **Regla:** en modales con `bg-black/60 backdrop-blur-sm`, no usar `exit` ni AnimatePresence: entrada animada, cierre instantáneo. Chrome repinta mal la transición de opacidad sobre backdrop-filter.
