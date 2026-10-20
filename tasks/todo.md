@@ -403,5 +403,15 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 
 - [x] Admin pedidos: cantidad como chip pegado al nombre del ítem
 - [x] Comprobante obligatorio validado en servidor, subido antes de crear el pedido; bodySizeLimit 15 MB (causa: fotos > 1 MB fallaban en silencio)
-- [x] Salida manual de stock (superadmin): botón en Inventario → Stock, FIFO, motivo, listado. SQL `supabase/egresos-stock.sql` **pendiente de ejecutar**
+- [x] Salida manual de stock (superadmin): botón en Inventario → Stock, FIFO, motivo, listado. SQL ejecutado
 - [ ] Resto de la lista del usuario
+
+## 🟢 EN CURSO 2026-10-20: Finanzas → Tesorería (superadmin)
+
+Decisiones: cuentas con saldo en ARS y USD; cobros de pedidos automáticos a cuenta configurable (al aprobar; se revierte al cancelar/revertir); categorías iniciales editables; solo deudas con terceros.
+
+- [x] SQL supabase/tesoreria.sql (pendiente de ejecutar)`supabase/tesoreria.sql`: tes_cuentas, tes_categorias (seed), tes_deudas, tes_movimientos, RPC tes_saldos; RLS superadmin
+- [x] Tipos + actions (cuentas, movimientos, transferencia, cambio, deudas, categorías, cuenta de cobros)
+- [x] lib/tesoreria.ts: registrar/revertir cobro de pedido desde cambiarEstadoPedido y revertirEstadoPedido
+- [x] /admin/finanzas (Ventas) + /admin/finanzas/tesoreria con tabs; pantalla: resumen, cuentas, deudas, movimientos, filtros, CSV
+- [ ] tsc + prueba local

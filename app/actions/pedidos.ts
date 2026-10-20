@@ -5,6 +5,7 @@ import { getAppConfig } from '@/lib/supabase/config';
 import { revalidatePath } from 'next/cache';
 import { registrarAccion, registrarActividadSocio } from '@/lib/audit';
 import { avisarAdmins } from '@/lib/email';
+import { registrarCobroPedido, revertirCobroPedido } from '@/lib/tesoreria';
 import type {
   ActionResponse, CarritoItem, EstadoPedido,
 } from '@/lib/types/database';
@@ -209,11 +210,16 @@ export async function cambiarEstadoPedido(
       await supabase.from('pedidos').update({ estado: 'pendiente' }).eq('id', pedidoId);
       return { ok: false, error: 'Error al descontar stock: ' + stockError.message };
     }
+    // Tesorería: el cobro entra a la cuenta configurada (si hay)
+    const { data: { user: aprobador } } = await supabase.auth.getUser();
+    await registrarCobroPedido(pedidoId, aprobador?.id ?? '');
   }
 
   // Cancelar libera el cupón que se haya usado en el pedido (vuelve a disponible)
+  // y saca el cobro de tesorería si había entrado
   if (nuevoEstado === 'cancelado') {
     await supabase.rpc('liberar_cupon_pedido', { p_pedido_id: pedidoId });
+    await revertirCobroPedido(pedidoId);
   }
 
   if (nuevoEstado === 'cancelado' && pedido.estado === 'aprobado') {
@@ -380,9 +386,11 @@ export async function revertirEstadoPedido(pedidoId: string): Promise<ActionResp
   if (!destino) return { ok: false, error: 'Este pedido no tiene nada que revertir' };
 
   // Devolver stock si el pedido había descontado (solo aprobado → pendiente)
+  // y sacar el cobro de tesorería
   if (pedido.estado === 'aprobado') {
     const { error: restError } = await supabase.rpc('restaurar_stock_pedido', { p_pedido_id: pedidoId });
     if (restError) return { ok: false, error: 'No se pudo devolver el stock: ' + restError.message };
+    await revertirCobroPedido(pedidoId);
   }
 
   const cambios: { estado: EstadoPedido; fecha_entregado?: null } = { estado: destino };

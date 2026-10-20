@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn, formatFecha, formatGramos, formatPrecio, formatNumeroPedido } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { FinanzasTabs } from './FinanzasTabs';
 import type { FinanzasClub } from '@/lib/types/database';
 import type { AgrupacionFin, FiltroEstados } from './page';
 
@@ -130,6 +131,7 @@ export function FinanzasClient({ datos, desde: desdeInicial, hasta: hastaInicial
         title="Finanzas"
         subtitle="Ingresos, gramos y detalle por genética, socio y pedido · solo superadmin"
       />
+      <FinanzasTabs />
 
       {/* Filtros: período, agrupación y qué pedidos contar */}
       <motion.div variants={fadeUp} className="glass-card p-4 space-y-3">

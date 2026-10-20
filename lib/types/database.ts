@@ -477,6 +477,30 @@ export interface Database {
         Update: Partial<Omit<EgresoStock, 'id' | 'created_at'>>;
         Relationships: [];
       };
+      tes_cuentas: {
+        Row: TesCuenta;
+        Insert: Partial<Omit<TesCuenta, 'id' | 'created_at'>> & { nombre: string };
+        Update: Partial<Omit<TesCuenta, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      tes_categorias: {
+        Row: TesCategoria;
+        Insert: Partial<Omit<TesCategoria, 'id' | 'created_at'>> & { nombre: string; tipo: 'ingreso' | 'egreso' };
+        Update: Partial<Omit<TesCategoria, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      tes_deudas: {
+        Row: TesDeuda;
+        Insert: Partial<Omit<TesDeuda, 'id' | 'created_at'>> & { acreedor: string; moneda: Moneda; monto: number };
+        Update: Partial<Omit<TesDeuda, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      tes_movimientos: {
+        Row: TesMovimiento;
+        Insert: Partial<Omit<TesMovimiento, 'id' | 'created_at'>> & { tipo: TipoMovimiento; cuenta_id: string; moneda: Moneda; monto: number; concepto: string };
+        Update: Partial<Omit<TesMovimiento, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
       cupones: {
         Row: Cupon;
         Insert: Partial<Omit<Cupon, 'id' | 'created_at'>> & { socio_id: string; tipo: TipoCupon; mensaje: string };
@@ -521,6 +545,10 @@ export interface Database {
       egreso_manual_stock: {
         Args: { p_genetica_id: string; p_gramos: number; p_motivo: string };
         Returns: string;
+      };
+      tes_saldos: {
+        Args: Record<string, never>;
+        Returns: TesSaldo[];
       };
       finanzas_club: {
         Args: { p_desde: string; p_hasta: string; p_estados?: string[]; p_agrupacion?: string };
@@ -568,4 +596,66 @@ export interface FinanzasClub {
     id: string; numero: number; fecha: string; estado: string; socio: string;
     gramos: number; unidades: number; descuentos: number; envio: number; total: number | null;
   }[];
+}
+
+// ------------------------------------------------------------
+// Tesorería (solo superadmin): cuentas, categorías, deudas, movimientos
+// ------------------------------------------------------------
+export type Moneda = 'ARS' | 'USD';
+export type TipoMovimiento = 'inicial' | 'ingreso' | 'egreso' | 'transferencia' | 'cambio';
+
+export interface TesCuenta {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  activa: boolean;
+  orden: number;
+  created_at: string;
+}
+
+export interface TesCategoria {
+  id: string;
+  nombre: string;
+  tipo: 'ingreso' | 'egreso';
+  activa: boolean;
+  created_at: string;
+}
+
+export interface TesDeuda {
+  id: string;
+  acreedor: string;
+  moneda: Moneda;
+  monto: number;
+  vence_at: string | null;
+  nota: string | null;
+  anulada: boolean;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface TesMovimiento {
+  id: string;
+  fecha: string;
+  tipo: TipoMovimiento;
+  cuenta_id: string;
+  moneda: Moneda;
+  monto: number;
+  cuenta_destino_id: string | null;
+  moneda_destino: Moneda | null;
+  monto_destino: number | null;
+  tipo_cambio: number | null;
+  categoria_id: string | null;
+  deuda_id: string | null;
+  pedido_id: string | null;
+  concepto: string;
+  nota: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+// Saldo por cuenta y moneda (RPC tes_saldos)
+export interface TesSaldo {
+  cuenta_id: string;
+  moneda: Moneda;
+  saldo: number;
 }

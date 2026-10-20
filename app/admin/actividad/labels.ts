@@ -23,6 +23,16 @@ export const ACCION_LABEL: Record<string, string> = {
   editar_stock:          'Editó un ingreso de stock',
   eliminar_stock:        'Eliminó un ingreso de stock',
   egreso_stock:          'Registró una salida manual de stock',
+  tes_crear_cuenta:      'Creó una cuenta de tesorería',
+  tes_editar_cuenta:     'Editó una cuenta de tesorería',
+  tes_ingreso:           'Registró un ingreso',
+  tes_egreso:            'Registró un egreso',
+  tes_transferencia:     'Registró una transferencia entre cuentas',
+  tes_cambio:            'Registró un cambio de moneda',
+  tes_eliminar_movimiento: 'Eliminó un movimiento de tesorería',
+  tes_crear_deuda:       'Registró una deuda',
+  tes_anular_deuda:      'Anuló una deuda',
+  tes_cuenta_cobros:     'Cambió la cuenta de cobros de pedidos',
   crear_producto:        'Creó un producto',
   editar_producto:       'Editó un producto',
   activar_producto:      'Activó un producto',
@@ -79,6 +89,7 @@ export const RECURSO_LABEL: Record<string, string> = {
   comprobante_pago:       'Comprobantes',
   franjas:                'Horarios',
   usuarios:               'Usuarios',
+  tesoreria:              'Tesorería',
 };
 
 // Resumen compacto del metadata (omite ids, que no le dicen nada al admin)
