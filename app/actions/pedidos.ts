@@ -9,18 +9,48 @@ import type {
   ActionResponse, CarritoItem, EstadoPedido,
 } from '@/lib/types/database';
 
+// Comprobante: tipos y tamaño aceptados (mismo criterio que el certificado)
+const COMPROBANTE_TIPOS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+const COMPROBANTE_MAX   = 10 * 1024 * 1024;
+
+function validarComprobante(archivo: File | null): string | null {
+  if (!archivo || archivo.size === 0) return 'Adjuntá el comprobante de pago para confirmar';
+  if (!COMPROBANTE_TIPOS.includes(archivo.type)) return 'El comprobante tiene que ser JPG, PNG, WEBP o PDF';
+  if (archivo.size > COMPROBANTE_MAX) return 'El comprobante no puede superar 10 MB';
+  return null;
+}
+
 export async function crearPedido(
   items: CarritoItem[],
   notas: string,
   franjaId?: string | null,
   cuponId?: string | null,
-  fechaEntrega?: string | null   // YYYY-MM-DD
+  fechaEntrega?: string | null,  // YYYY-MM-DD
+  fdComprobante?: FormData | null // campo "comprobante": obligatorio si la config lo exige
 ): Promise<ActionResponse<{ pedido_id: string }>> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'No autenticado' };
 
   if (items.length === 0) return { ok: false, error: 'El pedido está vacío' };
+
+  // Comprobante obligatorio: se valida en el SERVIDOR (la config se lee acá,
+  // no en el navegador) y se sube ANTES de crear el pedido. Si la subida
+  // falla, el pedido no se crea: nunca queda un pedido sin comprobante.
+  const config = await getAppConfig();
+  const archivo = (fdComprobante?.get('comprobante') as File | null) ?? null;
+  let comprobantePath: string | null = null;
+  if (config.comprobante_obligatorio || (archivo && archivo.size > 0)) {
+    const invalido = validarComprobante(archivo);
+    if (invalido && config.comprobante_obligatorio) return { ok: false, error: invalido };
+    if (!invalido && archivo) {
+      const ext  = archivo.name.split('.').pop() ?? 'jpg';
+      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upError } = await supabase.storage.from('comprobantes-pago').upload(path, archivo);
+      if (upError) return { ok: false, error: 'No se pudo subir el comprobante. Probá con una foto más liviana o un PDF.' };
+      comprobantePath = path;
+    }
+  }
 
   // Toda la validación (habilitación, límite, stock neto de reservas,
   // franja) y la creación ocurren en UNA función SQL con lock:
@@ -41,11 +71,21 @@ export async function crearPedido(
   });
 
   if (error || !data) {
+    // El pedido no se creó: el comprobante ya subido se borra para no dejar basura
+    if (comprobantePath) await supabase.storage.from('comprobantes-pago').remove([comprobantePath]);
     // Los RAISE EXCEPTION de la función llegan con el mensaje ya legible
     return { ok: false, error: error?.message ?? 'Error al crear el pedido' };
   }
 
-  await registrarActividadSocio(user.id, 'crear_pedido', { numero: data.numero, items: items.length, cupon: Boolean(cuponId) });
+  // Asociar el comprobante al pedido (el socio no tiene UPDATE sobre pedidos: service client)
+  if (comprobantePath) {
+    await createServiceClient()
+      .from('pedidos')
+      .update({ comprobante_path: comprobantePath, comprobante_subido_at: new Date().toISOString() })
+      .eq('id', data.pedido_id);
+  }
+
+  await registrarActividadSocio(user.id, 'crear_pedido', { numero: data.numero, items: items.length, cupon: Boolean(cuponId), comprobante: Boolean(comprobantePath) });
 
   // Aviso por email a los admins (si está activado en Configuración → Avisos)
   const { data: socioPedido } = await supabase.from('profiles').select('nombre').eq('id', user.id).single();

@@ -9,6 +9,13 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    serverActions: {
+      // Las server actions aceptan 1 MB por defecto: una foto de comprobante o
+      // un certificado desde el celular pesa más y la subida fallaba en silencio
+      bodySizeLimit: '15mb',
+    },
+  },
 };
 
 module.exports = nextConfig;

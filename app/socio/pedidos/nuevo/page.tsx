@@ -9,7 +9,7 @@ import {
   CalendarClock, MapPin, Check, Receipt, Landmark, Copy,
 } from 'lucide-react';
 import { useCarrito } from '@/lib/context/CarritoContext';
-import { crearPedido, subirComprobante } from '@/app/actions/pedidos';
+import { crearPedido } from '@/app/actions/pedidos';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatGramos, formatPrecio, labelTipo, labelCategoriaProducto, DIAS_SEMANA } from '@/lib/utils';
 import { montoCupon, motivoCuponNoAplica, labelCupon } from '@/lib/utils/cupones';
@@ -141,7 +141,15 @@ export default function NuevoPedidoPage() {
 
     setLoading(true);
     setError(null);
-    const res = await crearPedido(items, notas, franjaId, cupon && !cuponMotivo ? cupon.id : null, fechaEntrega);
+
+    // El comprobante viaja junto con el pedido: el servidor lo sube antes de
+    // crearlo y, si falla, el pedido no se crea (nunca queda sin comprobante)
+    let fd: FormData | null = null;
+    if (comprobante) {
+      fd = new FormData();
+      fd.append('comprobante', comprobante);
+    }
+    const res = await crearPedido(items, notas, franjaId, cupon && !cuponMotivo ? cupon.id : null, fechaEntrega, fd);
 
     if (!res.ok) {
       setLoading(false);
@@ -150,15 +158,6 @@ export default function NuevoPedidoPage() {
     }
     // El cupón ya quedó usado en la base: no debe reaparecer en el próximo carrito
     if (cupon) quitarCupon();
-
-    // Subir el comprobante asociado al pedido recién creado
-    if (comprobante) {
-      const fd = new FormData();
-      fd.append('pedido_id', res.data.pedido_id);
-      fd.append('comprobante', comprobante);
-      await subirComprobante(fd);
-      // Si fallara, el socio puede reintentarlo desde Mis Pedidos
-    }
 
     setLoading(false);
     vaciar();
