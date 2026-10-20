@@ -8,6 +8,7 @@ import { CarritoProvider } from '@/lib/context/CarritoContext';
 import { CarritoDrawer } from '@/components/layout/CarritoDrawer';
 import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
 import { CuponPopup } from '@/components/socio/CuponPopup';
+import { NotificacionesBell } from '@/components/socio/NotificacionesBell';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -36,7 +37,9 @@ export default async function SocioLayout({ children }: { children: React.ReactN
         <main className="lg:pl-64">
           {/* Carrito flotante de verdad (fixed): no ocupa lugar en el flujo,
               así el contenido arranca arriba */}
-          <div className="fixed top-3 right-4 sm:right-6 lg:right-8 z-30">
+          <div className="fixed top-3 right-4 sm:right-6 lg:right-8 z-30 flex items-center gap-2">
+            {/* Campana de notificaciones (popup) + carrito */}
+            <NotificacionesBell />
             <CarritoDrawer upsellTitulo={config.upsell_titulo} upsellTexto={config.upsell_texto} />
           </div>
 

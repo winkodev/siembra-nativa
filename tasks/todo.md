@@ -404,7 +404,7 @@ Decisiones: un cupón por pedido; el pedido tiene que llevar flores; se crean so
 - [x] Admin pedidos: cantidad como chip pegado al nombre del ítem
 - [x] Comprobante obligatorio validado en servidor, subido antes de crear el pedido; bodySizeLimit 15 MB (causa: fotos > 1 MB fallaban en silencio)
 - [x] Salida manual de stock (superadmin): botón en Inventario → Stock, FIFO, motivo, listado. SQL ejecutado
-- [ ] Resto de la lista del usuario
+- [x] Notificaciones del socio como campana con popup en el header (estilo YouTube); bloque del Inicio eliminado
 
 ## 🟢 EN CURSO 2026-10-20: Finanzas → Tesorería (superadmin)
 

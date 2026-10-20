@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getProfile, createClient } from '@/lib/supabase/server';
 import { SocioDashboardClient } from './SocioDashboardClient';
-import type { Newsletter, Notificacion } from '@/lib/types/database';
+import type { Newsletter } from '@/lib/types/database';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = { title: 'Inicio' };
@@ -12,27 +12,19 @@ export default async function SocioDashboardPage() {
 
   const supabase = createClient();
 
-  // Último newsletter publicado + notificaciones del socio (RLS: solo propias)
-  const [{ data: newsletter }, { data: notificaciones }] = await Promise.all([
-    supabase
-      .from('newsletter')
-      .select('*')
-      .eq('publicado', true)
-      .order('fecha_publicacion', { ascending: false })
-      .limit(1)
-      .single(),
-    supabase
-      .from('notificaciones')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(10),
-  ]);
+  // Último newsletter publicado (las notificaciones las carga la campana del header)
+  const { data: newsletter } = await supabase
+    .from('newsletter')
+    .select('*')
+    .eq('publicado', true)
+    .order('fecha_publicacion', { ascending: false })
+    .limit(1)
+    .single();
 
   return (
     <SocioDashboardClient
       profile={profile}
       newsletter={newsletter as Newsletter | null}
-      notificaciones={(notificaciones as Notificacion[]) ?? []}
     />
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -9,11 +9,10 @@ import remarkBreaks from 'remark-breaks';
 import {
   Leaf, ShoppingBag, AlertTriangle, ArrowRight, Newspaper,
   FileText, Shield, CheckCircle2, Clock, XCircle, UserRound, ChevronDown,
-  Bell, Loader2, ScrollText,
+  ScrollText,
 } from 'lucide-react';
-import type { Profile, Newsletter, Notificacion } from '@/lib/types/database';
+import type { Profile, Newsletter } from '@/lib/types/database';
 import { formatFecha, diasHasta, cn, estadoEfectivoReprocann } from '@/lib/utils';
-import { marcarNotificacionesLeidas } from '@/app/actions/notificaciones';
 
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.08 } } };
 const fadeUp  = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
@@ -21,7 +20,6 @@ const fadeUp  = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, tr
 interface Props {
   profile:        Profile;
   newsletter:     Newsletter | null;
-  notificaciones: Notificacion[];
 }
 
 function perfilCompleto(p: Profile) {
@@ -64,22 +62,11 @@ const estadoConfig = {
   },
 };
 
-export function SocioDashboardClient({ profile, newsletter, notificaciones: notifInicial }: Props) {
+export function SocioDashboardClient({ profile, newsletter }: Props) {
   // Newsletter colapsado por defecto; "Ver más" muestra el texto completo
   const [newsExpandido, setNewsExpandido] = useState(false);
   // Credencial REPROCANN de fondo (se oculta sola si el archivo no existe)
   const [credencialOk, setCredencialOk] = useState(true);
-  // Notificaciones in-app (pedido confirmado / entregado)
-  const [notificaciones, setNotificaciones] = useState(notifInicial);
-  const [marcando, startMarcar] = useTransition();
-  const noLeidas = notificaciones.filter(n => !n.leida).length;
-
-  const handleMarcarLeidas = () => {
-    startMarcar(async () => {
-      const res = await marcarNotificacionesLeidas();
-      if (res.ok) setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })));
-    });
-  };
 
   const datosCompletos = perfilCompleto(profile);
   const certCargado    = Boolean(profile.reprocann_certificado_path);
@@ -295,61 +282,7 @@ export function SocioDashboardClient({ profile, newsletter, notificaciones: noti
 
       </motion.div>
 
-      {/* Notificaciones del club */}
-      {notificaciones.length > 0 && (
-        <motion.div variants={fadeUp} className="glass-card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-avigea text-xl text-foreground flex items-center gap-2">
-              <span className="relative">
-                <Bell className="w-5 h-5 text-club-dorado" />
-                {noLeidas > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-club-dorado text-club-verde text-[10px] font-bold flex items-center justify-center">
-                    {noLeidas}
-                  </span>
-                )}
-              </span>
-              Notificaciones
-            </h2>
-            {noLeidas > 0 && (
-              <button
-                onClick={handleMarcarLeidas}
-                disabled={marcando}
-                className="text-club-dorado text-xs hover:text-club-dorado-claro transition-colors flex items-center gap-1.5"
-              >
-                {marcando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                Marcar como leídas
-              </button>
-            )}
-          </div>
-
-          {/* Altura de ~2 notificaciones; el resto se scrollea */}
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-            {notificaciones.map(n => (
-              <div
-                key={n.id}
-                className={cn(
-                  'flex items-start gap-3 px-4 py-3 rounded-xl border transition-colors',
-                  n.leida
-                    ? 'bg-club-verde-claro/10 border-transparent opacity-70'
-                    : 'bg-club-dorado/8 border-club-dorado/20'
-                )}
-              >
-                <span className={cn(
-                  'w-2 h-2 rounded-full mt-1.5 shrink-0',
-                  n.leida ? 'bg-muted-foreground/30' : 'bg-club-dorado animate-pulse'
-                )} />
-                <div className="min-w-0">
-                  <p className="text-foreground text-sm font-semibold">{n.titulo}</p>
-                  {n.mensaje && <p className="text-muted-foreground text-xs mt-0.5">{n.mensaje}</p>}
-                  <p className="text-muted-foreground/60 text-[11px] mt-1">
-                    {formatFecha(n.created_at, "dd MMM · HH:mm")}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
+      {/* Las notificaciones viven en la campana del header (NotificacionesBell) */}
 
       {/* Newsletter destacado */}
       {newsletter && (
