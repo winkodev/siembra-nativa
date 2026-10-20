@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Wallet, Landmark, Plus, ArrowDownCircle, ArrowUpCircle, ArrowRightLeft, Repeat, HandCoins,
   Loader2, X, Trash2, Download, AlertTriangle, Pencil, Check, Tag, ChevronDown, Ban,
@@ -61,9 +61,9 @@ function descargarCSV(nombre: string, filas: (string | number | null | undefined
 // Modal genérico
 function Modal({ titulo, icono, onClose, children }: { titulo: string; icono: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
-      <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
         onClick={e => e.stopPropagation()} className="glass-card w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="font-avigea text-xl text-foreground flex items-center gap-2">{icono} {titulo}</h2>
@@ -448,8 +448,8 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
         {mostrarCategorias && <Categorias categorias={categorias} onCambio={() => router.refresh()} onError={setError} />}
       </motion.div>
 
-      {/* Modales */}
-      <AnimatePresence>
+      {/* Modales (sin animación de salida: se cierran al instante) */}
+      <>
         {modal?.k === 'cuenta' && <CuentaModal key="m-cuenta" cuenta={modal.cuenta} onClose={cerrarYRefrescar} />}
         {modal?.k === 'mov' && <MovimientoModal key="m-mov" tipo={modal.tipo} deuda={modal.deuda} cuentas={cuentasActivas} categorias={categorias.filter(c => c.activa && c.tipo === modal.tipo)} deudas={deudasVivas} onClose={cerrarYRefrescar} />}
         {modal?.k === 'transferencia' && <TransferenciaModal key="m-transf" cuentas={cuentasActivas} onClose={cerrarYRefrescar} />}
@@ -469,7 +469,7 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
             </div>
           </Modal>
         )}
-      </AnimatePresence>
+      </>
     </motion.div>
   );
 }

@@ -58,12 +58,11 @@ export function CuponMasivoModal({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
         onClick={onClose} className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" />
       <motion.div
         initial={{ opacity: 0, scale: 0.7, scaleX: 1.15, y: 28 }}
         animate={{ opacity: 1, scale: 1, scaleX: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 16, transition: { duration: 0.15 } }}
         transition={{ type: 'spring', damping: 15, stiffness: 380, mass: 0.8 }}
         className="fixed z-50 inset-x-4 top-[6vh] sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-lg"
       >

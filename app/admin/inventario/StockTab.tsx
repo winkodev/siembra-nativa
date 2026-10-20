@@ -69,7 +69,6 @@ function StockModal({ stockItem, geneticas, ubicaciones, loteSugerido, onClose }
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95 }}
         className="glass-card w-full max-w-md p-6"
       >
         <div className="flex items-center justify-between mb-5">
@@ -212,7 +211,6 @@ function MoverModal({ stockItem, ubicaciones, onClose }: {
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95 }}
         className="glass-card w-full max-w-sm p-6"
       >
         <div className="flex items-center justify-between mb-5">
@@ -560,7 +558,6 @@ export function StockTab({ stock, geneticas, ubicaciones, reservas, superadmin, 
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
               className="glass-card p-6 max-w-sm w-full text-center"
             >
               <Trash2 className="w-10 h-10 text-red-400 mx-auto mb-3" />
@@ -611,7 +608,7 @@ function EgresoModal({ geneticas, stock, onClose }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-club">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
         className="glass-card w-full max-w-md p-6 space-y-4"
       >
         <div className="flex items-center justify-between">
