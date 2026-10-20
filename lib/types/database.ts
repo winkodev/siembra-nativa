@@ -137,6 +137,10 @@ export interface Pedido {
   // Cupón personal aplicado al confirmar (ver tabla cupones)
   cupon_id: string | null;
   monto_cupon: number | null;
+  // Pedido cargado por un admin para alguien sin cuenta (socio_id = el admin)
+  manual: boolean;
+  cliente_nombre: string | null;
+  cliente_direccion: string | null;
   // Controles previos a la aprobación (quién y cuándo)
   armado_por: string | null;
   armado_at: string | null;
@@ -491,7 +495,7 @@ export interface Database {
       };
       tes_deudas: {
         Row: TesDeuda;
-        Insert: Partial<Omit<TesDeuda, 'id' | 'created_at'>> & { acreedor: string; moneda: Moneda; monto: number };
+        Insert: Partial<Omit<TesDeuda, 'id' | 'created_at'>> & { acreedor: string; moneda: Moneda; monto: number; sentido: 'a_pagar' | 'a_cobrar' };
         Update: Partial<Omit<TesDeuda, 'id' | 'created_at'>>;
         Relationships: [];
       };
@@ -549,6 +553,10 @@ export interface Database {
       tes_saldos: {
         Args: Record<string, never>;
         Returns: TesSaldo[];
+      };
+      crear_pedido_manual: {
+        Args: { p_items: { id: string; cantidad: number }[]; p_total: number; p_cliente_nombre?: string | null; p_cliente_direccion?: string | null; p_notas?: string | null };
+        Returns: { pedido_id: string; numero: number };
       };
       finanzas_club: {
         Args: { p_desde: string; p_hasta: string; p_estados?: string[]; p_agrupacion?: string };
@@ -624,6 +632,8 @@ export interface TesCategoria {
 export interface TesDeuda {
   id: string;
   acreedor: string;
+  // a_pagar: el club debe · a_cobrar: le deben al club
+  sentido: 'a_pagar' | 'a_cobrar';
   moneda: Moneda;
   monto: number;
   vence_at: string | null;

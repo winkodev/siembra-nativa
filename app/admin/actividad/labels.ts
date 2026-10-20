@@ -42,6 +42,7 @@ export const ACCION_LABEL: Record<string, string> = {
   pedido_entregado:      'Entregó un pedido',
   pedido_cancelado:      'Canceló un pedido',
   pedido_revertido:      'Revirtió el estado de un pedido',
+  pedido_manual:         'Cargó un pedido manual',
   eliminar_usuario:      'Eliminó un usuario',
   crear_articulo:        'Creó un artículo del newsletter',
   editar_articulo:       'Editó un artículo del newsletter',

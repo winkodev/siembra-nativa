@@ -18,13 +18,14 @@ export async function registrarCobroPedido(pedidoId: string, adminId: string): P
 
     const { data: pedido } = await service
       .from('pedidos')
-      .select('numero, monto_total, socio:profiles!socio_id(nombre)')
+      .select('numero, monto_total, manual, cliente_nombre, socio:profiles!socio_id(nombre)')
       .eq('id', pedidoId)
       .single();
     if (!pedido || !pedido.monto_total || pedido.monto_total <= 0) return;
 
     const { data: cat } = await service.from('tes_categorias').select('id').eq('nombre', 'Cobro de pedidos').eq('tipo', 'ingreso').maybeSingle();
     const socio = (pedido as unknown as { socio: { nombre: string } | null }).socio;
+    const quien = pedido.manual ? (pedido.cliente_nombre ?? 'pedido manual') : (socio?.nombre ?? 'socio');
 
     // Índice único por pedido: si ya está registrado, no duplica
     await service.from('tes_movimientos').upsert({
@@ -34,7 +35,7 @@ export async function registrarCobroPedido(pedidoId: string, adminId: string): P
       monto: pedido.monto_total,
       categoria_id: cat?.id ?? null,
       pedido_id: pedidoId,
-      concepto: `Pedido #${String(pedido.numero).padStart(4, '0')} · ${socio?.nombre ?? 'socio'}`,
+      concepto: `Pedido #${String(pedido.numero).padStart(4, '0')} · ${quien}`,
       created_by: adminId,
     }, { onConflict: 'pedido_id', ignoreDuplicates: true });
   } catch {

@@ -13,7 +13,7 @@ export default async function AdminPedidosPage({ searchParams }: {
 
   const supabase = createClient();
 
-  const { data: pedidos } = await supabase
+  const [{ data: pedidos }, { data: geneticas }] = await Promise.all([supabase
     .from('pedidos')
     .select(`
       *,
@@ -26,7 +26,10 @@ export default async function AdminPedidosPage({ searchParams }: {
       armado:profiles!armado_por ( nombre ),
       comprobante_ok:profiles!comprobante_ok_por ( nombre )
     `)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false }),
+    // Genéticas con stock disponible (neto de reservas) para cargar pedidos manuales
+    supabase.from('stock_publico').select('genetica_id, nombre, tipo, stock_total_gramos, precio_gramo').gt('stock_total_gramos', 0).order('nombre'),
+  ]);
 
-  return <AdminPedidosClient pedidos={(pedidos as any[]) ?? []} filtroInicial={searchParams?.filtro} superadmin={Boolean(profile.superadmin)} />;
+  return <AdminPedidosClient pedidos={(pedidos as any[]) ?? []} filtroInicial={searchParams?.filtro} superadmin={Boolean(profile.superadmin)} geneticas={(geneticas as any[]) ?? []} />;
 }

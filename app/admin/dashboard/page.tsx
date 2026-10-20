@@ -53,7 +53,7 @@ export default async function AdminDashboardPage() {
   // Listas de trabajo: documentación pendiente, REPROCANN por vencer,
   // pedidos por aprobar y pedidos aprobados por entregar
   const selectPedido = `
-    id, numero, created_at, comprobante_path,
+    id, numero, created_at, comprobante_path, manual, cliente_nombre,
     profiles!socio_id ( nombre ),
     pedido_items ( cantidad_gramos, cantidad_unidades )
   `;

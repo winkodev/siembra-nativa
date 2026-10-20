@@ -147,8 +147,8 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
   const totalARS = saldos.filter(s => s.moneda === 'ARS').reduce((a, s) => a + s.saldo, 0);
   const totalUSD = saldos.filter(s => s.moneda === 'USD').reduce((a, s) => a + s.saldo, 0);
   const deudasVivas = deudas.filter(d => !d.anulada && d.saldo > 0);
-  const deudaARS = deudasVivas.filter(d => d.moneda === 'ARS').reduce((a, d) => a + d.saldo, 0);
-  const deudaUSD = deudasVivas.filter(d => d.moneda === 'USD').reduce((a, d) => a + d.saldo, 0);
+  const sumaDeudas = (sentido: 'a_pagar' | 'a_cobrar', moneda: Moneda) =>
+    deudasVivas.filter(d => d.sentido === sentido && d.moneda === moneda).reduce((a, d) => a + d.saldo, 0);
 
   // Flujo del período: entradas y salidas reales por moneda (transferencias no cuentan)
   const flujo = useMemo(() => {
@@ -214,14 +214,14 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
           <p className="text-[11px] text-muted-foreground mt-1">Período: <span className="text-emerald-400">+{fmt('USD', flujo.USD.entra)}</span> · <span className="text-red-400">−{fmt('USD', flujo.USD.sale)}</span></p>
         </motion.div>
         <motion.div variants={fadeUp} className="glass-card p-4">
-          <p className="text-muted-foreground text-xs mb-1">Deudas en pesos</p>
-          <p className={cn('font-bold text-2xl', deudaARS > 0 ? 'text-amber-300' : 'text-foreground')}>{fmt('ARS', deudaARS)}</p>
-          <p className="text-[11px] text-muted-foreground mt-1">{deudasVivas.filter(d => d.moneda === 'ARS').length} pendiente{deudasVivas.filter(d => d.moneda === 'ARS').length === 1 ? '' : 's'}</p>
+          <p className="text-muted-foreground text-xs mb-1">El club debe</p>
+          <p className={cn('font-bold text-xl', sumaDeudas('a_pagar', 'ARS') > 0 ? 'text-red-400' : 'text-foreground')}>{fmt('ARS', sumaDeudas('a_pagar', 'ARS'))}</p>
+          <p className={cn('font-bold text-base', sumaDeudas('a_pagar', 'USD') > 0 ? 'text-red-400' : 'text-foreground')}>{fmt('USD', sumaDeudas('a_pagar', 'USD'))}</p>
         </motion.div>
         <motion.div variants={fadeUp} className="glass-card p-4">
-          <p className="text-muted-foreground text-xs mb-1">Deudas en dólares</p>
-          <p className={cn('font-bold text-2xl', deudaUSD > 0 ? 'text-amber-300' : 'text-foreground')}>{fmt('USD', deudaUSD)}</p>
-          <p className="text-[11px] text-muted-foreground mt-1">{deudasVivas.filter(d => d.moneda === 'USD').length} pendiente{deudasVivas.filter(d => d.moneda === 'USD').length === 1 ? '' : 's'}</p>
+          <p className="text-muted-foreground text-xs mb-1">Le deben al club</p>
+          <p className={cn('font-bold text-xl', sumaDeudas('a_cobrar', 'ARS') > 0 ? 'text-emerald-400' : 'text-foreground')}>{fmt('ARS', sumaDeudas('a_cobrar', 'ARS'))}</p>
+          <p className={cn('font-bold text-base', sumaDeudas('a_cobrar', 'USD') > 0 ? 'text-emerald-400' : 'text-foreground')}>{fmt('USD', sumaDeudas('a_cobrar', 'USD'))}</p>
         </motion.div>
       </div>
 
@@ -312,10 +312,16 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
             <div className="divide-y divide-club-verde-claro/10">
               {deudas.filter(d => !d.anulada).map(d => {
                 const vencida = d.vence_at && d.saldo > 0 && d.vence_at < hoyISO();
+                const aCobrar = d.sentido === 'a_cobrar';
                 return (
-                  <div key={d.id} className="py-2.5 flex items-center gap-3">
+                  <div key={d.id} className={cn('py-2.5 flex items-center gap-3 border-l-2 pl-3', aCobrar ? 'border-emerald-400/60' : 'border-red-400/60')}>
                     <div className="min-w-0 flex-1">
-                      <p className="text-foreground font-medium text-sm truncate">{d.acreedor}</p>
+                      <p className="text-foreground font-medium text-sm truncate">
+                        <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border mr-1.5', aCobrar ? 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10' : 'text-red-400 border-red-400/30 bg-red-400/10')}>
+                          {aCobrar ? 'Nos debe' : 'Debemos'}
+                        </span>
+                        {d.acreedor}
+                      </p>
                       <p className="text-muted-foreground text-xs">
                         {fmt(d.moneda, d.monto)} total · pagado {fmt(d.moneda, d.pagado)}
                         {d.vence_at && <> · <span className={cn(vencida && 'text-red-400 font-semibold')}>vence {formatFecha(d.vence_at)}</span></>}
@@ -323,12 +329,14 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className={cn('font-bold tabular-nums', d.saldo > 0 ? 'text-amber-300' : 'text-emerald-400')}>
+                      <p className={cn('font-bold tabular-nums', d.saldo > 0 ? (aCobrar ? 'text-emerald-400' : 'text-red-400') : 'text-muted-foreground')}>
                         {d.saldo > 0 ? fmt(d.moneda, d.saldo) : 'Saldada'}
                       </p>
                       <div className="flex gap-2 justify-end mt-0.5">
                         {d.saldo > 0 && (
-                          <button onClick={() => setModal({ k: 'mov', tipo: 'egreso', deuda: d })} className="text-[11px] text-club-dorado hover:text-club-dorado/80">Pagar</button>
+                          <button onClick={() => setModal({ k: 'mov', tipo: aCobrar ? 'ingreso' : 'egreso', deuda: d })} className="text-[11px] text-club-dorado hover:text-club-dorado/80">
+                            {aCobrar ? 'Cobrar' : 'Pagar'}
+                          </button>
                         )}
                         {d.pagado === 0 && (
                           <button onClick={() => startTransition(async () => { const r = await anularDeuda(d.id); if (!r.ok) setError(r.error); router.refresh(); })}
@@ -523,22 +531,24 @@ function MovimientoModal({ tipo, deuda, cuentas, categorias, deudas, onClose }: 
   const [cuentaId, setCuentaId] = useState(cuentas[0]?.id ?? '');
   const [moneda, setMoneda] = useState<Moneda>(deuda?.moneda ?? 'ARS');
   const [monto, setMonto] = useState(deuda ? String(deuda.saldo) : '');
-  const [categoriaId, setCategoriaId] = useState(deuda ? (categorias.find(c => c.nombre === 'Pago de deudas')?.id ?? '') : '');
+  const [categoriaId, setCategoriaId] = useState(deuda ? (categorias.find(c => c.nombre === (tipo === 'egreso' ? 'Pago de deudas' : 'Otros ingresos'))?.id ?? '') : '');
   const [deudaId, setDeudaId] = useState(deuda?.id ?? '');
-  const [concepto, setConcepto] = useState(deuda ? `Pago a ${deuda.acreedor}` : '');
+  const [concepto, setConcepto] = useState(deuda ? (tipo === 'egreso' ? `Pago a ${deuda.acreedor}` : `Cobro a ${deuda.acreedor}`) : '');
   const [nota, setNota] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const esEgreso = tipo === 'egreso';
-  const deudaSel = deudas.find(d => d.id === deudaId);
+  // Egreso paga deudas del club; ingreso cobra deudas a favor
+  const deudasAplicables = deudas.filter(d => d.sentido === (esEgreso ? 'a_pagar' : 'a_cobrar'));
+  const deudaSel = deudasAplicables.find(d => d.id === deudaId);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPending(true); setError(null);
     const res = await crearMovimiento({
       tipo, fecha, cuenta_id: cuentaId, moneda: deudaSel ? deudaSel.moneda : moneda, monto: parseFloat(monto),
-      categoria_id: categoriaId || null, deuda_id: esEgreso ? deudaId || null : null, concepto, nota,
+      categoria_id: categoriaId || null, deuda_id: deudaId || null, concepto, nota,
     });
     setPending(false);
     if (!res.ok) { setError(res.error); return; }
@@ -557,12 +567,12 @@ function MovimientoModal({ tipo, deuda, cuentas, categorias, deudas, onClose }: 
             </select>
           </Campo>
         </div>
-        {esEgreso && deudas.length > 0 && (
-          <Campo label="Paga una deuda">
-            <select value={deudaId} onChange={e => { setDeudaId(e.target.value); const d = deudas.find(x => x.id === e.target.value); if (d) { setMoneda(d.moneda); setMonto(String(d.saldo)); if (!concepto) setConcepto(`Pago a ${d.acreedor}`); } }}
+        {deudasAplicables.length > 0 && (
+          <Campo label={esEgreso ? 'Paga una deuda del club' : 'Cobra una deuda a favor'}>
+            <select value={deudaId} onChange={e => { setDeudaId(e.target.value); const d = deudasAplicables.find(x => x.id === e.target.value); if (d) { setMoneda(d.moneda); setMonto(String(d.saldo)); if (!concepto) setConcepto(`${esEgreso ? 'Pago a' : 'Cobro a'} ${d.acreedor}`); } }}
               className="input-club w-full bg-club-verde-medio appearance-none cursor-pointer">
               <option value="">No</option>
-              {deudas.map(d => <option key={d.id} value={d.id}>{d.acreedor} · debe {fmt(d.moneda, d.saldo)}</option>)}
+              {deudasAplicables.map(d => <option key={d.id} value={d.id}>{d.acreedor} · {esEgreso ? 'debemos' : 'nos debe'} {fmt(d.moneda, d.saldo)}</option>)}
             </select>
           </Campo>
         )}
@@ -708,6 +718,7 @@ function CambioModal({ cuentas, onClose }: { cuentas: TesCuenta[]; onClose: () =
 
 function DeudaModal({ onClose }: { onClose: () => void }) {
   const [acreedor, setAcreedor] = useState('');
+  const [sentido, setSentido] = useState<'a_pagar' | 'a_cobrar'>('a_pagar');
   const [moneda, setMoneda] = useState<Moneda>('ARS');
   const [monto, setMonto] = useState('');
   const [vence, setVence] = useState('');
@@ -718,7 +729,7 @@ function DeudaModal({ onClose }: { onClose: () => void }) {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPending(true); setError(null);
-    const res = await crearDeuda({ acreedor, moneda, monto: parseFloat(monto), vence_at: vence || null, nota });
+    const res = await crearDeuda({ acreedor, sentido, moneda, monto: parseFloat(monto), vence_at: vence || null, nota });
     setPending(false);
     if (!res.ok) { setError(res.error); return; }
     onClose();
@@ -727,14 +738,29 @@ function DeudaModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal titulo="Nueva deuda" icono={<HandCoins className="w-5 h-5 text-amber-300" />} onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
-        <Campo label="A quién se le debe *"><input value={acreedor} onChange={e => setAcreedor(e.target.value)} className="input-club w-full" placeholder="Proveedor, persona, banco…" required /></Campo>
+        <div className="grid grid-cols-2 gap-2">
+          {([['a_pagar', 'El club debe', 'red'], ['a_cobrar', 'Le deben al club', 'emerald']] as const).map(([v, l, c]) => (
+            <button key={v} type="button" onClick={() => setSentido(v)}
+              className={cn('px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all',
+                sentido === v
+                  ? (c === 'red' ? 'bg-red-500/15 border-red-500/40 text-red-400' : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400')
+                  : 'bg-white/5 border-white/10 text-muted-foreground hover:text-foreground')}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <Campo label={sentido === 'a_pagar' ? 'A quién le debe el club *' : 'Quién le debe al club *'}><input value={acreedor} onChange={e => setAcreedor(e.target.value)} className="input-club w-full" placeholder="Proveedor, persona, banco…" required /></Campo>
         <Campo label="Moneda"><SelectorMoneda value={moneda} onChange={setMoneda} /></Campo>
         <div className="grid grid-cols-2 gap-3">
           <Campo label="Monto *"><input type="number" min="0.01" step="0.01" value={monto} onChange={e => setMonto(e.target.value)} className="input-club w-full text-lg font-bold" required /></Campo>
           <Campo label="Vence"><input type="date" value={vence} onChange={e => setVence(e.target.value)} className="input-club w-full" /></Campo>
         </div>
         <Campo label="Nota"><input value={nota} onChange={e => setNota(e.target.value)} className="input-club w-full" placeholder="Opcional" /></Campo>
-        <p className="text-xs text-muted-foreground">Se paga registrando egresos asignados a esta deuda; el saldo se descuenta solo.</p>
+        <p className="text-xs text-muted-foreground">
+          {sentido === 'a_pagar'
+            ? 'Se paga registrando egresos asignados a esta deuda; el saldo se descuenta solo.'
+            : 'Se cobra registrando ingresos asignados a esta deuda; el saldo se descuenta solo.'}
+        </p>
         {error && <p className="px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs">{error}</p>}
         <div className="flex gap-3 pt-1">
           <button type="button" onClick={onClose} className="btn-secondary flex-1 py-2.5">Cancelar</button>

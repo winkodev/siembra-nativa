@@ -157,7 +157,7 @@ export async function cambiarEstadoPedido(
 
   const { data: pedido } = await supabase
     .from('pedidos')
-    .select('estado, comprobante_path, socio_id, numero, entrega_franja, armado_at, comprobante_ok_at')
+    .select('estado, comprobante_path, socio_id, numero, entrega_franja, armado_at, comprobante_ok_at, manual')
     .eq('id', pedidoId)
     .single();
 
@@ -177,7 +177,8 @@ export async function cambiarEstadoPedido(
   // Si el comprobante es obligatorio, no se puede aprobar sin él
   if (nuevoEstado === 'aprobado') {
     const config = await getAppConfig();
-    if (config.comprobante_obligatorio && !pedido.comprobante_path) {
+    // Los pedidos manuales se cobran en mano: alcanza con el check "Comprobante chequeado"
+    if (config.comprobante_obligatorio && !pedido.comprobante_path && !pedido.manual) {
       return { ok: false, error: 'No se puede aprobar: el socio todavía no cargó el comprobante de pago.' };
     }
   }
@@ -406,4 +407,41 @@ export async function revertirEstadoPedido(pedidoId: string): Promise<ActionResp
   revalidatePath('/socio/pedidos');
   revalidatePath('/socio/tienda');
   return { ok: true, data: { estado: destino } };
+}
+
+// ------------------------------------------------------------
+// Pedido manual: lo carga un admin para alguien sin cuenta. Entra como
+// pendiente y sigue el flujo normal (armado, comprobante, aprobar, entregar).
+// El total es el que indica el admin (puede ser promocional); sin envío ni descuento.
+// ------------------------------------------------------------
+export async function crearPedidoManual(input: {
+  items: { id: string; cantidad: number }[];
+  total: number;
+  cliente_nombre?: string;
+  cliente_direccion?: string;
+  notas?: string;
+}): Promise<ActionResponse<{ pedido_id: string; numero: number }>> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const { data: p } = await supabase.from('profiles').select('rol').eq('id', user.id).single();
+  if (p?.rol !== 'admin') return { ok: false, error: 'No autorizado' };
+
+  const items = input.items.filter(i => i.cantidad > 0);
+  if (items.length === 0) return { ok: false, error: 'Agregá al menos una genética con gramos' };
+  if (!(input.total >= 0)) return { ok: false, error: 'Indicá el total del pedido' };
+
+  const { data, error } = await supabase.rpc('crear_pedido_manual', {
+    p_items: items,
+    p_total: input.total,
+    p_cliente_nombre: input.cliente_nombre?.trim() || null,
+    p_cliente_direccion: input.cliente_direccion?.trim() || null,
+    p_notas: input.notas?.trim() || null,
+  });
+  if (error || !data) return { ok: false, error: error?.message ?? 'Error al crear el pedido' };
+
+  await registrarAccion(supabase, 'pedido_manual', 'pedidos', { pedido_id: data.pedido_id, numero: data.numero, cliente: input.cliente_nombre?.trim() || null, total: input.total });
+  revalidatePath('/admin/pedidos');
+  revalidatePath('/socio/tienda');
+  return { ok: true, data: { pedido_id: data.pedido_id, numero: data.numero } };
 }

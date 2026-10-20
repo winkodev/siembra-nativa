@@ -8,6 +8,8 @@ import type { MetricasAdmin } from '@/lib/types/database';
 
 // Resumen de pedido para las listas de trabajo del dashboard
 export interface PedidoResumen {
+  manual?: boolean;
+  cliente_nombre?: string | null;
   id: string;
   numero: number | null;
   created_at: string;
@@ -105,7 +107,7 @@ function ListaPedidos({ titulo, icono, pedidos, vacio, count, href = '/admin/ped
             >
               <div>
                 <p className="text-foreground text-sm font-semibold flex items-center gap-1.5">
-                  {p.profiles?.nombre ?? 'Socio'}
+                  {p.manual ? (p.cliente_nombre ?? 'Pedido manual') : (p.profiles?.nombre ?? 'Socio')}
                   {p.comprobante_path && (
                     <Receipt className="w-3.5 h-3.5 text-emerald-400" aria-label="Comprobante cargado" />
                   )}

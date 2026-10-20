@@ -33,7 +33,10 @@ export default async function ImprimirPedidoPage({ params }: Props) {
   if (!pedido) notFound();
 
   const p = pedido as any;
-  const socio = p.profiles;
+  // Pedido manual: nombre y dirección libres en vez del perfil del socio
+  const socio = p.manual
+    ? { nombre: p.cliente_nombre ?? 'Pedido manual', direccion: p.cliente_direccion, reprocann_certificado_path: null }
+    : p.profiles;
   const items = p.pedido_items as any[];
 
   // La orden contiene datos personales: se registra el acceso

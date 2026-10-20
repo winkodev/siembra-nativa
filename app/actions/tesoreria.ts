@@ -91,11 +91,12 @@ export async function crearMovimiento(input: {
   const concepto = input.concepto.trim();
   if (!concepto) return { ok: false, error: 'Indicá el concepto' };
 
-  // Una deuda se paga en su propia moneda y solo con un egreso
+  // Una deuda se paga (a_pagar → egreso) o se cobra (a_cobrar → ingreso) en su propia moneda
   if (input.deuda_id) {
-    if (input.tipo !== 'egreso') return { ok: false, error: 'Solo un egreso puede pagar una deuda' };
-    const { data: deuda } = await s.supabase.from('tes_deudas').select('moneda, anulada').eq('id', input.deuda_id).single();
+    const { data: deuda } = await s.supabase.from('tes_deudas').select('moneda, anulada, sentido').eq('id', input.deuda_id).single();
     if (!deuda || deuda.anulada) return { ok: false, error: 'La deuda no existe o está anulada' };
+    if (deuda.sentido === 'a_pagar' && input.tipo !== 'egreso') return { ok: false, error: 'Una deuda del club se paga con un egreso' };
+    if (deuda.sentido === 'a_cobrar' && input.tipo !== 'ingreso') return { ok: false, error: 'Una deuda a favor se cobra con un ingreso' };
     if (deuda.moneda !== input.moneda) return { ok: false, error: `Esa deuda es en ${deuda.moneda}: el pago tiene que ser en la misma moneda` };
   }
 
@@ -181,7 +182,7 @@ export async function eliminarMovimiento(id: string): Promise<ActionResponse> {
 // Deudas
 // ------------------------------------------------------------
 
-export async function crearDeuda(input: { acreedor: string; moneda: Moneda; monto: number; vence_at?: string | null; nota?: string }): Promise<ActionResponse<TesDeuda>> {
+export async function crearDeuda(input: { acreedor: string; sentido: 'a_pagar' | 'a_cobrar'; moneda: Moneda; monto: number; vence_at?: string | null; nota?: string }): Promise<ActionResponse<TesDeuda>> {
   const s = await superadmin();
   if (!s) return NO_AUTORIZADO;
   const acreedor = input.acreedor.trim();
@@ -189,12 +190,12 @@ export async function crearDeuda(input: { acreedor: string; moneda: Moneda; mont
   if (!montoValido(input.monto)) return { ok: false, error: 'El monto tiene que ser mayor a 0' };
 
   const { data, error } = await s.supabase.from('tes_deudas').insert({
-    acreedor, moneda: input.moneda, monto: input.monto,
+    acreedor, sentido: input.sentido, moneda: input.moneda, monto: input.monto,
     vence_at: input.vence_at || null, nota: input.nota?.trim() || null, created_by: s.userId,
   }).select('*').single();
   if (error || !data) return { ok: false, error: 'Error al registrar la deuda' };
 
-  await registrarAccion(s.supabase, 'tes_crear_deuda', 'tesoreria', { acreedor, moneda: input.moneda, monto: input.monto });
+  await registrarAccion(s.supabase, 'tes_crear_deuda', 'tesoreria', { acreedor, sentido: input.sentido, moneda: input.moneda, monto: input.monto });
   revalidatePath('/admin/finanzas/tesoreria');
   return { ok: true, data };
 }

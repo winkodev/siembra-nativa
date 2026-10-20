@@ -4,11 +4,12 @@ import { useState, useMemo, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingBag, ChevronDown, Clock, Loader2, Search, Receipt, ExternalLink,
-  Printer, CalendarClock, PackageCheck, Check, MapPin, Copy, Undo2, AlertTriangle,
+  Printer, CalendarClock, PackageCheck, Check, MapPin, Copy, Undo2, AlertTriangle, Package, Plus,
 } from 'lucide-react';
 import { cn, formatFecha, formatGramos, formatNumeroPedido, formatPrecio, labelTipo, labelCategoriaProducto, badgePedido } from '@/lib/utils';
 import { cambiarEstadoPedido, verComprobante, marcarCheckPedido, revertirEstadoPedido, type TipoCheck } from '@/app/actions/pedidos';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { PedidoManualModal, BolsasModal } from './PedidoModales';
 import type { EstadoPedido } from '@/lib/types/database';
 
 const labelEstado: Record<EstadoPedido, string> = {
@@ -46,7 +47,7 @@ interface PedidoItemAdmin {
   productos: { nombre: string; categoria: string } | null;
 }
 
-interface PedidoAdmin {
+export interface PedidoAdmin {
   id: string;
   numero: number | null;
   estado: EstadoPedido;
@@ -59,6 +60,10 @@ interface PedidoAdmin {
   monto_envio: number | null;
   monto_descuento: number | null;
   monto_cupon: number | null;
+  // Pedido cargado por un admin para alguien sin cuenta
+  manual: boolean;
+  cliente_nombre: string | null;
+  cliente_direccion: string | null;
   // Controles previos a la aprobación
   armado_at: string | null;
   comprobante_ok_at: string | null;
@@ -115,12 +120,23 @@ function esPorArmar(p: PedidoAdmin): boolean {
 // Presets de período para la vista "Todos"
 type Periodo = 'todo' | 'hoy' | '7' | '30' | 'rango';
 
-export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, superadmin = false }: {
+// Nombre a mostrar: el socio, o el cliente libre si es un pedido manual
+export function nombrePedido(p: PedidoAdmin): string {
+  return p.manual ? (p.cliente_nombre ?? 'Pedido manual') : (p.profiles?.nombre ?? 'Socio');
+}
+
+// Genética disponible para cargar un pedido manual
+export interface GeneticaDisponible { genetica_id: string; nombre: string; tipo: string; stock_total_gramos: number; precio_gramo: number | null }
+
+export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, superadmin = false, geneticas = [] }: {
   pedidos: PedidoAdmin[];
   filtroInicial?: string;  // llega por query param (?filtro=armar) desde el dashboard
   superadmin?: boolean;    // habilita "Revertir estado"
+  geneticas?: GeneticaDisponible[];  // para el pedido manual
 }) {
   const [pedidos, setPedidos]     = useState(pedidosIniciales);
+  const [modalManual, setModalManual] = useState(false);
+  const [modalBolsas, setModalBolsas] = useState(false);
   // Confirmación antes de entregar o cancelar (son cambios que no se deshacen con un clic)
   const [confirmar, setConfirmar] = useState<{ pedidoId: string; estado: EstadoDestino; numero: number | null } | null>(null);
   const [revirtiendo, setRevirtiendo] = useState<string | null>(null);
@@ -190,7 +206,7 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
       if (minFecha && new Date(p.created_at) < minFecha) return false;
       if (maxFecha && new Date(p.created_at) > maxFecha) return false;
       if (!q) return true;
-      return (p.profiles?.nombre ?? '').toLowerCase().includes(q)
+      return nombrePedido(p).toLowerCase().includes(q)
         || (p.profiles?.dni ?? '').includes(q);
     });
   }, [pedidos, filtro, busqueda, periodo, desde, hasta, reciénArmados]);
@@ -240,7 +256,24 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
         icon={<ShoppingBag className="w-5 h-5" />}
         title="Pedidos"
         subtitle={`${pedidos.length} pedido${pedidos.length !== 1 ? 's' : ''} en total`}
+        action={
+          <div className="flex gap-2">
+            {filtro === 'armar' && filtrados.length > 0 && (
+              <button onClick={() => setModalBolsas(true)} className="btn-secondary text-sm px-4 py-2.5 flex items-center gap-2">
+                <Package className="w-4 h-4" /> Armar en bolsas
+              </button>
+            )}
+            <button onClick={() => setModalManual(true)} className="btn-primary text-sm px-4 py-2.5 flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Pedido manual
+            </button>
+          </div>
+        }
       />
+
+      <AnimatePresence>
+        {modalManual && <PedidoManualModal geneticas={geneticas} onClose={() => setModalManual(false)} />}
+        {modalBolsas && <BolsasModal pedidos={filtrados} onClose={() => setModalBolsas(false)} />}
+      </AnimatePresence>
 
       {/* Toolbar: búsqueda + filtros */}
       <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-3 sm:items-center">
@@ -333,7 +366,7 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
             const abierto     = expandido === pedido.id;
             const totalGramos = pedido.pedido_items.reduce((s, i) => s + (i.cantidad_gramos ?? 0), 0);
             const siguientes  = transiciones[pedido.estado];
-            const inicial     = (pedido.profiles?.nombre ?? 'S').charAt(0).toUpperCase();
+            const inicial     = nombrePedido(pedido).charAt(0).toUpperCase();
 
             return (
               <motion.div
@@ -357,8 +390,10 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
                   {/* Socio + fecha */}
                   <div className="flex-1 min-w-0">
                     <p className="text-foreground font-semibold text-sm truncate">
-                      {pedido.profiles?.nombre ?? 'Socio'}
-                      {pedido.profiles?.dni && (
+                      {nombrePedido(pedido)}
+                      {pedido.manual ? (
+                        <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-club-dorado/40 text-club-dorado bg-club-dorado/10">Manual</span>
+                      ) : pedido.profiles?.dni && (
                         <span className="text-muted-foreground font-normal text-xs ml-2">DNI {pedido.profiles.dni}</span>
                       )}
                     </p>
@@ -482,11 +517,14 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
 
                           {/* Datos de entrega: dirección y contacto del socio */}
                           {(() => {
-                            const p = pedido.profiles;
-                            const dir = [
-                              [p?.direccion, p?.piso_depto].filter(Boolean).join(', '),
-                              p?.localidad, p?.provincia, p?.codigo_postal,
-                            ].filter(Boolean).join(' · ');
+                            // Manual: solo nombre y dirección libres; sin teléfono ni mapa
+                            const p = pedido.manual ? null : pedido.profiles;
+                            const dir = pedido.manual
+                              ? (pedido.cliente_direccion ?? '')
+                              : [
+                                  [p?.direccion, p?.piso_depto].filter(Boolean).join(', '),
+                                  p?.localidad, p?.provincia, p?.codigo_postal,
+                                ].filter(Boolean).join(' · ');
                             if (!dir && !p?.telefono) return null;
                             return (
                               <div className="rounded-xl bg-club-verde-claro/15 border border-club-verde-claro/25 px-3 py-2.5 space-y-1">
