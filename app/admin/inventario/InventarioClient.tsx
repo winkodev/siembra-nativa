@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Package, Leaf } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { GeneticasTab } from './GeneticasTab';
-import { StockTab } from './StockTab';
+import { StockTab, type EgresoConNombres } from './StockTab';
 import type { Genetica, Stock, Ubicacion } from '@/lib/types/database';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,7 @@ interface Props {
   ubicaciones: Ubicacion[];
   reservas:    Record<string, number>;  // gramos en pedidos pendientes, por genética
   superadmin:  boolean;                 // habilita editar/eliminar ingresos de stock
+  egresos:     EgresoConNombres[];      // salidas manuales recientes
 }
 
 const tabs = [
@@ -26,7 +27,7 @@ const tabs = [
 
 const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
-export function InventarioClient({ geneticas, stock, ubicaciones, reservas, superadmin }: Props) {
+export function InventarioClient({ geneticas, stock, ubicaciones, reservas, superadmin, egresos }: Props) {
   const [tab, setTab] = useState<'geneticas' | 'stock'>('stock');
 
   return (
@@ -61,7 +62,7 @@ export function InventarioClient({ geneticas, stock, ubicaciones, reservas, supe
       {tab === 'geneticas' ? (
         <GeneticasTab geneticas={geneticas} />
       ) : (
-        <StockTab stock={stock} geneticas={geneticas} ubicaciones={ubicaciones} reservas={reservas} superadmin={superadmin} />
+        <StockTab stock={stock} geneticas={geneticas} ubicaciones={ubicaciones} reservas={reservas} superadmin={superadmin} egresos={egresos} />
       )}
 
     </motion.div>

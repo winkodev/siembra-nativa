@@ -22,6 +22,7 @@ export const ACCION_LABEL: Record<string, string> = {
   agregar_stock:         'Registró un ingreso de stock',
   editar_stock:          'Editó un ingreso de stock',
   eliminar_stock:        'Eliminó un ingreso de stock',
+  egreso_stock:          'Registró una salida manual de stock',
   crear_producto:        'Creó un producto',
   editar_producto:       'Editó un producto',
   activar_producto:      'Activó un producto',

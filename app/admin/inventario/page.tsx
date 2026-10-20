@@ -9,7 +9,7 @@ export default async function InventarioPage() {
   const supabase = createClient();
   const profile = await getProfile();
 
-  const [{ data: geneticas }, { data: stock }, { data: ubicaciones }, { data: pendientes }] = await Promise.all([
+  const [{ data: geneticas }, { data: stock }, { data: ubicaciones }, { data: pendientes }, { data: egresos }] = await Promise.all([
     supabase.from('geneticas').select('*').order('nombre'),
     supabase.from('stock').select('*, geneticas(nombre, tipo)').order('fecha_ingreso', { ascending: false }),
     supabase.from('ubicaciones').select('*').eq('activa', true).order('nombre'),
@@ -19,6 +19,12 @@ export default async function InventarioPage() {
       .select('genetica_id, cantidad_gramos, pedidos!inner(estado)')
       .eq('pedidos.estado', 'pendiente')
       .not('genetica_id', 'is', null),
+    // Salidas manuales recientes (solo superadmin; RLS admin)
+    supabase
+      .from('egresos_stock')
+      .select('*, geneticas(nombre), admin:profiles!admin_id(nombre)')
+      .order('created_at', { ascending: false })
+      .limit(50),
   ]);
 
   // Gramos reservados por genética
@@ -36,6 +42,7 @@ export default async function InventarioPage() {
       ubicaciones={(ubicaciones ?? []) as Ubicacion[]}
       reservas={reservas}
       superadmin={Boolean(profile?.superadmin)}
+      egresos={(egresos ?? []) as any[]}
     />
   );
 }

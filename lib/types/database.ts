@@ -87,6 +87,16 @@ export interface Stock {
   updated_at: string;
 }
 
+// Salida manual de stock (pedido informal, merma, muestra): solo superadmin
+export interface EgresoStock {
+  id: string;
+  genetica_id: string;
+  gramos: number;
+  motivo: string;
+  admin_id: string | null;
+  created_at: string;
+}
+
 export interface StockPublico {
   genetica_id: string;
   nombre: string;
@@ -461,6 +471,12 @@ export interface Database {
         Update: { valor?: string; updated_at?: string };
         Relationships: [];
       };
+      egresos_stock: {
+        Row: EgresoStock;
+        Insert: Partial<Omit<EgresoStock, 'id' | 'created_at'>> & { genetica_id: string; gramos: number; motivo: string };
+        Update: Partial<Omit<EgresoStock, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
       cupones: {
         Row: Cupon;
         Insert: Partial<Omit<Cupon, 'id' | 'created_at'>> & { socio_id: string; tipo: TipoCupon; mensaje: string };
@@ -501,6 +517,10 @@ export interface Database {
       liberar_cupon_pedido: {
         Args: { p_pedido_id: string };
         Returns: void;
+      };
+      egreso_manual_stock: {
+        Args: { p_genetica_id: string; p_gramos: number; p_motivo: string };
+        Returns: string;
       };
       finanzas_club: {
         Args: { p_desde: string; p_hasta: string; p_estados?: string[]; p_agrupacion?: string };

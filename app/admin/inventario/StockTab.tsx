@@ -5,13 +5,15 @@ import { useFormState, useFormStatus } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Pencil, Trash2, X, Loader2, Package,
-  CheckCircle2, CalendarDays, MapPin, Tag, Search, ArrowRightLeft,
+  CheckCircle2, CalendarDays, MapPin, Tag, Search, ArrowRightLeft, MinusCircle,
 } from 'lucide-react';
-import { agregarStock, editarStock, eliminarStock, moverStockUbicacion } from '@/app/actions/inventario';
+import { agregarStock, editarStock, eliminarStock, moverStockUbicacion, egresoManualStock } from '@/app/actions/inventario';
 import { cn, formatFecha, formatGramos, labelTipo } from '@/lib/utils';
-import type { Genetica, Stock, Ubicacion, ActionResponse } from '@/lib/types/database';
+import type { Genetica, Stock, Ubicacion, ActionResponse, EgresoStock } from '@/lib/types/database';
 
 type StockConGenetica = Stock & { geneticas: { nombre: string; tipo: string } };
+// Salida manual con nombres resueltos (para el listado)
+export type EgresoConNombres = EgresoStock & { geneticas: { nombre: string } | null; admin: { nombre: string } | null };
 const initial: ActionResponse = { ok: true, data: undefined };
 
 const tipoBadge: Record<string, string> = {
@@ -273,10 +275,12 @@ interface Props {
   ubicaciones: Ubicacion[];
   reservas:    Record<string, number>;  // gramos en pedidos pendientes, por genética
   superadmin:  boolean;                 // solo el superadmin edita/elimina ingresos
+  egresos:     EgresoConNombres[];      // salidas manuales recientes (solo superadmin las ve)
 }
 
-export function StockTab({ stock, geneticas, ubicaciones, reservas, superadmin }: Props) {
+export function StockTab({ stock, geneticas, ubicaciones, reservas, superadmin, egresos }: Props) {
   const [modal, setModal]           = useState<'nuevo' | StockConGenetica | null>(null);
+  const [modalEgreso, setModalEgreso] = useState(false);
   const [moverLote, setMoverLote]   = useState<StockConGenetica | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [error, setError]           = useState<string | null>(null);
@@ -367,6 +371,13 @@ export function StockTab({ stock, geneticas, ubicaciones, reservas, superadmin }
             <option key={g.id} value={g.id}>{g.nombre}</option>
           ))}
         </select>
+        {superadmin && (
+          <button onClick={() => setModalEgreso(true)}
+            className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-semibold border border-red-500/30 text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors flex items-center gap-2"
+            title="Descontar flores que salieron sin pedido en la app (pedido informal, merma, muestra)">
+            <MinusCircle className="w-4 h-4" /> Salida manual
+          </button>
+        )}
         <button onClick={() => setModal('nuevo')} className="btn-primary text-sm px-4 py-2.5 shrink-0">
           <Plus className="w-4 h-4" /> Registrar ingreso
         </button>
@@ -486,6 +497,38 @@ export function StockTab({ stock, geneticas, ubicaciones, reservas, superadmin }
         </div>
       )}
 
+      {/* Salidas manuales recientes (solo superadmin) */}
+      {superadmin && egresos.length > 0 && (
+        <div className="glass-card p-4 space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+            <MinusCircle className="w-3.5 h-3.5 text-red-400" /> Salidas manuales
+          </p>
+          <div className="divide-y divide-club-verde-claro/10">
+            {egresos.map(e => (
+              <div key={e.id} className="py-2 flex items-center gap-3 text-sm">
+                <span className="shrink-0 min-w-[4rem] text-center px-2 py-1 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 font-bold tabular-nums">
+                  −{formatGramos(e.gramos)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-foreground font-medium truncate">{e.geneticas?.nombre ?? 'Genética'}</p>
+                  <p className="text-muted-foreground text-xs truncate">{e.motivo}</p>
+                </div>
+                <p className="text-muted-foreground text-xs shrink-0 text-right">
+                  {formatFecha(e.created_at, 'dd MMM · HH:mm')}<br />{e.admin?.nombre ?? 'Admin'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal salida manual */}
+      <AnimatePresence>
+        {modalEgreso && (
+          <EgresoModal geneticas={geneticas} stock={stock} onClose={() => setModalEgreso(false)} />
+        )}
+      </AnimatePresence>
+
       {/* Modal */}
       <AnimatePresence>
         {modal && (
@@ -534,5 +577,85 @@ export function StockTab({ stock, geneticas, ubicaciones, reservas, superadmin }
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+/* ── Modal: salida manual de stock (solo superadmin) ───────────── */
+function EgresoModal({ geneticas, stock, onClose }: {
+  geneticas: Genetica[];
+  stock:     StockConGenetica[];
+  onClose:   () => void;
+}) {
+  const [geneticaId, setGeneticaId] = useState(geneticas.find(g => g.activa)?.id ?? '');
+  const [gramos, setGramos]         = useState('');
+  const [motivo, setMotivo]         = useState('');
+  const [pending, setPending]       = useState(false);
+  const [error, setError]           = useState<string | null>(null);
+
+  // Físico disponible de la genética elegida (lo que se puede descontar)
+  const fisico = useMemo(
+    () => stock.filter(s => s.genetica_id === geneticaId).reduce((a, s) => a + s.cantidad_gramos, 0),
+    [stock, geneticaId]
+  );
+  const cantidad = parseFloat(gramos) || 0;
+
+  const handleConfirmar = async () => {
+    setError(null);
+    setPending(true);
+    const res = await egresoManualStock(geneticaId, cantidad, motivo);
+    setPending(false);
+    if (!res.ok) { setError(res.error); return; }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-club">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+        className="glass-card w-full max-w-md p-6 space-y-4"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="font-avigea text-xl text-foreground flex items-center gap-2">
+            <MinusCircle className="w-5 h-5 text-red-400" /> Salida manual de stock
+          </h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors"><X className="w-5 h-5" /></button>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          Descuenta flores que salieron sin pedido en la app (pedido informal, merma, muestra).
+          Sale de los lotes más antiguos primero, igual que un pedido, y queda registrado con tu nombre.
+        </p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Genética</label>
+            <select value={geneticaId} onChange={e => setGeneticaId(e.target.value)}
+              className="input-club w-full bg-club-verde-medio appearance-none cursor-pointer">
+              {geneticas.filter(g => g.activa).map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+            </select>
+            <p className="text-muted-foreground text-[11px] mt-1">Físico disponible: {formatGramos(fisico)}</p>
+          </div>
+          <div>
+            <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Gramos a descontar</label>
+            <input type="number" min="0.5" step="0.5" value={gramos} onChange={e => setGramos(e.target.value)}
+              className="input-club w-full" placeholder="10" />
+          </div>
+          <div>
+            <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Motivo</label>
+            <input value={motivo} onChange={e => setMotivo(e.target.value)} className="input-club w-full"
+              placeholder="Ej: pedido informal de Juan Pérez, 10/10" />
+          </div>
+        </div>
+
+        {error && <div className="px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs">{error}</div>}
+
+        <div className="flex gap-3 pt-1">
+          <button onClick={onClose} className="btn-secondary flex-1 py-2.5">Cancelar</button>
+          <button onClick={handleConfirmar} disabled={pending || !geneticaId || cantidad <= 0 || cantidad > fisico || !motivo.trim()}
+            className="flex-1 py-2.5 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all font-semibold disabled:opacity-40">
+            {pending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : `Descontar ${cantidad > 0 ? formatGramos(cantidad) : ''}`}
+          </button>
+        </div>
+      </motion.div>
+    </div>
   );
 }

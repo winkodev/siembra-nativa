@@ -287,3 +287,24 @@ export async function eliminarStock(id: string): Promise<ActionResponse> {
   revalidatePath('/admin/inventario');
   return { ok: true, data: undefined };
 }
+
+// Salida manual de stock (solo superadmin): pedido informal, merma, muestra.
+// La base descuenta FIFO y registra la salida; acá solo se audita.
+export async function egresoManualStock(geneticaId: string, gramos: number, motivo: string): Promise<ActionResponse> {
+  const supabase = createClient();
+  if (!(await esSuperadmin(supabase))) {
+    return { ok: false, error: 'Solo el superadmin puede registrar salidas manuales' };
+  }
+  if (!(gramos > 0)) return { ok: false, error: 'Indicá una cantidad mayor a 0' };
+  if (!motivo.trim()) return { ok: false, error: 'Indicá el motivo de la salida' };
+
+  const { error } = await supabase.rpc('egreso_manual_stock', {
+    p_genetica_id: geneticaId, p_gramos: gramos, p_motivo: motivo.trim(),
+  });
+  if (error) return { ok: false, error: error.message };
+
+  await registrarAccion(supabase, 'egreso_stock', 'stock', { genetica_id: geneticaId, gramos, motivo: motivo.trim() });
+  revalidatePath('/admin/inventario');
+  revalidatePath('/socio/tienda');
+  return { ok: true, data: undefined };
+}
