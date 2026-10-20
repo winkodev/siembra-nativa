@@ -450,13 +450,13 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
 
       {/* Modales */}
       <AnimatePresence>
-        {modal?.k === 'cuenta' && <CuentaModal cuenta={modal.cuenta} onClose={cerrarYRefrescar} />}
-        {modal?.k === 'mov' && <MovimientoModal tipo={modal.tipo} deuda={modal.deuda} cuentas={cuentasActivas} categorias={categorias.filter(c => c.activa && c.tipo === modal.tipo)} deudas={deudasVivas} onClose={cerrarYRefrescar} />}
-        {modal?.k === 'transferencia' && <TransferenciaModal cuentas={cuentasActivas} onClose={cerrarYRefrescar} />}
-        {modal?.k === 'cambio' && <CambioModal cuentas={cuentasActivas} onClose={cerrarYRefrescar} />}
-        {modal?.k === 'deuda' && <DeudaModal onClose={cerrarYRefrescar} />}
+        {modal?.k === 'cuenta' && <CuentaModal key="m-cuenta" cuenta={modal.cuenta} onClose={cerrarYRefrescar} />}
+        {modal?.k === 'mov' && <MovimientoModal key="m-mov" tipo={modal.tipo} deuda={modal.deuda} cuentas={cuentasActivas} categorias={categorias.filter(c => c.activa && c.tipo === modal.tipo)} deudas={deudasVivas} onClose={cerrarYRefrescar} />}
+        {modal?.k === 'transferencia' && <TransferenciaModal key="m-transf" cuentas={cuentasActivas} onClose={cerrarYRefrescar} />}
+        {modal?.k === 'cambio' && <CambioModal key="m-cambio" cuentas={cuentasActivas} onClose={cerrarYRefrescar} />}
+        {modal?.k === 'deuda' && <DeudaModal key="m-deuda" onClose={cerrarYRefrescar} />}
         {modal?.k === 'eliminar' && (
-          <Modal titulo="Eliminar movimiento" icono={<Trash2 className="w-5 h-5 text-red-400" />} onClose={() => setModal(null)}>
+          <Modal key="m-eliminar" titulo="Eliminar movimiento" icono={<Trash2 className="w-5 h-5 text-red-400" />} onClose={() => setModal(null)}>
             <p className="text-sm text-foreground">{modal.mov.concepto}</p>
             <p className="text-xs text-muted-foreground">{TIPO_LABEL[modal.mov.tipo]} · {fmt(modal.mov.moneda, modal.mov.monto)} · {formatFecha(modal.mov.fecha)}</p>
             <p className="text-xs text-muted-foreground">Se borra y los saldos se recalculan. Queda registrado en auditoría.</p>

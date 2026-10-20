@@ -271,8 +271,8 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
       />
 
       <AnimatePresence>
-        {modalManual && <PedidoManualModal geneticas={geneticas} onClose={() => setModalManual(false)} />}
-        {modalBolsas && <BolsasModal pedidos={filtrados} onClose={() => setModalBolsas(false)} />}
+        {modalManual && <PedidoManualModal key="m-manual" geneticas={geneticas} onClose={() => setModalManual(false)} />}
+        {modalBolsas && <BolsasModal key="m-bolsas" pedidos={filtrados} onClose={() => setModalBolsas(false)} />}
       </AnimatePresence>
 
       {/* Toolbar: búsqueda + filtros */}
