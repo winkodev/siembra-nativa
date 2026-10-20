@@ -440,13 +440,16 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
                         <div className="divide-y divide-club-verde-claro/10">
                           {pedido.pedido_items.map(item => {
                             const d = itemDisplay(item);
+                            // Cantidad pegada al nombre: el que arma lee "10 g · Onora" de un vistazo
                             return (
-                              <div key={item.id} className="flex items-center justify-between px-5 py-3">
-                                <div>
-                                  <p className="text-foreground text-sm font-medium">{d.nombre}</p>
+                              <div key={item.id} className="flex items-center gap-3 px-5 py-3">
+                                <span className="shrink-0 min-w-[4.5rem] text-center px-2.5 py-1.5 rounded-lg bg-club-dorado/15 border border-club-dorado/40 text-club-dorado font-bold text-base tabular-nums">
+                                  {d.cantidad}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="text-foreground text-base font-semibold leading-tight truncate">{d.nombre}</p>
                                   <p className="text-muted-foreground text-xs">{d.sub}</p>
                                 </div>
-                                <span className="text-club-dorado font-bold text-sm">{d.cantidad}</span>
                               </div>
                             );
                           })}
