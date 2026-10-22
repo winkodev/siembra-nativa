@@ -7,7 +7,7 @@ import {
   UserCheck, UserX, Store, X, ChevronRight, ExternalLink,
   Loader2, AlertCircle, Clock, Search, Users,
   ShoppingBag, Leaf, Scale, CalendarDays, Plus, Trash2, NotebookPen,
-  UserPlus, Mail, KeyRound, Copy, Check, Shield, ScrollText, Sparkles, Gift,
+  UserPlus, Mail, KeyRound, Copy, Check, Shield, ScrollText, Sparkles, Gift, Pencil,
 } from 'lucide-react';
 import type { Profile, FichaSocio, TipoNotaSocio, RolUsuario } from '@/lib/types/database';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -26,7 +26,7 @@ import {
   leerVencimientoCertificado,
   habilitarCompraManual,
 } from '@/app/actions/socios';
-import { crearUsuario, cambiarPasswordAdmin, regenerarPasswordTemporal, cambiarRolUsuario, eliminarUsuario, type ModoAlta } from '@/app/actions/usuarios';
+import { crearUsuario, cambiarPasswordAdmin, regenerarPasswordTemporal, cambiarRolUsuario, eliminarUsuario, editarCuentaUsuario, type ModoAlta } from '@/app/actions/usuarios';
 
 type LoadingKey = `reprocann-${string}` | `estado-${string}` | `tienda-${string}` | `notas-${string}` | `cert-${string}` | `rol-${string}`;
 
@@ -82,6 +82,21 @@ function SocioDrawer({
 }) {
   const [socio, setSocio] = useState<Profile>(initial);
   const [confirmEliminar, setConfirmEliminar] = useState(false);
+
+  // Corregir nombre / email de la cuenta (cualquier admin)
+  const [editandoCuenta, setEditandoCuenta] = useState(false);
+  const [cuentaNombre, setCuentaNombre] = useState(initial.nombre);
+  const [cuentaEmail, setCuentaEmail]   = useState(initial.email ?? '');
+  async function handleGuardarCuenta() {
+    await run(`rol-${socio.id}`, async () => {
+      const res = await editarCuentaUsuario(socio.id, { nombre: cuentaNombre, email: cuentaEmail });
+      if (res.ok) {
+        setSocio(s => ({ ...s, nombre: cuentaNombre.trim(), email: cuentaEmail.trim().toLowerCase() }));
+        setEditandoCuenta(false);
+      }
+      return res;
+    });
+  }
 
   // Superadmin: socio ↔ admin
   async function handleCambiarRol() {
@@ -306,10 +321,31 @@ function SocioDrawer({
                 {socio.nombre.charAt(0).toUpperCase()}
               </span>
             </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-foreground truncate">{socio.nombre}</p>
-              <p className="text-xs text-muted-foreground truncate">{socio.email ?? '—'}</p>
-            </div>
+            {editandoCuenta ? (
+              /* Corregir nombre y email de la cuenta (no los datos personales) */
+              <form onSubmit={e => { e.preventDefault(); handleGuardarCuenta(); }} className="min-w-0 flex-1 space-y-1.5">
+                <input value={cuentaNombre} onChange={e => setCuentaNombre(e.target.value)} className="input-club w-full py-1 text-sm" placeholder="Nombre y apellido" autoFocus />
+                <input type="email" value={cuentaEmail} onChange={e => setCuentaEmail(e.target.value)} className="input-club w-full py-1 text-xs" placeholder="email@dominio.com" />
+                <div className="flex gap-2">
+                  <button type="submit" disabled={busy(`rol-${socio.id}` as LoadingKey)}
+                    className="px-3 py-1 text-xs rounded-lg bg-club-dorado/15 border border-club-dorado/30 text-club-dorado font-semibold disabled:opacity-50 flex items-center gap-1">
+                    {busy(`rol-${socio.id}` as LoadingKey) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Guardar
+                  </button>
+                  <button type="button" onClick={() => setEditandoCuenta(false)} className="px-3 py-1 text-xs rounded-lg border border-white/15 text-muted-foreground hover:text-foreground">Cancelar</button>
+                </div>
+              </form>
+            ) : (
+              <div className="min-w-0">
+                <p className="font-semibold text-foreground truncate flex items-center gap-1.5">
+                  {socio.nombre}
+                  <button onClick={() => { setCuentaNombre(socio.nombre); setCuentaEmail(socio.email ?? ''); setEditandoCuenta(true); }}
+                    title="Corregir nombre o email de la cuenta" className="p-1 rounded text-muted-foreground hover:text-club-dorado transition-colors">
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                </p>
+                <p className="text-xs text-muted-foreground truncate">{socio.email ?? '—'}</p>
+              </div>
+            )}
           </div>
           <button
             onClick={() => onClose(socio)}

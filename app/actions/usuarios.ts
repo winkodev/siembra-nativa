@@ -285,3 +285,36 @@ export async function eliminarUsuario(userId: string): Promise<ActionResponse> {
   revalidatePath('/admin/socios');
   return { ok: true, data: undefined };
 }
+
+// Admin: corregir los datos de la CUENTA (nombre y email de acceso).
+// No toca los datos personales del socio (DNI, teléfono, dirección), que
+// los carga él desde su perfil. El email se actualiza también en Auth.
+export async function editarCuentaUsuario(userId: string, input: { nombre: string; email: string }): Promise<ActionResponse> {
+  const adminId = await verificarAdmin();
+  if (!adminId) return { ok: false, error: 'No autorizado' };
+
+  const nombre = input.nombre.trim();
+  const email  = input.email.trim().toLowerCase();
+  if (nombre.length < 2) return { ok: false, error: 'El nombre es demasiado corto' };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: 'Email inválido' };
+
+  const service = createServiceClient();
+  const { data: perfil } = await service.from('profiles').select('nombre, email, superadmin').eq('id', userId).single();
+  if (!perfil) return { ok: false, error: 'Usuario no encontrado' };
+  if (perfil.superadmin && adminId !== userId) return { ok: false, error: 'La cuenta principal del club solo la edita su dueño' };
+
+  // Email: primero en Auth (si está en uso, Supabase lo rechaza), después en el perfil
+  if (email !== (perfil.email ?? '').toLowerCase()) {
+    const { error: authError } = await service.auth.admin.updateUserById(userId, { email, email_confirm: true });
+    if (authError) return { ok: false, error: 'No se pudo cambiar el email: ' + (authError.message.includes('already') ? 'ya está en uso por otra cuenta' : authError.message) };
+  }
+
+  const { error } = await service.from('profiles').update({ nombre, email }).eq('id', userId);
+  if (error) return { ok: false, error: 'Error al guardar los datos de la cuenta' };
+
+  await registrarAccion(createClient(), 'editar_cuenta_usuario', 'usuarios', {
+    de: `${perfil.nombre} <${perfil.email ?? ''}>`, a: `${nombre} <${email}>`,
+  }, userId);
+  revalidatePath('/admin/socios');
+  return { ok: true, data: undefined };
+}
