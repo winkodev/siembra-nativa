@@ -423,3 +423,7 @@ Decisiones: cuentas con saldo en ARS y USD; cobros de pedidos automáticos a cue
 - [x] Armar en bolsas: popup en filtro Por armar, bolsas ≤30 g parejas en múltiplos de 10, checks y resumen por genética
 - [x] SQL ejecutado
 - [x] Probado y desplegado. Modales nuevos sin animación de salida (parpadeo)
+
+## ✅ 2026-10-22 (desplegado 430b8a6): corregir nombre y email de la cuenta
+
+- Lápiz junto al nombre en el drawer de Socios; actualiza Auth + perfil; cualquier admin salvo sobre la cuenta principal; auditado.
