@@ -61,7 +61,7 @@ export default async function TesoreriaPage({ searchParams }: Props) {
 
   // Pedidos cobrados (Listo/Entregado) sin ingreso en tesorería
   const [{ data: cobrados }, { data: conMov }] = await Promise.all([
-    supabase.from('pedidos').select('id').in('estado', ['aprobado', 'entregado']).gt('monto_total', 0),
+    supabase.from('pedidos').select('id').in('estado', ['aprobado', 'entregado']).gt('monto_total', 0).gte('created_at', config.tes_cobros_desde || '1970-01-01'),
     supabase.from('tes_movimientos').select('pedido_id').not('pedido_id', 'is', null),
   ]);
   const yaRegistrados = new Set((conMov ?? []).map(m => m.pedido_id));

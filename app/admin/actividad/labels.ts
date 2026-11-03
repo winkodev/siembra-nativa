@@ -34,6 +34,7 @@ export const ACCION_LABEL: Record<string, string> = {
   tes_anular_deuda:      'Anuló una deuda',
   tes_cuenta_cobros:     'Cambió la cuenta de cobros de pedidos',
   tes_cobros_faltantes:  'Registró cobros de pedidos que faltaban en tesorería',
+  tes_cobros_desde:      'Marcó los cobros anteriores como incluidos en el saldo inicial',
   tarea_crear:           'Creó una tarea',
   tarea_editar:          'Editó una tarea',
   tarea_hecha:           'Marcó una tarea como hecha',

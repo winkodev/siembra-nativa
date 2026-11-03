@@ -257,11 +257,14 @@ export async function listarCobrosFaltantes(): Promise<ActionResponse<CobroFalta
   const s = await superadmin();
   if (!s) return NO_AUTORIZADO;
 
+  // Corte: lo anterior ya está en el saldo inicial
+  const { data: corte } = await s.supabase.from('configuracion_app').select('valor').eq('clave', 'tes_cobros_desde').maybeSingle();
   const { data: pedidos } = await s.supabase
     .from('pedidos')
     .select('id, numero, estado, created_at, fecha_entregado, monto_total, manual, cliente_nombre, socio:profiles!socio_id(nombre)')
     .in('estado', ['aprobado', 'entregado'])
     .gt('monto_total', 0)
+    .gte('created_at', corte?.valor || '1970-01-01')
     .order('created_at', { ascending: false });
   const { data: movs } = await s.supabase.from('tes_movimientos').select('pedido_id').not('pedido_id', 'is', null);
   const ya = new Set((movs ?? []).map(m => m.pedido_id));
@@ -295,4 +298,17 @@ export async function registrarCobrosSeleccionados(ids: string[]): Promise<Actio
   if (registrados > 0) await registrarAccion(s.supabase, 'tes_cobros_faltantes', 'tesoreria', { registrados });
   revalidatePath('/admin/finanzas/tesoreria');
   return { ok: true, data: { registrados } };
+}
+
+// "Ya están en el saldo inicial": fija el corte en este momento. Los pedidos
+// anteriores dejan de ofrecerse como cobros faltantes; los nuevos entran solos.
+export async function marcarCobrosComoIniciales(): Promise<ActionResponse> {
+  const s = await superadmin();
+  if (!s) return NO_AUTORIZADO;
+  const ahora = new Date().toISOString();
+  const { error } = await s.supabase.from('configuracion_app').upsert({ clave: 'tes_cobros_desde', valor: ahora }, { onConflict: 'clave' });
+  if (error) return { ok: false, error: 'Error al guardar el corte' };
+  await registrarAccion(s.supabase, 'tes_cobros_desde', 'tesoreria', { desde: ahora });
+  revalidatePath('/admin/finanzas/tesoreria');
+  return { ok: true, data: undefined };
 }

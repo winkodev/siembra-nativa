@@ -13,7 +13,7 @@ import { FinanzasTabs } from '../FinanzasTabs';
 import {
   crearCuenta, editarCuenta, crearMovimiento, crearTransferencia, crearCambio, eliminarMovimiento,
   crearDeuda, anularDeuda, crearCategoria, toggleCategoria, guardarCuentaCobros,
-  listarCobrosFaltantes, registrarCobrosSeleccionados, type CobroFaltante,
+  listarCobrosFaltantes, registrarCobrosSeleccionados, marcarCobrosComoIniciales, type CobroFaltante,
 } from '@/app/actions/tesoreria';
 import type { TesCuenta, TesCategoria, TesSaldo, TesDeuda, TesMovimiento, Moneda, TipoMovimiento } from '@/lib/types/database';
 
@@ -312,10 +312,18 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
                   {msgCobros ?? `${cobrosFaltantes} pedido${cobrosFaltantes === 1 ? '' : 's'} cobrado${cobrosFaltantes === 1 ? '' : 's'} sin ingreso en tesorería.`}
                 </p>
                 {cobrosFaltantes > 0 && (
-                  <button onClick={() => setModalCobros(true)}
-                    className="shrink-0 px-3 py-1.5 rounded-lg bg-club-dorado/15 border border-club-dorado/30 text-club-dorado text-xs font-semibold hover:bg-club-dorado/25">
-                    Elegir cuáles registrar
-                  </button>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => setModalCobros(true)}
+                      className="px-3 py-1.5 rounded-lg bg-club-dorado/15 border border-club-dorado/30 text-club-dorado text-xs font-semibold hover:bg-club-dorado/25">
+                      Elegir cuáles registrar
+                    </button>
+                    {/* Fija el corte: lo anterior se considera incluido en el saldo inicial */}
+                    <button onClick={() => { if (confirm(`¿Marcar estos ${cobrosFaltantes} pedidos como ya incluidos en el saldo inicial? Dejan de aparecer acá y no se registran.`)) startTransition(async () => { const r = await marcarCobrosComoIniciales(); if (!r.ok) setError(r.error); else setMsgCobros('Listo: los pedidos anteriores quedan como parte del saldo inicial.'); router.refresh(); }); }}
+                      disabled={pending}
+                      className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/15 text-muted-foreground text-xs font-semibold hover:text-foreground disabled:opacity-50">
+                      Ya están en el saldo inicial
+                    </button>
+                  </div>
                 )}
               </div>
             )}

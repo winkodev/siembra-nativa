@@ -29,6 +29,8 @@ export interface AppConfig {
   avisos_proveedor:         'auto' | 'resend' | 'gmail';
   // Tesorería: cuenta donde entran solos los cobros de pedidos ('' = no registrar)
   tes_cuenta_cobros:        string;
+  // Pedidos creados antes de esta fecha ya están en el saldo inicial (no se ofrecen como faltantes)
+  tes_cobros_desde:         string;
 }
 
 export async function getAppConfig(): Promise<AppConfig> {
@@ -62,6 +64,7 @@ export async function getAppConfig(): Promise<AppConfig> {
     avisos_consulta:         map['avisos_consulta'] === 'true',
     avisos_proveedor:        (['auto', 'resend', 'gmail'].includes(map['avisos_proveedor'] ?? '') ? map['avisos_proveedor'] : 'auto') as 'auto' | 'resend' | 'gmail',
     tes_cuenta_cobros:       map['tes_cuenta_cobros'] ?? '',
+    tes_cobros_desde:        map['tes_cobros_desde'] ?? '',
   };
 }
 
