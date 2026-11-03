@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getProfile } from '@/lib/supabase/server';
 import { AdminDashboardClient } from './AdminDashboardClient';
 import type { MetricasAdmin } from '@/lib/types/database';
 import type { Metadata } from 'next';
@@ -110,9 +110,23 @@ export default async function AdminDashboardPage() {
       .is('armado_at', null),
   ]);
 
+  // Gestión: tareas vencidas y de esta semana (solo superadmin)
+  const perfilActual = await getProfile();
+  let tareas: { vencidas: number; semana: number } | null = null;
+  if (perfilActual?.superadmin) {
+    const hoy = new Date(); const h = hoy.toISOString().slice(0, 10);
+    const en7 = new Date(hoy); en7.setDate(hoy.getDate() + 7); const s7 = en7.toISOString().slice(0, 10);
+    const [{ count: vencidas }, { count: semana }] = await Promise.all([
+      supabase.from('tareas').select('id', { count: 'exact', head: true }).is('hecha_at', null).lt('vence_at', h),
+      supabase.from('tareas').select('id', { count: 'exact', head: true }).is('hecha_at', null).gte('vence_at', h).lte('vence_at', s7),
+    ]);
+    tareas = { vencidas: vencidas ?? 0, semana: semana ?? 0 };
+  }
+
   return (
     <AdminDashboardClient
       metricas={metricas}
+      tareas={tareas}
       pendientes={pendientes ?? []}
       porVencer={porVencer ?? []}
       porAprobar={(porAprobar as any[]) ?? []}

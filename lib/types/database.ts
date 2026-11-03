@@ -505,6 +505,12 @@ export interface Database {
         Update: Partial<Omit<TesMovimiento, 'id' | 'created_at'>>;
         Relationships: [];
       };
+      tareas: {
+        Row: Tarea;
+        Insert: Partial<Omit<Tarea, 'id' | 'created_at'>> & { titulo: string; vence_at: string };
+        Update: Partial<Omit<Tarea, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
       cupones: {
         Row: Cupon;
         Insert: Partial<Omit<Cupon, 'id' | 'created_at'>> & { socio_id: string; tipo: TipoCupon; mensaje: string };
@@ -668,4 +674,18 @@ export interface TesSaldo {
   cuenta_id: string;
   moneda: Moneda;
   saldo: number;
+}
+
+// Gestión (solo superadmin): tareas con vencimiento y repetición
+export type RecurrenciaTarea = 'ninguna' | 'mensual' | 'anual';
+export interface Tarea {
+  id: string;
+  titulo: string;
+  notas: string | null;
+  vence_at: string;              // YYYY-MM-DD
+  recurrencia: RecurrenciaTarea;
+  serie_id: string | null;       // agrupa las ocurrencias de una tarea repetitiva
+  hecha_at: string | null;
+  created_by: string | null;
+  created_at: string;
 }

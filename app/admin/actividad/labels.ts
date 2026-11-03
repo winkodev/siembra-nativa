@@ -33,6 +33,10 @@ export const ACCION_LABEL: Record<string, string> = {
   tes_crear_deuda:       'Registró una deuda',
   tes_anular_deuda:      'Anuló una deuda',
   tes_cuenta_cobros:     'Cambió la cuenta de cobros de pedidos',
+  tarea_crear:           'Creó una tarea',
+  tarea_editar:          'Editó una tarea',
+  tarea_hecha:           'Marcó una tarea como hecha',
+  tarea_eliminar:        'Eliminó una tarea',
   crear_producto:        'Creó un producto',
   editar_producto:       'Editó un producto',
   activar_producto:      'Activó un producto',
@@ -94,6 +98,7 @@ export const RECURSO_LABEL: Record<string, string> = {
   franjas:                'Horarios',
   usuarios:               'Usuarios',
   tesoreria:              'Tesorería',
+  gestion:                'Gestión',
 };
 
 // Resumen compacto del metadata (omite ids, que no le dicen nada al admin)

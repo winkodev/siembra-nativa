@@ -2,8 +2,8 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Users, Package, ShoppingBag, AlertTriangle, Clock, ArrowRight, Shield, Truck, Receipt, HelpCircle } from 'lucide-react';
-import { formatGramos, formatFecha, formatNumeroPedido, diasHasta } from '@/lib/utils';
+import { Users, Package, ShoppingBag, AlertTriangle, Clock, ArrowRight, Shield, Truck, Receipt, HelpCircle, ClipboardCheck } from 'lucide-react';
+import { cn, formatGramos, formatFecha, formatNumeroPedido, diasHasta } from '@/lib/utils';
 import type { MetricasAdmin } from '@/lib/types/database';
 
 // Resumen de pedido para las listas de trabajo del dashboard
@@ -67,6 +67,8 @@ interface Props {
   porArmar:    PedidoResumen[];
   porArmarCount: number;
   consultasPendientes: number;
+  // Gestión (solo superadmin): null si no corresponde mostrar
+  tareas?: { vencidas: number; semana: number } | null;
 }
 
 // Lista de pedidos accionables (por aprobar / por armar / por entregar)
@@ -126,7 +128,7 @@ function ListaPedidos({ titulo, icono, pedidos, vacio, count, href = '/admin/ped
   );
 }
 
-export function AdminDashboardClient({ metricas, pendientes, porVencer, porAprobar, porEntregar, porArmar, porArmarCount, consultasPendientes }: Props) {
+export function AdminDashboardClient({ metricas, pendientes, porVencer, porAprobar, porEntregar, porArmar, porArmarCount, consultasPendientes, tareas = null }: Props) {
   return (
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
 
@@ -173,6 +175,29 @@ export function AdminDashboardClient({ metricas, pendientes, porVencer, porAprob
           alerta={metricas.reprocann_por_vencer > 0}
         />
       </motion.div>
+
+      {/* Gestión: tareas vencidas o por vencer (solo superadmin) */}
+      {tareas && (tareas.vencidas > 0 || tareas.semana > 0) && (
+        <motion.div variants={fadeUp}>
+          <Link
+            href="/admin/gestion"
+            className={cn(
+              'flex items-center gap-3 px-5 py-4 rounded-xl border transition-colors group',
+              tareas.vencidas > 0
+                ? 'bg-red-500/10 border-red-500/25 text-red-300 hover:bg-red-500/15'
+                : 'bg-club-dorado/10 border-club-dorado/25 text-club-dorado hover:bg-club-dorado/15'
+            )}
+          >
+            <ClipboardCheck className="w-5 h-5 shrink-0" />
+            <p className="text-sm flex-1">
+              {tareas.vencidas > 0 && <><span className="font-bold">{tareas.vencidas}</span> tarea{tareas.vencidas === 1 ? '' : 's'} vencida{tareas.vencidas === 1 ? '' : 's'}</>}
+              {tareas.vencidas > 0 && tareas.semana > 0 && ' · '}
+              {tareas.semana > 0 && <><span className="font-bold">{tareas.semana}</span> vence{tareas.semana === 1 ? '' : 'n'} esta semana</>}
+            </p>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        </motion.div>
+      )}
 
       {/* Consultas de socios sin atender */}
       {consultasPendientes > 0 && (
