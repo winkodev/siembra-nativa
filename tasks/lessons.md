@@ -76,3 +76,7 @@
 ## 2026-11-03 — upsert contra índice único parcial
 - **Bug:** `upsert(..., { onConflict: 'pedido_id' })` con un índice `UNIQUE ... WHERE pedido_id IS NOT NULL` falla en Postgres (la inferencia ON CONFLICT no matchea el índice parcial). Como el registro era best-effort, el error se tragó y los cobros nunca entraron a tesorería.
 - **Regla:** con índices parciales, no usar upsert: consultar si existe e insertar. Y en helpers best-effort, devolver un booleano y tener un camino de reintento visible (botón "Registrar ahora").
+
+## 2026-11-03 — Acciones masivas sobre datos financieros: siempre con selección
+- **Error:** "Registrar ahora" metió 23 cobros que ya estaban en el saldo inicial. El usuario esperaba elegir.
+- **Regla:** cualquier acción que cree varios registros de plata muestra la lista con checks, todos desmarcados, y el total antes de confirmar. Nunca un botón de un clic que haga un lote.

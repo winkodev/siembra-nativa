@@ -246,24 +246,48 @@ export async function guardarCuentaCobros(cuentaId: string): Promise<ActionRespo
   return { ok: true, data: undefined };
 }
 
-// Registra los cobros de pedidos Listos/Entregados que todavía no están en
-// tesorería (pedidos anteriores a elegir la cuenta, o fallos de registro).
-// La fecha del ingreso es la de entrega si la hay, si no la del pedido.
-export async function registrarCobrosFaltantes(): Promise<ActionResponse<{ registrados: number }>> {
+// Pedidos Listos/Entregados que todavía no tienen ingreso en tesorería
+// (anteriores a elegir la cuenta, o fallos de registro). El superadmin elige
+// cuáles registrar: los que ya estaban en el saldo inicial se dejan afuera.
+export interface CobroFaltante {
+  id: string; numero: number | null; quien: string; monto: number; fecha: string; estado: string;
+}
+
+export async function listarCobrosFaltantes(): Promise<ActionResponse<CobroFaltante[]>> {
   const s = await superadmin();
   if (!s) return NO_AUTORIZADO;
 
   const { data: pedidos } = await s.supabase
     .from('pedidos')
-    .select('id, created_at, fecha_entregado')
+    .select('id, numero, estado, created_at, fecha_entregado, monto_total, manual, cliente_nombre, socio:profiles!socio_id(nombre)')
     .in('estado', ['aprobado', 'entregado'])
-    .gt('monto_total', 0);
+    .gt('monto_total', 0)
+    .order('created_at', { ascending: false });
   const { data: movs } = await s.supabase.from('tes_movimientos').select('pedido_id').not('pedido_id', 'is', null);
   const ya = new Set((movs ?? []).map(m => m.pedido_id));
 
+  const lista: CobroFaltante[] = ((pedidos ?? []) as any[])
+    .filter(p => !ya.has(p.id))
+    .map(p => ({
+      id: p.id, numero: p.numero, estado: p.estado,
+      quien: p.manual ? (p.cliente_nombre ?? 'Pedido manual') : (p.socio?.nombre ?? 'Socio'),
+      monto: Number(p.monto_total),
+      fecha: (p.fecha_entregado ?? p.created_at).slice(0, 10),
+    }));
+  return { ok: true, data: lista };
+}
+
+// Registra solo los pedidos elegidos. La fecha del ingreso es la de entrega si la hay, si no la del pedido.
+export async function registrarCobrosSeleccionados(ids: string[]): Promise<ActionResponse<{ registrados: number }>> {
+  const s = await superadmin();
+  if (!s) return NO_AUTORIZADO;
+  if (ids.length === 0) return { ok: true, data: { registrados: 0 } };
+
+  const { data: pedidos } = await s.supabase
+    .from('pedidos').select('id, created_at, fecha_entregado').in('id', ids).in('estado', ['aprobado', 'entregado']);
+
   let registrados = 0;
   for (const p of pedidos ?? []) {
-    if (ya.has(p.id)) continue;
     const fecha = (p.fecha_entregado ?? p.created_at).slice(0, 10);
     if (await registrarCobroPedido(p.id, s.userId, fecha)) registrados++;
   }

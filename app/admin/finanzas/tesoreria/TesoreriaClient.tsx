@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -12,7 +12,8 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { FinanzasTabs } from '../FinanzasTabs';
 import {
   crearCuenta, editarCuenta, crearMovimiento, crearTransferencia, crearCambio, eliminarMovimiento,
-  crearDeuda, anularDeuda, crearCategoria, toggleCategoria, guardarCuentaCobros, registrarCobrosFaltantes,
+  crearDeuda, anularDeuda, crearCategoria, toggleCategoria, guardarCuentaCobros,
+  listarCobrosFaltantes, registrarCobrosSeleccionados, type CobroFaltante,
 } from '@/app/actions/tesoreria';
 import type { TesCuenta, TesCategoria, TesSaldo, TesDeuda, TesMovimiento, Moneda, TipoMovimiento } from '@/lib/types/database';
 
@@ -185,13 +186,9 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
     if (!res.ok) setError(res.error);
     router.refresh();
   });
+  // Cobros faltantes: se eligen uno por uno en un modal (nada se registra solo)
+  const [modalCobros, setModalCobros] = useState(false);
   const [msgCobros, setMsgCobros] = useState<string | null>(null);
-  const handleCobrosFaltantes = () => startTransition(async () => {
-    const res = await registrarCobrosFaltantes();
-    if (!res.ok) { setError(res.error); return; }
-    setMsgCobros(res.data.registrados > 0 ? `Se registraron ${res.data.registrados} cobro${res.data.registrados === 1 ? '' : 's'}.` : 'No había cobros pendientes de registrar.');
-    router.refresh();
-  });
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
@@ -315,9 +312,9 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
                   {msgCobros ?? `${cobrosFaltantes} pedido${cobrosFaltantes === 1 ? '' : 's'} cobrado${cobrosFaltantes === 1 ? '' : 's'} sin ingreso en tesorería.`}
                 </p>
                 {cobrosFaltantes > 0 && (
-                  <button onClick={handleCobrosFaltantes} disabled={pending}
-                    className="shrink-0 px-3 py-1.5 rounded-lg bg-club-dorado/15 border border-club-dorado/30 text-club-dorado text-xs font-semibold hover:bg-club-dorado/25 disabled:opacity-50">
-                    {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Registrar ahora'}
+                  <button onClick={() => setModalCobros(true)}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-club-dorado/15 border border-club-dorado/30 text-club-dorado text-xs font-semibold hover:bg-club-dorado/25">
+                    Elegir cuáles registrar
                   </button>
                 )}
               </div>
@@ -472,6 +469,13 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
 
       {/* Modales (sin animación de salida: se cierran al instante) */}
       <>
+        {modalCobros && (
+          <CobrosFaltantesModal key="m-cobros" onClose={registrados => {
+            setModalCobros(false);
+            if (registrados != null) setMsgCobros(registrados > 0 ? `Se registraron ${registrados} cobro${registrados === 1 ? '' : 's'}.` : 'No se registró ninguno.');
+            router.refresh();
+          }} />
+        )}
         {modal?.k === 'cuenta' && <CuentaModal key="m-cuenta" cuenta={modal.cuenta} onClose={cerrarYRefrescar} />}
         {modal?.k === 'mov' && <MovimientoModal key="m-mov" tipo={modal.tipo} deuda={modal.deuda} cuentas={cuentasActivas} categorias={categorias.filter(c => c.activa && c.tipo === modal.tipo)} deudas={deudasVivas} onClose={cerrarYRefrescar} />}
         {modal?.k === 'transferencia' && <TransferenciaModal key="m-transf" cuentas={cuentasActivas} onClose={cerrarYRefrescar} />}
@@ -833,5 +837,80 @@ function Categorias({ categorias, onCambio, onError }: { categorias: TesCategori
         ))}
       </div>
     </div>
+  );
+}
+
+// Cobros de pedidos sin registrar: lista con check por pedido, TODOS desmarcados
+// por defecto. Solo se registran los que el superadmin tilda.
+function CobrosFaltantesModal({ onClose }: { onClose: (registrados: number | null) => void }) {
+  const [lista, setLista] = useState<CobroFaltante[] | null>(null);
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    listarCobrosFaltantes().then(res => {
+      if (res.ok) setLista(res.data); else { setError(res.error); setLista([]); }
+    });
+  }, []);
+
+  const toggle = (id: string) => setSel(prev => { const s = new Set(prev); if (s.has(id)) s.delete(id); else s.add(id); return s; });
+  const total = (lista ?? []).filter(p => sel.has(p.id)).reduce((a, p) => a + p.monto, 0);
+
+  const registrar = async () => {
+    setPending(true); setError(null);
+    const res = await registrarCobrosSeleccionados(Array.from(sel));
+    setPending(false);
+    if (!res.ok) { setError(res.error); return; }
+    onClose(res.data.registrados);
+  };
+
+  return (
+    <Modal titulo="Cobros sin registrar" icono={<ArrowDownCircle className="w-5 h-5 text-emerald-400" />} onClose={() => onClose(null)}>
+      <p className="text-muted-foreground text-xs">
+        Pedidos Listos o Entregados que no tienen ingreso en tesorería. Tildá solo los que NO estén ya contados en el saldo inicial.
+        Entran con la fecha de entrega, o la del pedido si no la tiene.
+      </p>
+      {lista === null ? (
+        <p className="text-muted-foreground text-sm py-6 text-center">Cargando…</p>
+      ) : lista.length === 0 ? (
+        <p className="text-muted-foreground text-sm py-6 text-center">No hay cobros sin registrar.</p>
+      ) : (
+        <>
+          <div className="flex items-center justify-between text-xs">
+            <button type="button" onClick={() => setSel(new Set(lista.map(p => p.id)))} className="text-club-dorado hover:text-club-dorado/80">Marcar todos</button>
+            <button type="button" onClick={() => setSel(new Set())} className="text-muted-foreground hover:text-foreground">Desmarcar todos</button>
+          </div>
+          <div className="max-h-72 overflow-y-auto divide-y divide-club-verde-claro/10 rounded-xl border border-white/10">
+            {lista.map(p => {
+              const on = sel.has(p.id);
+              return (
+                <button key={p.id} type="button" onClick={() => toggle(p.id)}
+                  className={cn('w-full flex items-center gap-3 px-3 py-2 text-left transition-colors', on ? 'bg-emerald-500/10' : 'hover:bg-white/5')}>
+                  <span className={cn('w-5 h-5 rounded-md border flex items-center justify-center shrink-0', on ? 'bg-emerald-500 border-emerald-500' : 'border-white/30')}>
+                    {on && <Check className="w-3.5 h-3.5 text-white" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm text-foreground truncate">
+                      <span className="text-club-dorado font-semibold">#{String(p.numero ?? 0).padStart(4, '0')}</span> · {p.quien}
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground">{formatFecha(p.fecha)} · {p.estado === 'entregado' ? 'Entregado' : 'Listo'}</span>
+                  </span>
+                  <span className="text-sm text-foreground font-semibold tabular-nums shrink-0">{fmt('ARS', p.monto)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+      {error && <p className="px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs">{error}</p>}
+      <div className="flex gap-3 pt-1">
+        <button type="button" onClick={() => onClose(null)} className="btn-secondary flex-1 py-2.5">Cancelar</button>
+        <button type="button" onClick={registrar} disabled={pending || sel.size === 0}
+          className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-40">
+          {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : `Registrar ${sel.size > 0 ? `${sel.size} · ${fmt('ARS', total)}` : ''}`}
+        </button>
+      </div>
+    </Modal>
   );
 }
