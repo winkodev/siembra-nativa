@@ -224,7 +224,7 @@ export function AdminDashboardClient({ metricas, pendientes, porVencer, porAprob
           titulo="Pedidos por entregar"
           icono={<Truck className="w-5 h-5 text-emerald-400" />}
           pedidos={porEntregar}
-          vacio="No hay pedidos aprobados sin entregar."
+          vacio="No hay pedidos listos sin entregar."
           href="/admin/pedidos?filtro=aprobado"
         />
       </div>
