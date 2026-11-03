@@ -10,7 +10,7 @@ import type { PedidoConItems, EstadoPedido } from '@/lib/types/database';
 
 const labelEstado: Record<EstadoPedido, string> = {
   pendiente: 'Pendiente',
-  aprobado:  'Aprobado',
+  aprobado:  'Listo',
   entregado: 'Entregado',
   cancelado: 'Cancelado',
 };

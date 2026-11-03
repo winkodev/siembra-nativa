@@ -111,7 +111,7 @@ export async function marcarCheckPedido(
   pedidoId: string,
   tipo: TipoCheck,
   marcar: boolean
-): Promise<ActionResponse<{ por: string | null; at: string | null; nombre: string | null }>> {
+): Promise<ActionResponse<{ por: string | null; at: string | null; nombre: string | null; estado: EstadoPedido }>> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'No autenticado' };
@@ -129,8 +129,9 @@ export async function marcarCheckPedido(
     ? { armado_por: por, armado_at: at }
     : { comprobante_ok_por: por, comprobante_ok_at: at };
 
-  const { error } = await supabase.from('pedidos').update(patch).eq('id', pedidoId);
-  if (error) return { ok: false, error: 'Error al registrar el control' };
+  const { data: actualizado, error } = await supabase.from('pedidos').update(patch).eq('id', pedidoId)
+    .select('estado, armado_at, comprobante_ok_at').single();
+  if (error || !actualizado) return { ok: false, error: 'Error al registrar el control' };
 
   await registrarAccion(
     supabase,
@@ -138,8 +139,17 @@ export async function marcarCheckPedido(
     'pedidos',
     { pedido_id: pedidoId }
   );
+
+  // Con los dos controles marcados el pedido pasa solo a Listo (sin clic extra)
+  let estado: EstadoPedido = actualizado.estado;
+  if (marcar && actualizado.estado === 'pendiente' && actualizado.armado_at && actualizado.comprobante_ok_at) {
+    const res = await cambiarEstadoPedido(pedidoId, 'aprobado');
+    if (res.ok) estado = 'aprobado';
+    else return { ok: false, error: `Control marcado, pero no pasó a Listo: ${res.error}` };
+  }
+
   revalidatePath('/admin/pedidos');
-  return { ok: true, data: { por, at, nombre: marcar ? (perfil?.nombre ?? null) : null } };
+  return { ok: true, data: { por, at, nombre: marcar ? (perfil?.nombre ?? null) : null, estado } };
 }
 
 // Desde qué estados se puede pasar a cada estado destino
@@ -444,4 +454,78 @@ export async function crearPedidoManual(input: {
   revalidatePath('/admin/pedidos');
   revalidatePath('/socio/tienda');
   return { ok: true, data: { pedido_id: data.pedido_id, numero: data.numero } };
+}
+
+// ------------------------------------------------------------
+// Reprogramar la entrega (admin): nueva franja + fecha, avisa al socio
+// ------------------------------------------------------------
+const DIAS_NOMBRE = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+export async function reprogramarPedido(pedidoId: string, franjaId: string, fecha: string): Promise<ActionResponse<{ entrega_franja: string; entrega_fecha: string }>> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const { data: p } = await supabase.from('profiles').select('rol').eq('id', user.id).single();
+  if (p?.rol !== 'admin') return { ok: false, error: 'No autorizado' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { ok: false, error: 'Fecha inválida' };
+
+  const { data: franja } = await supabase.from('franjas_horarias').select('*').eq('id', franjaId).single();
+  if (!franja) return { ok: false, error: 'Franja no encontrada' };
+  const d = new Date(`${fecha}T12:00:00`);
+  if (!(franja.dias_semana ?? []).includes(d.getDay())) return { ok: false, error: 'Ese día no corresponde a la franja elegida' };
+
+  const { data: pedido } = await supabase.from('pedidos').select('numero, estado, socio_id, manual, entrega_franja').eq('id', pedidoId).single();
+  if (!pedido) return { ok: false, error: 'Pedido no encontrado' };
+  if (pedido.estado === 'entregado' || pedido.estado === 'cancelado') return { ok: false, error: 'Este pedido ya no se puede reprogramar' };
+
+  // Mismo formato que arma la base al confirmar: "Sábado 11/10 · 09:00–14:00 hs"
+  const label = `${DIAS_NOMBRE[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} · ${franja.hora_desde.slice(0, 5)}–${franja.hora_hasta.slice(0, 5)} hs`;
+
+  const { error } = await createServiceClient().from('pedidos').update({ entrega_franja: label, entrega_fecha: fecha }).eq('id', pedidoId);
+  if (error) return { ok: false, error: 'Error al reprogramar' };
+
+  // Aviso al socio (los pedidos manuales no tienen cuenta)
+  if (!pedido.manual) {
+    await supabase.from('notificaciones').insert({
+      socio_id: pedido.socio_id,
+      titulo: `Tu pedido #${String(pedido.numero).padStart(4, '0')} fue reprogramado`,
+      mensaje: `Nueva entrega: ${label}.${pedido.entrega_franja ? ` Antes era ${pedido.entrega_franja}.` : ''}`,
+    });
+  }
+
+  await registrarAccion(supabase, 'pedido_reprogramado', 'pedidos', { pedido_id: pedidoId, de: pedido.entrega_franja, a: label }, pedido.socio_id);
+  revalidatePath('/admin/pedidos');
+  revalidatePath('/socio/pedidos');
+  revalidatePath('/socio/dashboard');
+  return { ok: true, data: { entrega_franja: label, entrega_fecha: fecha } };
+}
+
+// ------------------------------------------------------------
+// Mensaje del club al socio sobre un pedido (responde a sus notas, o lo que haga falta)
+// ------------------------------------------------------------
+export async function enviarMensajePedido(pedidoId: string, texto: string): Promise<ActionResponse> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const { data: p } = await supabase.from('profiles').select('rol').eq('id', user.id).single();
+  if (p?.rol !== 'admin') return { ok: false, error: 'No autorizado' };
+
+  const msg = texto.trim();
+  if (!msg) return { ok: false, error: 'Escribí el mensaje' };
+  if (msg.length > 1000) return { ok: false, error: 'El mensaje es demasiado largo (máx. 1000 caracteres)' };
+
+  const { data: pedido } = await supabase.from('pedidos').select('numero, socio_id, manual').eq('id', pedidoId).single();
+  if (!pedido) return { ok: false, error: 'Pedido no encontrado' };
+  if (pedido.manual) return { ok: false, error: 'Los pedidos manuales no tienen una cuenta a la que escribir' };
+
+  const { error } = await supabase.from('notificaciones').insert({
+    socio_id: pedido.socio_id,
+    titulo: `Mensaje del club sobre tu pedido #${String(pedido.numero).padStart(4, '0')}`,
+    mensaje: msg,
+  });
+  if (error) return { ok: false, error: 'Error al enviar el mensaje' };
+
+  await registrarAccion(supabase, 'mensaje_pedido', 'pedidos', { pedido_id: pedidoId, mensaje: msg.slice(0, 120) }, pedido.socio_id);
+  revalidatePath('/socio/dashboard');
+  return { ok: true, data: undefined };
 }

@@ -4,17 +4,18 @@ import { useState, useMemo, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingBag, ChevronDown, Clock, Loader2, Search, Receipt, ExternalLink,
-  Printer, CalendarClock, PackageCheck, Check, MapPin, Copy, Undo2, AlertTriangle, Package, Plus,
+  Printer, CalendarClock, PackageCheck, Check, MapPin, Copy, Undo2, AlertTriangle, Package, Plus, MessageSquare,
 } from 'lucide-react';
 import { cn, formatFecha, formatGramos, formatNumeroPedido, formatPrecio, labelTipo, labelCategoriaProducto, badgePedido } from '@/lib/utils';
 import { cambiarEstadoPedido, verComprobante, marcarCheckPedido, revertirEstadoPedido, type TipoCheck } from '@/app/actions/pedidos';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PedidoManualModal, BolsasModal } from './PedidoModales';
-import type { EstadoPedido } from '@/lib/types/database';
+import { ReprogramarModal, MensajeModal } from './PedidoAcciones';
+import type { EstadoPedido, FranjaHoraria } from '@/lib/types/database';
 
 const labelEstado: Record<EstadoPedido, string> = {
   pendiente: 'Pendiente',
-  aprobado:  'Aprobado',
+  aprobado:  'Listo',
   entregado: 'Entregado',
   cancelado: 'Cancelado',
 };
@@ -60,6 +61,7 @@ export interface PedidoAdmin {
   monto_envio: number | null;
   monto_descuento: number | null;
   monto_cupon: number | null;
+  entrega_fecha: string | null;   // YYYY-MM-DD elegido por el socio o reprogramado
   // Pedido cargado por un admin para alguien sin cuenta
   manual: boolean;
   cliente_nombre: string | null;
@@ -107,7 +109,7 @@ const filtrosEstado: { label: string; value: Filtro }[] = [
   { label: 'Todos',     value: 'todos'     },
   { label: 'Pendiente', value: 'pendiente' },
   { label: 'Por armar', value: 'armar'     },
-  { label: 'Aprobado',  value: 'aprobado'  },
+  { label: 'Listo',     value: 'aprobado'  },
   { label: 'Entregado', value: 'entregado' },
   { label: 'Cancelado', value: 'cancelado' },
 ];
@@ -128,11 +130,18 @@ export function nombrePedido(p: PedidoAdmin): string {
 // Genética disponible para cargar un pedido manual
 export interface GeneticaDisponible { genetica_id: string; nombre: string; tipo: string; stock_total_gramos: number; precio_gramo: number | null }
 
-export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, superadmin = false, geneticas = [] }: {
+// Fecha local YYYY-MM-DD
+function hoyISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, superadmin = false, geneticas = [], franjas = [] }: {
   pedidos: PedidoAdmin[];
   filtroInicial?: string;  // llega por query param (?filtro=armar) desde el dashboard
   superadmin?: boolean;    // habilita "Revertir estado"
   geneticas?: GeneticaDisponible[];  // para el pedido manual
+  franjas?: FranjaHoraria[];         // activas, para reprogramar
 }) {
   const [pedidos, setPedidos]     = useState(pedidosIniciales);
   const [modalManual, setModalManual] = useState(false);
@@ -208,6 +217,15 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
       if (!q) return true;
       return nombrePedido(p).toLowerCase().includes(q)
         || (p.profiles?.dni ?? '').includes(q);
+    }).sort((a, b) => {
+      // Pedidos activos: primero los que se entregan antes (sin fecha al final); el resto, más recientes primero
+      const activo = filtro === 'pendiente' || filtro === 'armar' || filtro === 'aprobado';
+      if (activo) {
+        const fa = a.entrega_fecha ?? '9999-12-31', fb = b.entrega_fecha ?? '9999-12-31';
+        if (fa !== fb) return fa < fb ? -1 : 1;
+        return a.created_at < b.created_at ? -1 : 1;
+      }
+      return a.created_at < b.created_at ? 1 : -1;
     });
   }, [pedidos, filtro, busqueda, periodo, desde, hasta, reciénArmados]);
 
@@ -231,13 +249,20 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
       const res = await marcarCheckPedido(pedidoId, tipo, marcar);
       if (!res.ok) { setError(res.error); return; }
       if (tipo === 'armado') setReciénArmados(prev => { const s = new Set(prev); marcar ? s.add(pedidoId) : s.delete(pedidoId); return s; });
-      setPedidos(prev => prev.map(p => p.id !== pedidoId ? p : (
-        tipo === 'armado'
+      setPedidos(prev => prev.map(p => p.id !== pedidoId ? p : ({
+        ...(tipo === 'armado'
           ? { ...p, armado_at: res.data.at, armado: res.data.nombre ? { nombre: res.data.nombre } : null }
-          : { ...p, comprobante_ok_at: res.data.at, comprobante_ok: res.data.nombre ? { nombre: res.data.nombre } : null }
-      )));
+          : { ...p, comprobante_ok_at: res.data.at, comprobante_ok: res.data.nombre ? { nombre: res.data.nombre } : null }),
+        // Con los dos controles, el servidor lo pasa solo a Listo
+        estado: res.data.estado,
+      })));
     });
   };
+
+  // Reprogramar entrega (admin): nueva franja + fecha, avisa al socio
+  const [reprogramando, setReprogramando] = useState<PedidoAdmin | null>(null);
+  // Mensaje del club al socio sobre un pedido
+  const [mensajeA, setMensajeA] = useState<PedidoAdmin | null>(null);
 
   const handleVerComprobante = (pedidoId: string) => {
     setError(null);
@@ -273,6 +298,15 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
       <>
         {modalManual && <PedidoManualModal key="m-manual" geneticas={geneticas} onClose={() => setModalManual(false)} />}
         {modalBolsas && <BolsasModal key="m-bolsas" pedidos={filtrados} onClose={() => setModalBolsas(false)} />}
+        {reprogramando && (
+          <ReprogramarModal key="m-reprog" pedido={reprogramando} franjas={franjas}
+            onClose={() => setReprogramando(null)}
+            onDone={(entrega_franja, entrega_fecha) => {
+              setPedidos(prev => prev.map(p => p.id === reprogramando.id ? { ...p, entrega_franja, entrega_fecha } : p));
+              setReprogramando(null);
+            }} />
+        )}
+        {mensajeA && <MensajeModal key="m-msg" pedido={mensajeA} onClose={() => setMensajeA(null)} />}
       </>
 
       {/* Toolbar: búsqueda + filtros */}
@@ -397,13 +431,30 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
                         <span className="text-muted-foreground font-normal text-xs ml-2">DNI {pedido.profiles.dni}</span>
                       )}
                     </p>
-                    <p className="text-muted-foreground text-xs flex items-center gap-1.5 mt-0.5">
+                    <p className="text-muted-foreground text-xs flex items-center gap-1.5 mt-0.5 flex-wrap">
                       <span className="text-club-dorado/80 font-semibold">{formatNumeroPedido(pedido.numero)}</span>
                       <span className="text-muted-foreground/40">·</span>
                       <Clock className="w-3 h-3" />
                       {formatFecha(pedido.created_at)}
                       <span className="text-muted-foreground/40">·</span>
                       {pedido.pedido_items.length} ítem{pedido.pedido_items.length !== 1 ? 's' : ''}
+                      {/* Día de entrega en la fila: rojo si ya pasó, dorado si es hoy */}
+                      {pedido.entrega_franja && (pedido.estado === 'pendiente' || pedido.estado === 'aprobado') && (() => {
+                        const hoy = hoyISO();
+                        const vencida = pedido.entrega_fecha != null && pedido.entrega_fecha < hoy;
+                        const esHoy   = pedido.entrega_fecha === hoy;
+                        return (
+                          <span className={cn(
+                            'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border font-medium',
+                            vencida ? 'text-red-400 border-red-400/30 bg-red-400/10'
+                            : esHoy ? 'text-club-dorado border-club-dorado/40 bg-club-dorado/10'
+                            : 'text-foreground/80 border-white/15 bg-white/5'
+                          )}>
+                            <CalendarClock className="w-3 h-3" />
+                            {esHoy ? 'Hoy' : vencida ? 'Vencida' : 'Entrega'}: {pedido.entrega_franja}
+                          </span>
+                        );
+                      })()}
                     </p>
                   </div>
 
@@ -566,19 +617,34 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
                             );
                           })()}
 
-                          {pedido.entrega_franja && (
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
                             <p className="text-muted-foreground text-xs flex items-center gap-1.5">
                               <CalendarClock className="w-3.5 h-3.5 text-club-dorado" />
                               <span className="text-foreground/70 font-medium">Entrega: </span>
-                              {pedido.entrega_franja}
+                              {pedido.entrega_franja ?? 'Sin horario'}
                             </p>
-                          )}
+                            {(pedido.estado === 'pendiente' || pedido.estado === 'aprobado') && franjas.length > 0 && (
+                              <button onClick={() => setReprogramando(pedido)} className="text-xs text-club-dorado hover:text-club-dorado/80 inline-flex items-center gap-1">
+                                <CalendarClock className="w-3.5 h-3.5" /> Reprogramar
+                              </button>
+                            )}
+                          </div>
 
-                          {pedido.notas && (
-                            <p className="text-muted-foreground text-xs">
-                              <span className="text-foreground/70 font-medium">Nota del socio: </span>
-                              {pedido.notas}
-                            </p>
+                          {/* Nota del socio + responderle */}
+                          {(pedido.notas || !pedido.manual) && (
+                            <div className="flex items-start justify-between gap-3">
+                              {pedido.notas ? (
+                                <p className="text-muted-foreground text-xs">
+                                  <span className="text-foreground/70 font-medium">Nota del socio: </span>
+                                  {pedido.notas}
+                                </p>
+                              ) : <span />}
+                              {!pedido.manual && (
+                                <button onClick={() => setMensajeA(pedido)} className="shrink-0 text-xs text-club-dorado hover:text-club-dorado/80 inline-flex items-center gap-1">
+                                  <MessageSquare className="w-3.5 h-3.5" /> {pedido.notas ? 'Responder' : 'Escribir al socio'}
+                                </button>
+                              )}
+                            </div>
                           )}
 
                           {/* Comprobante de pago */}
@@ -700,7 +766,7 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
                               disabled={pending && revirtiendo === pedido.id}
                               className="text-xs text-muted-foreground hover:text-amber-300 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
                               title={
-                                pedido.estado === 'entregado' ? 'Vuelve a Aprobado (el stock no cambia)'
+                                pedido.estado === 'entregado' ? 'Vuelve a Listo (el stock no cambia)'
                                 : pedido.estado === 'aprobado' ? 'Vuelve a Pendiente y devuelve el stock descontado'
                                 : 'Reabre el pedido como Pendiente'
                               }

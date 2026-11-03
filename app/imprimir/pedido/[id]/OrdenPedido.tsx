@@ -5,7 +5,7 @@ import type { EstadoPedido } from '@/lib/types/database';
 
 const ESTADO_LABEL: Record<EstadoPedido, string> = {
   pendiente: 'Pendiente',
-  aprobado:  'Aprobado',
+  aprobado:  'Listo',
   entregado: 'Entregado',
   cancelado: 'Cancelado',
 };
