@@ -434,11 +434,11 @@ Decisiones: cuentas con saldo en ARS y USD; cobros de pedidos automáticos a cue
 - Reprogramar entrega (admin) con notificación al socio; Escribir al socio desde el pedido.
 - Fila con día de entrega (Hoy / Vencida); activos ordenados por fecha de entrega.
 
-## 🟢 EN LOCAL 2026-11-03: Gestión (tareas con vencimiento, superadmin)
+## ✅ 2026-11-03 (desplegado b335a49): Gestión (tareas con vencimiento, superadmin)
 
-- [x] SQL `supabase/gestion-tareas.sql` (tabla tareas, RLS superadmin) **pendiente de ejecutar**
+- [x] SQL `supabase/gestion-tareas.sql` (tabla tareas, RLS superadmin) ejecutado
 - [x] Actions: crear, editar, completar (crea la siguiente si es mensual/anual), reabrir, eliminar (esta o la serie)
 - [x] /admin/gestion: bloques Vencidas / Hoy / Esta semana / Próximas + Hechas plegadas; link en el menú
 - [x] Dashboard: tarjeta con vencidas y por vencer (solo superadmin)
 - [ ] Email "tareas por vencer" (cron): pendiente de definir
-- [ ] Probar en local y desplegar
+- [x] Desplegado
