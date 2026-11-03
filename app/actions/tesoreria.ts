@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { registrarAccion } from '@/lib/audit';
+import { registrarCobroPedido } from '@/lib/tesoreria';
 import type { ActionResponse, Moneda, TesCuenta, TesDeuda, TesMovimiento, TesCategoria } from '@/lib/types/database';
 
 // Todas las actions de tesorería son solo del superadmin (la RLS también lo exige)
@@ -243,4 +244,31 @@ export async function guardarCuentaCobros(cuentaId: string): Promise<ActionRespo
   await registrarAccion(s.supabase, 'tes_cuenta_cobros', 'tesoreria', { cuenta_id: cuentaId || null });
   revalidatePath('/admin/finanzas/tesoreria');
   return { ok: true, data: undefined };
+}
+
+// Registra los cobros de pedidos Listos/Entregados que todavía no están en
+// tesorería (pedidos anteriores a elegir la cuenta, o fallos de registro).
+// La fecha del ingreso es la de entrega si la hay, si no la del pedido.
+export async function registrarCobrosFaltantes(): Promise<ActionResponse<{ registrados: number }>> {
+  const s = await superadmin();
+  if (!s) return NO_AUTORIZADO;
+
+  const { data: pedidos } = await s.supabase
+    .from('pedidos')
+    .select('id, created_at, fecha_entregado')
+    .in('estado', ['aprobado', 'entregado'])
+    .gt('monto_total', 0);
+  const { data: movs } = await s.supabase.from('tes_movimientos').select('pedido_id').not('pedido_id', 'is', null);
+  const ya = new Set((movs ?? []).map(m => m.pedido_id));
+
+  let registrados = 0;
+  for (const p of pedidos ?? []) {
+    if (ya.has(p.id)) continue;
+    const fecha = (p.fecha_entregado ?? p.created_at).slice(0, 10);
+    if (await registrarCobroPedido(p.id, s.userId, fecha)) registrados++;
+  }
+
+  if (registrados > 0) await registrarAccion(s.supabase, 'tes_cobros_faltantes', 'tesoreria', { registrados });
+  revalidatePath('/admin/finanzas/tesoreria');
+  return { ok: true, data: { registrados } };
 }

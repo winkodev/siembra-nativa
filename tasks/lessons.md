@@ -72,3 +72,7 @@
 ## 2026-10-20 — Modales: sin animación de salida sobre fondo desenfocado
 - **Síntoma:** al cerrar un modal "parpadeaba" (reaparecía un instante). Darle `key` a cada hijo de AnimatePresence no alcanzó.
 - **Regla:** en modales con `bg-black/60 backdrop-blur-sm`, no usar `exit` ni AnimatePresence: entrada animada, cierre instantáneo. Chrome repinta mal la transición de opacidad sobre backdrop-filter.
+
+## 2026-11-03 — upsert contra índice único parcial
+- **Bug:** `upsert(..., { onConflict: 'pedido_id' })` con un índice `UNIQUE ... WHERE pedido_id IS NOT NULL` falla en Postgres (la inferencia ON CONFLICT no matchea el índice parcial). Como el registro era best-effort, el error se tragó y los cobros nunca entraron a tesorería.
+- **Regla:** con índices parciales, no usar upsert: consultar si existe e insertar. Y en helpers best-effort, devolver un booleano y tener un camino de reintento visible (botón "Registrar ahora").

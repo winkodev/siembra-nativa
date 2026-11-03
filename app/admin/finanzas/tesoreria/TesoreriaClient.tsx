@@ -12,7 +12,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { FinanzasTabs } from '../FinanzasTabs';
 import {
   crearCuenta, editarCuenta, crearMovimiento, crearTransferencia, crearCambio, eliminarMovimiento,
-  crearDeuda, anularDeuda, crearCategoria, toggleCategoria, guardarCuentaCobros,
+  crearDeuda, anularDeuda, crearCategoria, toggleCategoria, guardarCuentaCobros, registrarCobrosFaltantes,
 } from '@/app/actions/tesoreria';
 import type { TesCuenta, TesCategoria, TesSaldo, TesDeuda, TesMovimiento, Moneda, TipoMovimiento } from '@/lib/types/database';
 
@@ -113,6 +113,7 @@ interface Props {
   deudas:       DeudaVista[];
   movimientos:  MovimientoVista[];
   cuentaCobros: string;
+  cobrosFaltantes: number;   // pedidos Listos/Entregados sin ingreso en tesorería
   desde:        string;
   hasta:        string;
   errorMsg:     string | null;
@@ -127,7 +128,7 @@ type ModalTipo =
   | { k: 'eliminar'; mov: MovimientoVista }
   | null;
 
-export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimientos, cuentaCobros, desde: desdeInicial, hasta: hastaInicial, errorMsg }: Props) {
+export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimientos, cuentaCobros, cobrosFaltantes, desde: desdeInicial, hasta: hastaInicial, errorMsg }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [modal, setModal] = useState<ModalTipo>(null);
@@ -182,6 +183,13 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
   const handleCuentaCobros = (id: string) => startTransition(async () => {
     const res = await guardarCuentaCobros(id);
     if (!res.ok) setError(res.error);
+    router.refresh();
+  });
+  const [msgCobros, setMsgCobros] = useState<string | null>(null);
+  const handleCobrosFaltantes = () => startTransition(async () => {
+    const res = await registrarCobrosFaltantes();
+    if (!res.ok) { setError(res.error); return; }
+    setMsgCobros(res.data.registrados > 0 ? `Se registraron ${res.data.registrados} cobro${res.data.registrados === 1 ? '' : 's'}.` : 'No había cobros pendientes de registrar.');
     router.refresh();
   });
 
@@ -298,8 +306,22 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
               {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
             <p className="text-muted-foreground text-[11px]">
-              Al aprobar un pedido, su total entra como ingreso en esta cuenta. Si se cancela o se revierte, el ingreso se elimina.
+              Al pasar un pedido a Listo, su total entra como ingreso en esta cuenta. Si se cancela o se revierte, el ingreso se elimina.
             </p>
+            {/* Pedidos cobrados antes de elegir la cuenta, o que no se registraron */}
+            {cuentaCobros && (cobrosFaltantes > 0 || msgCobros) && (
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <p className="text-xs text-amber-300">
+                  {msgCobros ?? `${cobrosFaltantes} pedido${cobrosFaltantes === 1 ? '' : 's'} cobrado${cobrosFaltantes === 1 ? '' : 's'} sin ingreso en tesorería.`}
+                </p>
+                {cobrosFaltantes > 0 && (
+                  <button onClick={handleCobrosFaltantes} disabled={pending}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-club-dorado/15 border border-club-dorado/30 text-club-dorado text-xs font-semibold hover:bg-club-dorado/25 disabled:opacity-50">
+                    {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Registrar ahora'}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </motion.div>
 

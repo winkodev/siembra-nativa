@@ -59,6 +59,14 @@ export default async function TesoreriaPage({ searchParams }: Props) {
     saldo: Math.max(Number(d.monto) - (pagado.get(d.id) ?? 0), 0),
   }));
 
+  // Pedidos cobrados (Listo/Entregado) sin ingreso en tesorería
+  const [{ data: cobrados }, { data: conMov }] = await Promise.all([
+    supabase.from('pedidos').select('id').in('estado', ['aprobado', 'entregado']).gt('monto_total', 0),
+    supabase.from('tes_movimientos').select('pedido_id').not('pedido_id', 'is', null),
+  ]);
+  const yaRegistrados = new Set((conMov ?? []).map(m => m.pedido_id));
+  const cobrosFaltantes = (cobrados ?? []).filter(p => !yaRegistrados.has(p.id)).length;
+
   const movimientosVista: MovimientoVista[] = ((movimientos ?? []) as any[]).map(m => ({
     ...(m as TesMovimiento),
     monto: Number(m.monto),
@@ -79,6 +87,7 @@ export default async function TesoreriaPage({ searchParams }: Props) {
       deudas={deudasVista}
       movimientos={movimientosVista}
       cuentaCobros={config.tes_cuenta_cobros}
+      cobrosFaltantes={cobrosFaltantes}
       desde={desde}
       hasta={hasta}
       errorMsg={errSaldos ? 'No se pudo cargar Tesorería. ¿Se ejecutó tesoreria.sql en Supabase?' : null}
