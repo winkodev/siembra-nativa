@@ -427,3 +427,9 @@ Decisiones: cuentas con saldo en ARS y USD; cobros de pedidos automáticos a cue
 ## ✅ 2026-10-22 (desplegado 430b8a6): corregir nombre y email de la cuenta
 
 - Lápiz junto al nombre en el drawer de Socios; actualiza Auth + perfil; cualquier admin salvo sobre la cuenta principal; auditado.
+
+## ✅ 2026-11-03 (desplegado 907ab2b): flujo de pedidos
+
+- "Aprobado" → "Listo"; pasa solo a Listo con armado + comprobante chequeado.
+- Reprogramar entrega (admin) con notificación al socio; Escribir al socio desde el pedido.
+- Fila con día de entrega (Hoy / Vencida); activos ordenados por fecha de entrega.
