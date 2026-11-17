@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { Profile, FichaSocio, TipoNotaSocio, RolUsuario } from '@/lib/types/database';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useBloquearScroll } from '@/lib/hooks/useBloquearScroll';
 import { CuponesSocio } from '@/components/admin/CuponesSocio';
 import { CuponMasivoModal } from '@/components/admin/CuponMasivoModal';
 import { cn, formatFecha, formatGramos, estadoEfectivoReprocann } from '@/lib/utils';
@@ -82,6 +83,8 @@ function SocioDrawer({
 }) {
   const [socio, setSocio] = useState<Profile>(initial);
   const [confirmEliminar, setConfirmEliminar] = useState(false);
+  // Con el panel abierto, la lista de fondo no scrollea (una sola barra)
+  useBloquearScroll();
 
   // Corregir nombre / email de la cuenta (cualquier admin)
   const [editandoCuenta, setEditandoCuenta] = useState(false);
@@ -356,7 +359,7 @@ function SocioDrawer({
         </div>
 
         {/* Contenido scrollable */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-5">
           {error && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />
