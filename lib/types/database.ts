@@ -517,6 +517,18 @@ export interface Database {
         Update: Partial<Omit<FechaBloqueada, 'id' | 'created_at'>>;
         Relationships: [];
       };
+      anuncios: {
+        Row: Anuncio;
+        Insert: Partial<Omit<Anuncio, 'id' | 'created_at'>> & { titulo: string; mensaje: string };
+        Update: Partial<Omit<Anuncio, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      anuncios_vistos: {
+        Row: AnuncioVisto;
+        Insert: { anuncio_id: string; socio_id: string; visto_at?: string };
+        Update: Partial<AnuncioVisto>;
+        Relationships: [];
+      };
       cupones: {
         Row: Cupon;
         Insert: Partial<Omit<Cupon, 'id' | 'created_at'>> & { socio_id: string; tipo: TipoCupon; mensaje: string };
@@ -704,4 +716,21 @@ export interface FechaBloqueada {
   motivo: string | null;
   created_by: string | null;
   created_at: string;
+}
+
+// Anuncio: mensaje del club que le aparece al socio como popup (una vez) y en la campana
+export interface Anuncio {
+  id: string;
+  titulo: string;
+  mensaje: string;
+  destinatarios: 'activos' | 'tienda';
+  vigente_hasta: string | null;   // YYYY-MM-DD, último día que se muestra
+  activo: boolean;
+  created_by: string | null;
+  created_at: string;
+}
+export interface AnuncioVisto {
+  anuncio_id: string;
+  socio_id: string;
+  visto_at: string;
 }

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { cn, formatFecha } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { NewsletterTabs } from './NewsletterTabs';
 import { crearNewsletter, actualizarNewsletter, eliminarNewsletter, togglePublicado } from '@/app/actions/newsletter';
 import type { Newsletter } from '@/lib/types/database';
 
@@ -128,6 +129,7 @@ export function AdminNewsletterClient({ articulos: inicial }: { articulos: Newsl
           </button>
         }
       />
+      <NewsletterTabs />
 
       {/* Toolbar: búsqueda + filtro de estado */}
       <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-3 sm:items-center">

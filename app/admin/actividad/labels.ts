@@ -6,6 +6,9 @@ export const ACCION_LABEL: Record<string, string> = {
   quitar_destacado_producto: 'Quitó un producto de destacados',
   crear_cupon:           'Creó un cupón para un socio',
   crear_cupon_masivo:    'Creó un cupón para todos los socios',
+  crear_anuncio:         'Publicó un anuncio para los socios',
+  activar_anuncio:       'Reactivó un anuncio',
+  desactivar_anuncio:    'Desactivó un anuncio',
   anular_cupon_masivo:   'Anuló un lote de cupones',
   anular_cupon:          'Anuló un cupón',
   editar_datos_pago:     'Cambió los datos de pago (alias / CBU)',
@@ -102,6 +105,7 @@ export const RECURSO_LABEL: Record<string, string> = {
   comprobante_pago:       'Comprobantes',
   franjas:                'Horarios',
   usuarios:               'Usuarios',
+  anuncios:               'Anuncios',
   tesoreria:              'Tesorería',
   gestion:                'Gestión',
 };

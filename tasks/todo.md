@@ -450,3 +450,10 @@ Decisiones: cuentas con saldo en ARS y USD; cobros de pedidos automáticos a cue
 - [x] Socio: lo bloqueado no aparece en "Día y horario de entrega"; crearPedido lo valida en el servidor
 - [x] Reprogramar (admin): no ofrece lo bloqueado
 - [ ] Probar en local y desplegar
+
+## 🟢 EN LOCAL 2026-11-17: Anuncios a los socios (popup)
+
+- [x] SQL `supabase/anuncios.sql` (anuncios + anuncios_vistos, RLS) **pendiente de ejecutar**
+- [x] Admin → Newsletter → pestaña Anuncios: publicar (título, mensaje, destinatarios, hasta), vista previa, vistos por anuncio, desactivar/reactivar
+- [x] Socio: popup "Aviso del club" al entrar, una vez por anuncio, "Entendido"; copia en la campana; orden anuncios → cupón (PopupsSocio)
+- [ ] Probar en local y desplegar (junto con días bloqueados)
