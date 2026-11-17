@@ -443,17 +443,17 @@ Decisiones: cuentas con saldo en ARS y USD; cobros de pedidos automáticos a cue
 - [ ] Email "tareas por vencer" (cron): pendiente de definir
 - [x] Desplegado
 
-## 🟢 EN LOCAL 2026-11-17: Días bloqueados (vacaciones, feriados)
+## ✅ 2026-11-17 (desplegado e7d8222): Días bloqueados (vacaciones, feriados)
 
-- [x] SQL `supabase/fechas-bloqueadas.sql` (tabla + RLS + trigger de seguridad para día entero) **pendiente de ejecutar**
+- [x] SQL `supabase/fechas-bloqueadas.sql` (tabla + RLS + trigger de seguridad para día entero) ejecutado
 - [x] Configuración → Horarios: calendario de 30 días (solo superadmin), bloquear día / franja / rango con motivo; avisa si hay pedidos ese día
 - [x] Socio: lo bloqueado no aparece en "Día y horario de entrega"; crearPedido lo valida en el servidor
 - [x] Reprogramar (admin): no ofrece lo bloqueado
-- [ ] Probar en local y desplegar
+- [x] Desplegado
 
-## 🟢 EN LOCAL 2026-11-17: Anuncios a los socios (popup)
+## ✅ 2026-11-17 (desplegado e7d8222): Anuncios a los socios (popup)
 
-- [x] SQL `supabase/anuncios.sql` (anuncios + anuncios_vistos, RLS) **pendiente de ejecutar**
+- [x] SQL `supabase/anuncios.sql` (anuncios + anuncios_vistos, RLS) ejecutado
 - [x] Admin → Newsletter → pestaña Anuncios: publicar (título, mensaje, destinatarios, hasta), vista previa, vistos por anuncio, desactivar/reactivar
 - [x] Socio: popup "Aviso del club" al entrar, una vez por anuncio, "Entendido"; copia en la campana; orden anuncios → cupón (PopupsSocio)
-- [ ] Probar en local y desplegar (junto con días bloqueados)
+- [x] Desplegado
