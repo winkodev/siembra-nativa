@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarClock, MessageSquare, X, Loader2, Send } from 'lucide-react';
 import { reprogramarPedido, enviarMensajePedido } from '@/app/actions/pedidos';
-import { cn, formatNumeroPedido, DIAS_SEMANA } from '@/lib/utils';
+import { cn, formatNumeroPedido, DIAS_SEMANA, estaBloqueada } from '@/lib/utils';
 import type { FranjaHoraria } from '@/lib/types/database';
 import { nombrePedido, type PedidoAdmin } from './AdminPedidosClient';
 
@@ -12,8 +12,9 @@ import { nombrePedido, type PedidoAdmin } from './AdminPedidosClient';
 // Reprogramar entrega: el admin elige franja + fecha (próximos 21 días,
 // sin anticipación mínima) y el socio recibe una notificación.
 // ============================================================
-export function ReprogramarModal({ pedido, franjas, onClose, onDone }: {
+export function ReprogramarModal({ pedido, franjas, bloqueos = [], onClose, onDone }: {
   pedido: PedidoAdmin; franjas: FranjaHoraria[]; onClose: () => void;
+  bloqueos?: { fecha: string; franja_id: string | null }[];   // días/franjas sin entregas
   onDone: (entrega_franja: string, entrega_fecha: string) => void;
 }) {
   const [sel, setSel] = useState<{ franjaId: string; fecha: string } | null>(null);
@@ -29,11 +30,12 @@ export function ReprogramarModal({ pedido, franjas, onClose, onDone }: {
       const fecha = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       for (const f of franjas) {
         if (!f.activa || !(f.dias_semana ?? []).includes(d.getDay())) continue;
+        if (estaBloqueada(bloqueos, fecha, f.id)) continue;
         out.push({ franja: f, fecha, label: `${DIAS_SEMANA[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} · ${f.hora_desde.slice(0, 5)}–${f.hora_hasta.slice(0, 5)} hs` });
       }
     }
     return out;
-  }, [franjas]);
+  }, [franjas, bloqueos]);
 
   const confirmar = async () => {
     if (!sel) return;

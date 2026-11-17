@@ -11,7 +11,7 @@ import {
 import { useCarrito } from '@/lib/context/CarritoContext';
 import { crearPedido } from '@/app/actions/pedidos';
 import { createClient } from '@/lib/supabase/client';
-import { cn, formatGramos, formatPrecio, labelTipo, labelCategoriaProducto, DIAS_SEMANA } from '@/lib/utils';
+import { cn, formatGramos, formatPrecio, labelTipo, labelCategoriaProducto, DIAS_SEMANA, estaBloqueada } from '@/lib/utils';
 import { montoCupon, motivoCuponNoAplica, labelCupon } from '@/lib/utils/cupones';
 import type { FranjaHoraria, CarritoItem } from '@/lib/types/database';
 
@@ -37,6 +37,7 @@ export default function NuevoPedidoPage() {
   const [franjas, setFranjas]   = useState<FranjaHoraria[]>([]);
   const [franjaId, setFranjaId] = useState<string | null>(null);
   const [fechaEntrega, setFechaEntrega] = useState<string | null>(null);   // YYYY-MM-DD
+  const [bloqueos, setBloqueos] = useState<{ fecha: string; franja_id: string | null }[]>([]);
   const [anticipacionHoras, setAnticipacionHoras] = useState(48);
   const [direccion, setDireccion] = useState<string | null>(null);
   const [direccionOk, setDireccionOk] = useState(false);
@@ -61,6 +62,10 @@ export default function NuevoPedidoPage() {
 
     supabase.from('franjas_horarias').select('*').order('created_at')
       .then(({ data }) => setFranjas((data as FranjaHoraria[]) ?? []));
+
+    // Días o franjas sin entregas (vacaciones, feriados): no se ofrecen
+    supabase.from('fechas_bloqueadas').select('fecha, franja_id')
+      .then(({ data }) => setBloqueos((data as { fecha: string; franja_id: string | null }[]) ?? []));
 
     supabase.from('configuracion_app').select('clave, valor')
       .then(({ data }) => {
@@ -121,6 +126,8 @@ export default function NuevoPedidoPage() {
       const fecha = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       for (const f of franjas) {
         if (!f.activa || !(f.dias_semana ?? []).includes(d.getDay())) continue;
+        // Bloqueado por el club (vacaciones, feriado): no aparece
+        if (estaBloqueada(bloqueos, fecha, f.id)) continue;
         const [h, m] = f.hora_desde.split(':').map(Number);
         const inicio = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
         out.push({
@@ -131,7 +138,7 @@ export default function NuevoPedidoPage() {
       }
     }
     return out;
-  }, [franjas, anticipacionHoras]);
+  }, [franjas, anticipacionHoras, bloqueos]);
 
   const handleConfirmar = async () => {
     if (franjas.length > 0 && (!franjaId || !fechaEntrega)) { setError('Elegí el día y horario de entrega'); return; }

@@ -125,3 +125,12 @@ export function labelDias(dias: number[]): string {
   if (esRango && d.length >= 3) return `${DIAS_SEMANA[d[0]]} a ${DIAS_SEMANA[d[d.length - 1]]}`;
   return d.map(n => DIAS_CORTOS[n]).join(', ');
 }
+
+// ¿La franja está bloqueada ese día? (bloqueo del día entero o de esa franja puntual)
+export function estaBloqueada(
+  bloqueos: { fecha: string; franja_id: string | null }[],
+  fecha: string,
+  franjaId: string
+): boolean {
+  return bloqueos.some(b => b.fecha === fecha && (b.franja_id === null || b.franja_id === franjaId));
+}

@@ -13,7 +13,7 @@ export default async function AdminPedidosPage({ searchParams }: {
 
   const supabase = createClient();
 
-  const [{ data: pedidos }, { data: geneticas }, { data: franjas }] = await Promise.all([supabase
+  const [{ data: pedidos }, { data: geneticas }, { data: franjas }, { data: bloqueos }] = await Promise.all([supabase
     .from('pedidos')
     .select(`
       *,
@@ -31,7 +31,9 @@ export default async function AdminPedidosPage({ searchParams }: {
     supabase.from('stock_publico').select('genetica_id, nombre, tipo, stock_total_gramos, precio_gramo').gt('stock_total_gramos', 0).order('nombre'),
     // Franjas activas para reprogramar entregas
     supabase.from('franjas_horarias').select('*').eq('activa', true).order('created_at'),
+    // Días o franjas sin entregas: no se ofrecen al reprogramar
+    supabase.from('fechas_bloqueadas').select('fecha, franja_id').gte('fecha', new Date().toISOString().slice(0, 10)),
   ]);
 
-  return <AdminPedidosClient pedidos={(pedidos as any[]) ?? []} filtroInicial={searchParams?.filtro} superadmin={Boolean(profile.superadmin)} geneticas={(geneticas as any[]) ?? []} franjas={(franjas as any[]) ?? []} />;
+  return <AdminPedidosClient pedidos={(pedidos as any[]) ?? []} filtroInicial={searchParams?.filtro} superadmin={Boolean(profile.superadmin)} geneticas={(geneticas as any[]) ?? []} franjas={(franjas as any[]) ?? []} bloqueos={(bloqueos as any[]) ?? []} />;
 }

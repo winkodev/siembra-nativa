@@ -511,6 +511,12 @@ export interface Database {
         Update: Partial<Omit<Tarea, 'id' | 'created_at'>>;
         Relationships: [];
       };
+      fechas_bloqueadas: {
+        Row: FechaBloqueada;
+        Insert: Partial<Omit<FechaBloqueada, 'id' | 'created_at'>> & { fecha: string };
+        Update: Partial<Omit<FechaBloqueada, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
       cupones: {
         Row: Cupon;
         Insert: Partial<Omit<Cupon, 'id' | 'created_at'>> & { socio_id: string; tipo: TipoCupon; mensaje: string };
@@ -686,6 +692,16 @@ export interface Tarea {
   recurrencia: RecurrenciaTarea;
   serie_id: string | null;       // agrupa las ocurrencias de una tarea repetitiva
   hecha_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+// Día (o franja de un día) sin entregas: vacaciones, feriados. franja_id NULL = día entero.
+export interface FechaBloqueada {
+  id: string;
+  fecha: string;            // YYYY-MM-DD
+  franja_id: string | null;
+  motivo: string | null;
   created_by: string | null;
   created_at: string;
 }

@@ -4,7 +4,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { registrarAccion } from '@/lib/audit';
 import { formatFranja, labelDias } from '@/lib/utils';
-import type { ActionResponse, Ubicacion, FranjaHoraria } from '@/lib/types/database';
+import type { ActionResponse, Ubicacion, FranjaHoraria, FechaBloqueada } from '@/lib/types/database';
 import { CLAVES_PAGO, type DatosPago } from '@/lib/supabase/config';
 import { enviarEmailPrueba } from '@/lib/email';
 import { CLAVES_SECRETO_EMAIL, type ProveedorEmail, type ClaveSecretoEmail } from '@/lib/avisos';
@@ -236,4 +236,72 @@ export async function guardarCredencialesEmail(valores: Partial<Record<ClaveSecr
   await registrarAccion(supabase, 'editar_credenciales_email', 'configuracion', { claves: filas.map(f => f.clave).join(', ') });
   revalidatePath('/admin/configuracion');
   return { ok: true, data: undefined };
+}
+
+// ------------------------------------------------------------
+// Días bloqueados para entregas (solo superadmin)
+// ------------------------------------------------------------
+
+async function superadminBloqueos() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: p } = await supabase.from('profiles').select('rol, superadmin').eq('id', user.id).single();
+  return p?.rol === 'admin' && p.superadmin ? { supabase, userId: user.id } : null;
+}
+
+const fechaOk = (f: string) => /^\d{4}-\d{2}-\d{2}$/.test(f);
+
+// Bloquear o desbloquear un día entero (franjaId null) o una franja puntual de un día
+export async function toggleBloqueoFecha(fecha: string, franjaId: string | null, bloquear: boolean, motivo?: string): Promise<ActionResponse<FechaBloqueada | null>> {
+  const s = await superadminBloqueos();
+  if (!s) return { ok: false, error: 'Solo el superadmin puede bloquear días' };
+  if (!fechaOk(fecha)) return { ok: false, error: 'Fecha inválida' };
+
+  if (bloquear) {
+    const { data, error } = await s.supabase.from('fechas_bloqueadas')
+      .insert({ fecha, franja_id: franjaId, motivo: motivo?.trim() || null, created_by: s.userId })
+      .select('*').single();
+    if (error || !data) return { ok: false, error: 'No se pudo bloquear (¿ya estaba bloqueado? ¿se ejecutó fechas-bloqueadas.sql?)' };
+    await registrarAccion(s.supabase, 'bloquear_fecha', 'franjas', { fecha, franja_id: franjaId, motivo: motivo?.trim() || null });
+    revalidatePath('/admin/configuracion');
+    return { ok: true, data };
+  }
+
+  const q = s.supabase.from('fechas_bloqueadas').delete().eq('fecha', fecha);
+  const { error } = franjaId ? await q.eq('franja_id', franjaId) : await q.is('franja_id', null);
+  if (error) return { ok: false, error: 'No se pudo desbloquear' };
+  await registrarAccion(s.supabase, 'desbloquear_fecha', 'franjas', { fecha, franja_id: franjaId });
+  revalidatePath('/admin/configuracion');
+  return { ok: true, data: null };
+}
+
+// Bloquear un rango de días enteros (vacaciones). Los ya bloqueados se saltean.
+export async function bloquearRangoFechas(desde: string, hasta: string, motivo?: string): Promise<ActionResponse<FechaBloqueada[]>> {
+  const s = await superadminBloqueos();
+  if (!s) return { ok: false, error: 'Solo el superadmin puede bloquear días' };
+  if (!fechaOk(desde) || !fechaOk(hasta)) return { ok: false, error: 'Fechas inválidas' };
+  if (hasta < desde) return { ok: false, error: 'La fecha "hasta" tiene que ser igual o posterior a "desde"' };
+
+  const dias: string[] = [];
+  const [y, m, d] = desde.split('-').map(Number);
+  for (let i = 0; i < 120; i++) {
+    const x = new Date(y, m - 1, d + i);
+    const f = `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+    if (f > hasta) break;
+    dias.push(f);
+  }
+  if (dias.length === 0) return { ok: false, error: 'Rango vacío' };
+
+  const { data: existentes } = await s.supabase.from('fechas_bloqueadas').select('fecha').in('fecha', dias).is('franja_id', null);
+  const ya = new Set((existentes ?? []).map(e => e.fecha));
+  const nuevos = dias.filter(f => !ya.has(f)).map(fecha => ({ fecha, franja_id: null, motivo: motivo?.trim() || null, created_by: s.userId }));
+  if (nuevos.length === 0) return { ok: true, data: [] };
+
+  const { data, error } = await s.supabase.from('fechas_bloqueadas').insert(nuevos).select('*');
+  if (error) return { ok: false, error: 'No se pudo bloquear el rango. ¿Se ejecutó fechas-bloqueadas.sql?' };
+
+  await registrarAccion(s.supabase, 'bloquear_rango', 'franjas', { desde, hasta, motivo: motivo?.trim() || null, dias: nuevos.length });
+  revalidatePath('/admin/configuracion');
+  return { ok: true, data: (data ?? []) as FechaBloqueada[] };
 }

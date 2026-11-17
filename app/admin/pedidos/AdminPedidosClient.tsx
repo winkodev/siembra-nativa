@@ -136,12 +136,13 @@ function hoyISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, superadmin = false, geneticas = [], franjas = [] }: {
+export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, superadmin = false, geneticas = [], franjas = [], bloqueos = [] }: {
   pedidos: PedidoAdmin[];
   filtroInicial?: string;  // llega por query param (?filtro=armar) desde el dashboard
   superadmin?: boolean;    // habilita "Revertir estado"
   geneticas?: GeneticaDisponible[];  // para el pedido manual
   franjas?: FranjaHoraria[];         // activas, para reprogramar
+  bloqueos?: { fecha: string; franja_id: string | null }[];  // días sin entregas
 }) {
   const [pedidos, setPedidos]     = useState(pedidosIniciales);
   const [modalManual, setModalManual] = useState(false);
@@ -299,7 +300,7 @@ export function AdminPedidosClient({ pedidos: pedidosIniciales, filtroInicial, s
         {modalManual && <PedidoManualModal key="m-manual" geneticas={geneticas} onClose={() => setModalManual(false)} />}
         {modalBolsas && <BolsasModal key="m-bolsas" pedidos={filtrados} onClose={() => setModalBolsas(false)} />}
         {reprogramando && (
-          <ReprogramarModal key="m-reprog" pedido={reprogramando} franjas={franjas}
+          <ReprogramarModal key="m-reprog" pedido={reprogramando} franjas={franjas} bloqueos={bloqueos}
             onClose={() => setReprogramando(null)}
             onDone={(entrega_franja, entrega_fecha) => {
               setPedidos(prev => prev.map(p => p.id === reprogramando.id ? { ...p, entrega_franja, entrega_fecha } : p));

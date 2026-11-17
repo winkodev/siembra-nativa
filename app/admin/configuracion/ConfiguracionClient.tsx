@@ -12,7 +12,8 @@ import {
   crearUbicacion, actualizarUbicacion, eliminarUbicacion, toggleUbicacionActiva, guardarConfigApp,
   crearFranja, actualizarFranja, eliminarFranja, toggleFranjaActiva, guardarDatosPago, probarEmailAviso, guardarCredencialesEmail,
 } from '@/app/actions/configuracion';
-import type { Ubicacion, FranjaHoraria } from '@/lib/types/database';
+import type { Ubicacion, FranjaHoraria, FechaBloqueada } from '@/lib/types/database';
+import { CalendarioEntregas } from '@/components/admin/CalendarioEntregas';
 import type { AppConfig, DatosPago } from '@/lib/supabase/config';
 
 
@@ -32,6 +33,8 @@ const fadeUp  = { hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, tra
 interface Props {
   ubicaciones: Ubicacion[];
   franjas:     FranjaHoraria[];
+  bloqueos:    FechaBloqueada[];           // días/franjas sin entregas (calendario, superadmin)
+  pedidosPorFecha: Record<string, number>;
   config:      AppConfig;
   superadmin:  boolean;
   // Qué métodos de email tienen sus variables cargadas en el servidor
@@ -41,7 +44,7 @@ interface Props {
 }
 
 
-export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin, proveedoresEmail, credencialesEmail }: Props) {
+export function ConfiguracionClient({ ubicaciones, franjas, bloqueos, pedidosPorFecha, config, superadmin, proveedoresEmail, credencialesEmail }: Props) {
   const [tab, setTab] = useState('general');
   const tabsVisibles = superadmin ? [...tabs, tabAvisos, tabPagos] : [...tabs, tabAvisos];
 
@@ -78,7 +81,7 @@ export function ConfiguracionClient({ ubicaciones, franjas, config, superadmin, 
       </div>
 
       {tab === 'general'     && <GeneralTab config={config} />}
-      {tab === 'horarios'    && <FranjasTab franjas={franjas} config={config} />}
+      {tab === 'horarios'    && <FranjasTab franjas={franjas} config={config} superadmin={superadmin} bloqueos={bloqueos} pedidosPorFecha={pedidosPorFecha} />}
       {tab === 'ubicaciones' && <UbicacionesTab ubicaciones={ubicaciones} />}
       {tab === 'avisos' && <AvisosTab config={config} proveedores={proveedoresEmail} credenciales={credencialesEmail} superadmin={superadmin} />}
       {tab === 'pagos' && superadmin && <PagosTab config={config} />}
@@ -376,7 +379,10 @@ function PagosTab({ config }: { config: AppConfig }) {
 
 // ── Tab Horarios (franjas de entrega) ─────────────────────────
 
-function FranjasTab({ franjas: inicial, config }: { franjas: FranjaHoraria[]; config: AppConfig }) {
+function FranjasTab({ franjas: inicial, config, superadmin, bloqueos, pedidosPorFecha }: {
+  franjas: FranjaHoraria[]; config: AppConfig; superadmin: boolean;
+  bloqueos: FechaBloqueada[]; pedidosPorFecha: Record<string, number>;
+}) {
   const [items, setItems]          = useState(inicial);
   const [modal, setModal]          = useState(false);
   const [editando, setEditando]    = useState<FranjaHoraria | null>(null);
@@ -520,6 +526,13 @@ function FranjasTab({ franjas: inicial, config }: { franjas: FranjaHoraria[]; co
             </motion.div>
           ))}
         </div>
+      )}
+
+      {/* Calendario de entregas: bloquear días o franjas puntuales (solo superadmin) */}
+      {superadmin && (
+        <motion.div variants={fadeUp}>
+          <CalendarioEntregas franjas={items} bloqueos={bloqueos} pedidosPorFecha={pedidosPorFecha} />
+        </motion.div>
       )}
 
       {/* Modal crear/editar franja */}

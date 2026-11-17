@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { registrarAccion, registrarActividadSocio } from '@/lib/audit';
 import { avisarAdmins } from '@/lib/email';
 import { registrarCobroPedido, revertirCobroPedido } from '@/lib/tesoreria';
+import { estaBloqueada } from '@/lib/utils';
 import type {
   ActionResponse, CarritoItem, EstadoPedido,
 } from '@/lib/types/database';
@@ -38,6 +39,14 @@ export async function crearPedido(
   // Comprobante obligatorio: se valida en el SERVIDOR (la config se lee acá,
   // no en el navegador) y se sube ANTES de crear el pedido. Si la subida
   // falla, el pedido no se crea: nunca queda un pedido sin comprobante.
+  // Día o franja bloqueados por el club (vacaciones, feriados): se valida antes de subir nada
+  if (fechaEntrega && franjaId) {
+    const { data: bloqueos } = await supabase.from('fechas_bloqueadas').select('fecha, franja_id').eq('fecha', fechaEntrega);
+    if (estaBloqueada(bloqueos ?? [], fechaEntrega, franjaId)) {
+      return { ok: false, error: 'Ese día u horario ya no está disponible. Elegí otro.' };
+    }
+  }
+
   const config = await getAppConfig();
   const archivo = (fdComprobante?.get('comprobante') as File | null) ?? null;
   let comprobantePath: string | null = null;
