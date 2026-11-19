@@ -115,6 +115,7 @@ interface Props {
   movimientos:  MovimientoVista[];
   cuentaCobros: string;
   cobrosFaltantes: number;   // pedidos Listos/Entregados sin ingreso en tesorería
+  potencial: { pedidos: number; monto: number };   // pedidos pendientes, todavía no sumados
   desde:        string;
   hasta:        string;
   errorMsg:     string | null;
@@ -129,7 +130,7 @@ type ModalTipo =
   | { k: 'eliminar'; mov: MovimientoVista }
   | null;
 
-export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimientos, cuentaCobros, cobrosFaltantes, desde: desdeInicial, hasta: hastaInicial, errorMsg }: Props) {
+export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimientos, cuentaCobros, cobrosFaltantes, potencial, desde: desdeInicial, hasta: hastaInicial, errorMsg }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [modal, setModal] = useState<ModalTipo>(null);
@@ -229,6 +230,20 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
           <p className={cn('font-bold text-base', sumaDeudas('a_cobrar', 'USD') > 0 ? 'text-emerald-400' : 'text-foreground')}>{fmt('USD', sumaDeudas('a_cobrar', 'USD'))}</p>
         </motion.div>
       </div>
+
+      {/* Potencial: lo que entraría si se cobran los pedidos pendientes (no suma al saldo real) */}
+      <motion.div variants={fadeUp} className="glass-card px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1 border border-club-dorado/20">
+        <p className="text-sm text-muted-foreground">
+          Pedidos pendientes de cobro: <span className="text-foreground font-semibold">{potencial.pedidos}</span>
+          {' · '}<span className="text-club-dorado font-semibold">{fmt('ARS', potencial.monto)}</span>
+        </p>
+        <p className="text-sm text-muted-foreground sm:ml-auto">
+          Potencial en pesos: <span className="text-foreground font-bold text-base">{fmt('ARS', totalARS + potencial.monto)}</span>
+        </p>
+        <p className="w-full text-[11px] text-muted-foreground/80">
+          Los pendientes entran al saldo real cuando pasan a Listo. Si se cancelan, dejan de contar acá.
+        </p>
+      </motion.div>
 
       {/* Acciones */}
       <motion.div variants={fadeUp} className="flex flex-wrap gap-2">

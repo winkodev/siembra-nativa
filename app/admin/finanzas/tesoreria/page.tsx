@@ -60,12 +60,18 @@ export default async function TesoreriaPage({ searchParams }: Props) {
   }));
 
   // Pedidos cobrados (Listo/Entregado) sin ingreso en tesorería
-  const [{ data: cobrados }, { data: conMov }] = await Promise.all([
+  const [{ data: cobrados }, { data: conMov }, { data: pendientes }] = await Promise.all([
     supabase.from('pedidos').select('id').in('estado', ['aprobado', 'entregado']).gt('monto_total', 0).gte('created_at', config.tes_cobros_desde || '1970-01-01'),
     supabase.from('tes_movimientos').select('pedido_id').not('pedido_id', 'is', null),
+    // Potencial: pedidos pendientes, todavía no sumados (entran al pasar a Listo; si se cancelan, salen)
+    supabase.from('pedidos').select('monto_total').eq('estado', 'pendiente').gt('monto_total', 0),
   ]);
   const yaRegistrados = new Set((conMov ?? []).map(m => m.pedido_id));
   const cobrosFaltantes = (cobrados ?? []).filter(p => !yaRegistrados.has(p.id)).length;
+  const potencial = {
+    pedidos: (pendientes ?? []).length,
+    monto: (pendientes ?? []).reduce((a, p) => a + Number(p.monto_total ?? 0), 0),
+  };
 
   const movimientosVista: MovimientoVista[] = ((movimientos ?? []) as any[]).map(m => ({
     ...(m as TesMovimiento),
@@ -88,6 +94,7 @@ export default async function TesoreriaPage({ searchParams }: Props) {
       movimientos={movimientosVista}
       cuentaCobros={config.tes_cuenta_cobros}
       cobrosFaltantes={cobrosFaltantes}
+      potencial={potencial}
       desde={desde}
       hasta={hasta}
       errorMsg={errSaldos ? 'No se pudo cargar Tesorería. ¿Se ejecutó tesoreria.sql en Supabase?' : null}
