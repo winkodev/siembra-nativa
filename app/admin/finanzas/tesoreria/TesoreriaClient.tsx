@@ -211,7 +211,17 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <motion.div variants={fadeUp} className="glass-card p-4">
           <p className="text-muted-foreground text-xs mb-1">Total en pesos</p>
-          <p className="text-foreground font-bold text-2xl">{fmt('ARS', totalARS)}</p>
+          <div className="space-y-1.5">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Real</p>
+              <p className="text-foreground font-bold text-2xl leading-tight">{fmt('ARS', totalARS)}</p>
+            </div>
+            {/* Real + pedidos pendientes: lo que debería haber si ya cobraste los pendientes */}
+            <div title={`Incluye ${potencial.pedidos} pedido${potencial.pedidos === 1 ? '' : 's'} pendiente${potencial.pedidos === 1 ? '' : 's'}. Si se cancelan, dejan de contar.`}>
+              <p className="text-[10px] uppercase tracking-widest text-club-dorado">Potencial</p>
+              <p className="text-club-dorado font-bold text-2xl leading-tight">{fmt('ARS', totalARS + potencial.monto)}</p>
+            </div>
+          </div>
           <p className="text-[11px] text-muted-foreground mt-1">Período: <span className="text-emerald-400">+{fmt('ARS', flujo.ARS.entra)}</span> · <span className="text-red-400">−{fmt('ARS', flujo.ARS.sale)}</span></p>
         </motion.div>
         <motion.div variants={fadeUp} className="glass-card p-4">
@@ -230,20 +240,6 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
           <p className={cn('font-bold text-base', sumaDeudas('a_cobrar', 'USD') > 0 ? 'text-emerald-400' : 'text-foreground')}>{fmt('USD', sumaDeudas('a_cobrar', 'USD'))}</p>
         </motion.div>
       </div>
-
-      {/* Potencial: lo que entraría si se cobran los pedidos pendientes (no suma al saldo real) */}
-      <motion.div variants={fadeUp} className="glass-card px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-1 border border-club-dorado/20">
-        <p className="text-sm text-muted-foreground">
-          Pedidos pendientes de cobro: <span className="text-foreground font-semibold">{potencial.pedidos}</span>
-          {' · '}<span className="text-club-dorado font-semibold">{fmt('ARS', potencial.monto)}</span>
-        </p>
-        <p className="text-sm text-muted-foreground sm:ml-auto">
-          Potencial en pesos: <span className="text-foreground font-bold text-base">{fmt('ARS', totalARS + potencial.monto)}</span>
-        </p>
-        <p className="w-full text-[11px] text-muted-foreground/80">
-          Los pendientes entran al saldo real cuando pasan a Listo. Si se cancelan, dejan de contar acá.
-        </p>
-      </motion.div>
 
       {/* Acciones */}
       <motion.div variants={fadeUp} className="flex flex-wrap gap-2">
