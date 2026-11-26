@@ -4,12 +4,15 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Wallet, Landmark, Plus, ArrowDownCircle, ArrowUpCircle, ArrowRightLeft, Repeat, HandCoins,
+  Wallet, Landmark, Plus, ArrowDownCircle, ArrowUpCircle, ArrowRightLeft, Repeat, HandCoins, Users,
   Loader2, X, Trash2, Download, AlertTriangle, Pencil, Check, Tag, ChevronDown, Ban,
 } from 'lucide-react';
 import { cn, formatFecha } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Modal, Campo, BotonGuardar } from '@/components/admin/ModalForm';
 import { FinanzasTabs } from '../FinanzasTabs';
+import { PagarSueldoModal } from './PagarSueldoModal';
+import type { PersonalVista } from '@/lib/personal';
 import {
   crearCuenta, editarCuenta, crearMovimiento, crearTransferencia, crearCambio, eliminarMovimiento,
   crearDeuda, anularDeuda, crearCategoria, toggleCategoria, guardarCuentaCobros,
@@ -59,32 +62,6 @@ function descargarCSV(nombre: string, filas: (string | number | null | undefined
   const a = document.createElement('a'); a.href = url; a.download = nombre; a.click(); URL.revokeObjectURL(url);
 }
 
-// Modal genérico
-function Modal({ titulo, icono, onClose, children }: { titulo: string; icono: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
-      <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-        onClick={e => e.stopPropagation()} className="glass-card w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between">
-          <h2 className="font-avigea text-xl text-foreground flex items-center gap-2">{icono} {titulo}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors"><X className="w-5 h-5" /></button>
-        </div>
-        {children}
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function Campo({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="text-sm text-foreground/70 font-medium mb-1.5 block">{label}</label>
-      {children}
-    </div>
-  );
-}
-
 function SelectorMoneda({ value, onChange }: { value: Moneda; onChange: (m: Moneda) => void }) {
   return (
     <div className="flex gap-1 p-1 glass-card rounded-lg w-fit">
@@ -99,14 +76,6 @@ function SelectorMoneda({ value, onChange }: { value: Moneda; onChange: (m: Mone
   );
 }
 
-function BotonGuardar({ pending, label, color = 'btn-primary' }: { pending: boolean; label: string; color?: string }) {
-  return (
-    <button type="submit" disabled={pending} className={cn(color, 'flex-1 py-2.5 flex items-center justify-center gap-2 rounded-xl font-semibold')}>
-      {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : label}
-    </button>
-  );
-}
-
 interface Props {
   cuentas:      TesCuenta[];
   saldos:       TesSaldo[];
@@ -116,6 +85,7 @@ interface Props {
   cuentaCobros: string;
   cobrosFaltantes: number;   // pedidos Listos/Entregados sin ingreso en tesorería
   potencial: { pedidos: number; monto: number };   // pedidos pendientes, todavía no sumados
+  personal:     PersonalVista[];   // empleados activos, para pagar sueldos
   desde:        string;
   hasta:        string;
   errorMsg:     string | null;
@@ -127,10 +97,11 @@ type ModalTipo =
   | { k: 'transferencia' }
   | { k: 'cambio' }
   | { k: 'deuda' }
+  | { k: 'sueldo' }
   | { k: 'eliminar'; mov: MovimientoVista }
   | null;
 
-export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimientos, cuentaCobros, cobrosFaltantes, potencial, desde: desdeInicial, hasta: hastaInicial, errorMsg }: Props) {
+export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimientos, cuentaCobros, cobrosFaltantes, potencial, personal, desde: desdeInicial, hasta: hastaInicial, errorMsg }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [modal, setModal] = useState<ModalTipo>(null);
@@ -258,6 +229,11 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
         <button onClick={() => setModal({ k: 'deuda' })} className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 transition-colors flex items-center gap-2">
           <HandCoins className="w-4 h-4" /> Nueva deuda
         </button>
+        {personal.length > 0 && (
+          <button onClick={() => setModal({ k: 'sueldo' })} disabled={cuentasActivas.length === 0} className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-sky-500/15 border border-sky-500/30 text-sky-300 hover:bg-sky-500/25 transition-colors flex items-center gap-2 disabled:opacity-40">
+            <Users className="w-4 h-4" /> Pagar sueldo
+          </button>
+        )}
         <button onClick={() => setModal({ k: 'cuenta' })} className="ml-auto btn-primary text-sm px-4 py-2.5 flex items-center gap-2">
           <Plus className="w-4 h-4" /> Nueva cuenta
         </button>
@@ -500,6 +476,7 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
         {modal?.k === 'transferencia' && <TransferenciaModal key="m-transf" cuentas={cuentasActivas} onClose={cerrarYRefrescar} />}
         {modal?.k === 'cambio' && <CambioModal key="m-cambio" cuentas={cuentasActivas} onClose={cerrarYRefrescar} />}
         {modal?.k === 'deuda' && <DeudaModal key="m-deuda" onClose={cerrarYRefrescar} />}
+        {modal?.k === 'sueldo' && <PagarSueldoModal key="m-sueldo" personal={personal} cuentas={cuentasActivas} onClose={cerrarYRefrescar} />}
         {modal?.k === 'eliminar' && (
           <Modal key="m-eliminar" titulo="Eliminar movimiento" icono={<Trash2 className="w-5 h-5 text-red-400" />} onClose={() => setModal(null)}>
             <p className="text-sm text-foreground">{modal.mov.concepto}</p>

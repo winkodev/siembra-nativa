@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { registrarAccion } from '@/lib/audit';
-import type { ActionResponse, Tarea, RecurrenciaTarea } from '@/lib/types/database';
+import type { ActionResponse, Tarea, RecurrenciaTarea, Moneda } from '@/lib/types/database';
 
 // Gestión es solo del superadmin (la RLS también lo exige)
 async function superadmin() {
@@ -19,6 +19,19 @@ function fechaValida(f: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(f);
 }
 
+type GastoInput = { recurrencia: RecurrenciaTarea; monto?: number | null; moneda?: Moneda; deuda_id?: string | null };
+// El gasto fijo (para Objetivos) solo aplica a tareas mensuales con monto
+function gastoFijo(i: GastoInput, moneda: Moneda): { monto: number | null; moneda: Moneda; deuda_id: string | null } {
+  const ok = i.recurrencia === 'mensual' && typeof i.monto === 'number' && isFinite(i.monto) && i.monto > 0;
+  return ok ? { monto: i.monto!, moneda, deuda_id: i.deuda_id || null } : { monto: null, moneda: 'ARS', deuda_id: null };
+}
+// La cuota de una deuda va en la moneda de la deuda. null si la deuda no sirve.
+async function monedaGasto(supabase: ReturnType<typeof createClient>, i: GastoInput): Promise<Moneda | null> {
+  if (!i.deuda_id) return i.moneda === 'USD' ? 'USD' : 'ARS';
+  const { data } = await supabase.from('tes_deudas').select('moneda, sentido, anulada').eq('id', i.deuda_id).single();
+  return data && data.sentido === 'a_pagar' && !data.anulada ? data.moneda : null;
+}
+
 // Próxima fecha de una tarea repetitiva: mismo día del mes/año siguiente
 // (si el mes no tiene ese día, cae en el último día: 31/01 → 28/02)
 function siguienteVencimiento(fecha: string, recurrencia: RecurrenciaTarea): string | null {
@@ -30,31 +43,36 @@ function siguienteVencimiento(fecha: string, recurrencia: RecurrenciaTarea): str
   return `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
 }
 
-export async function crearTarea(input: { titulo: string; notas?: string; vence_at: string; recurrencia: RecurrenciaTarea }): Promise<ActionResponse<Tarea>> {
+export async function crearTarea(input: { titulo: string; notas?: string; vence_at: string; recurrencia: RecurrenciaTarea; monto?: number | null; moneda?: Moneda; deuda_id?: string | null }): Promise<ActionResponse<Tarea>> {
   const s = await superadmin();
   if (!s) return NO_AUTORIZADO;
   const titulo = input.titulo.trim();
   if (!titulo) return { ok: false, error: 'Poné un título' };
   if (!fechaValida(input.vence_at)) return { ok: false, error: 'Fecha inválida' };
+  const moneda = await monedaGasto(s.supabase, input);
+  if (!moneda) return { ok: false, error: 'La deuda elegida no existe o está anulada' };
 
   const { data, error } = await s.supabase.from('tareas').insert({
-    titulo, notas: input.notas?.trim() || null, vence_at: input.vence_at, recurrencia: input.recurrencia,
+    titulo, notas: input.notas?.trim() || null, vence_at: input.vence_at, recurrencia: input.recurrencia, ...gastoFijo(input, moneda),
     serie_id: input.recurrencia !== 'ninguna' ? crypto.randomUUID() : null, created_by: s.userId,
   }).select('*').single();
-  if (error || !data) return { ok: false, error: 'Error al crear la tarea. ¿Se ejecutó gestion-tareas.sql?' };
+  if (error || !data) return { ok: false, error: 'Error al crear la tarea. ¿Se ejecutó gastos-fijos-moneda.sql?' };
 
   await registrarAccion(s.supabase, 'tarea_crear', 'gestion', { titulo, vence_at: input.vence_at, recurrencia: input.recurrencia });
   revalidatePath('/admin/gestion');
   revalidatePath('/admin/dashboard');
+  revalidatePath('/admin/finanzas/objetivos');
   return { ok: true, data };
 }
 
-export async function editarTarea(id: string, input: { titulo: string; notas?: string; vence_at: string; recurrencia: RecurrenciaTarea }): Promise<ActionResponse> {
+export async function editarTarea(id: string, input: { titulo: string; notas?: string; vence_at: string; recurrencia: RecurrenciaTarea; monto?: number | null; moneda?: Moneda; deuda_id?: string | null }): Promise<ActionResponse> {
   const s = await superadmin();
   if (!s) return NO_AUTORIZADO;
   const titulo = input.titulo.trim();
   if (!titulo) return { ok: false, error: 'Poné un título' };
   if (!fechaValida(input.vence_at)) return { ok: false, error: 'Fecha inválida' };
+  const moneda = await monedaGasto(s.supabase, input);
+  if (!moneda) return { ok: false, error: 'La deuda elegida no existe o está anulada' };
 
   const { data: actual } = await s.supabase.from('tareas').select('serie_id, recurrencia').eq('id', id).single();
   if (!actual) return { ok: false, error: 'Tarea no encontrada' };
@@ -62,13 +80,14 @@ export async function editarTarea(id: string, input: { titulo: string; notas?: s
   const serie_id = input.recurrencia === 'ninguna' ? null : (actual.serie_id ?? crypto.randomUUID());
 
   const { error } = await s.supabase.from('tareas')
-    .update({ titulo, notas: input.notas?.trim() || null, vence_at: input.vence_at, recurrencia: input.recurrencia, serie_id })
+    .update({ titulo, notas: input.notas?.trim() || null, vence_at: input.vence_at, recurrencia: input.recurrencia, ...gastoFijo(input, moneda), serie_id })
     .eq('id', id);
   if (error) return { ok: false, error: 'Error al editar la tarea' };
 
   await registrarAccion(s.supabase, 'tarea_editar', 'gestion', { titulo });
   revalidatePath('/admin/gestion');
   revalidatePath('/admin/dashboard');
+  revalidatePath('/admin/finanzas/objetivos');
   return { ok: true, data: undefined };
 }
 
@@ -89,7 +108,7 @@ export async function completarTarea(id: string): Promise<ActionResponse<{ sigui
     const { data: yaHay } = await s.supabase.from('tareas').select('id').eq('serie_id', t.serie_id).is('hecha_at', null).limit(1);
     if (!yaHay || yaHay.length === 0) {
       const { data: nueva } = await s.supabase.from('tareas').insert({
-        titulo: t.titulo, notas: t.notas, vence_at: prox, recurrencia: t.recurrencia, serie_id: t.serie_id, created_by: s.userId,
+        titulo: t.titulo, notas: t.notas, vence_at: prox, recurrencia: t.recurrencia, monto: t.monto, moneda: t.moneda, deuda_id: t.deuda_id, serie_id: t.serie_id, created_by: s.userId,
       }).select('*').single();
       siguiente = nueva ?? null;
     }
@@ -98,6 +117,7 @@ export async function completarTarea(id: string): Promise<ActionResponse<{ sigui
   await registrarAccion(s.supabase, 'tarea_hecha', 'gestion', { titulo: t.titulo, vence_at: t.vence_at, siguiente: prox });
   revalidatePath('/admin/gestion');
   revalidatePath('/admin/dashboard');
+  revalidatePath('/admin/finanzas/objetivos');
   return { ok: true, data: { siguiente } };
 }
 
@@ -108,6 +128,7 @@ export async function reabrirTarea(id: string): Promise<ActionResponse> {
   if (error) return { ok: false, error: 'Error al reabrir la tarea' };
   revalidatePath('/admin/gestion');
   revalidatePath('/admin/dashboard');
+  revalidatePath('/admin/finanzas/objetivos');
   return { ok: true, data: undefined };
 }
 
@@ -127,5 +148,6 @@ export async function eliminarTarea(id: string, serie = false): Promise<ActionRe
   await registrarAccion(s.supabase, 'tarea_eliminar', 'gestion', { titulo: t.titulo, serie });
   revalidatePath('/admin/gestion');
   revalidatePath('/admin/dashboard');
+  revalidatePath('/admin/finanzas/objetivos');
   return { ok: true, data: undefined };
 }

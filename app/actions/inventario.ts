@@ -158,6 +158,18 @@ const stockSchema = z.object({
   fecha_ingreso:   z.string().refine(v => !isNaN(Date.parse(v)), 'Fecha inválida'),
 });
 
+// Costo del ingreso: solo lo pagado por gramo, en pesos o dólares
+const numero = z.string().optional().transform(v => (v ? parseFloat(v) : NaN));
+const costoSchema = z.object({
+  costo_gramo:      numero.pipe(z.number({ message: 'Indicá el costo por gramo' }).positive('El costo por gramo debe ser mayor a 0')),
+  costo_moneda:     z.enum(['ARS', 'USD']),
+  costo_cotizacion: numero.transform(n => (n > 0 ? n : null)),
+}).refine(c => c.costo_moneda === 'ARS' || c.costo_cotizacion, 'Indicá la cotización del dólar');
+const compraSchema = z.object({
+  proveedor: z.string().trim().min(1, 'Indicá a quién se le compró'),
+  vence_at:  z.string().optional().transform(v => v || null),
+});
+
 export async function agregarStock(
   prevState: ActionResponse,
   formData: FormData
@@ -170,15 +182,28 @@ export async function agregarStock(
   const parsed = stockSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: parsed.error.errors[0].message };
 
-  const { error } = await supabase.from('stock').insert(parsed.data);
-  if (error) return { ok: false, error: 'Error al registrar el ingreso de stock' };
+  const costo = costoSchema.safeParse(raw);
+  if (!costo.success) return { ok: false, error: costo.error.errors[0].message };
+  const compra = compraSchema.safeParse(raw);
+  if (!compra.success) return { ok: false, error: compra.error.errors[0].message };
+
+  // La base crea el lote y la deuda del club juntos
+  const { error } = await supabase.rpc('ingresar_stock', {
+    p_genetica_id: parsed.data.genetica_id, p_gramos: parsed.data.cantidad_gramos,
+    p_ubicacion: parsed.data.ubicacion, p_lote: parsed.data.lote, p_fecha: parsed.data.fecha_ingreso,
+    p_moneda: costo.data.costo_moneda, p_costo_gramo: costo.data.costo_gramo, p_cotizacion: costo.data.costo_cotizacion,
+    p_proveedor: compra.data.proveedor, p_vence: compra.data.vence_at,
+  });
+  if (error) return { ok: false, error: error.message };
 
   await registrarAccion(supabase, 'agregar_stock', 'stock', {
     genetica_id: parsed.data.genetica_id,
     cantidad_gramos: parsed.data.cantidad_gramos,
     lote: parsed.data.lote,
+    costo_gramo: costo.data.costo_gramo, moneda: costo.data.costo_moneda, proveedor: compra.data.proveedor,
   });
   revalidatePath('/admin/inventario');
+  revalidatePath('/admin/finanzas', 'layout');
   return { ok: true, data: undefined };
 }
 
@@ -200,7 +225,7 @@ export async function editarStock(
   // (restante nuevo = ingresado nuevo − consumido hasta ahora)
   const { data: actual } = await supabase
     .from('stock')
-    .select('cantidad_inicial, cantidad_gramos')
+    .select('cantidad_inicial, cantidad_gramos, costo_gramo, genetica_id')
     .eq('id', id)
     .single();
 
@@ -211,6 +236,19 @@ export async function editarStock(
 
   if (nuevoIngresado < consumido) {
     return { ok: false, error: `Este lote ya dispensó ${consumido}g: el ingreso no puede ser menor a eso.` };
+  }
+
+  // Lote con costo: primero se corrige el costo y la deuda (valida lo ya pagado)
+  if (actual.costo_gramo != null) {
+    if (parsed.data.genetica_id !== actual.genetica_id && consumido > 0) {
+      return { ok: false, error: 'Este lote ya tuvo salidas: no se puede cambiar la genética.' };
+    }
+    const costo = costoSchema.safeParse(raw);
+    if (!costo.success) return { ok: false, error: costo.error.errors[0].message };
+    const { error: errCosto } = await supabase.rpc('corregir_costo_lote', {
+      p_stock_id: id, p_gramos: nuevoIngresado, p_costo_gramo: costo.data.costo_gramo, p_cotizacion: costo.data.costo_cotizacion,
+    });
+    if (errCosto) return { ok: false, error: errCosto.message };
   }
 
   const { error } = await supabase
@@ -280,8 +318,20 @@ export async function eliminarStock(id: string): Promise<ActionResponse> {
   if (!(await esSuperadmin(supabase))) {
     return { ok: false, error: 'Solo el superadmin puede eliminar ingresos de stock' };
   }
+  // La deuda de la compra se anula con el ingreso, salvo que ya tenga pagos
+  const { data: lote } = await supabase.from('stock').select('deuda_id').eq('id', id).maybeSingle();
+  if (lote?.deuda_id) {
+    const { data: pagos } = await supabase.from('tes_movimientos').select('id').eq('deuda_id', lote.deuda_id).limit(1);
+    if (pagos && pagos.length > 0) {
+      return { ok: false, error: 'La compra de este lote ya tiene pagos: eliminá primero esos movimientos en Tesorería' };
+    }
+  }
   const { error } = await supabase.from('stock').delete().eq('id', id);
   if (error) return { ok: false, error: 'Error al eliminar el registro' };
+  if (lote?.deuda_id) {
+    const { error: errDeuda } = await supabase.from('tes_deudas').update({ anulada: true }).eq('id', lote.deuda_id);
+    if (errDeuda) return { ok: false, error: 'El ingreso se eliminó pero no se pudo anular su deuda: anulala en Tesorería' };
+  }
 
   await registrarAccion(supabase, 'eliminar_stock', 'stock', { id });
   revalidatePath('/admin/inventario');

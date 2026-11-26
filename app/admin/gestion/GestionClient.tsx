@@ -4,10 +4,11 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ClipboardCheck, Plus, X, Loader2, Check, Pencil, Trash2, Repeat, AlertTriangle, ChevronDown, RotateCcw } from 'lucide-react';
-import { cn, formatFecha } from '@/lib/utils';
+import { GestionTabs } from './GestionTabs';
+import { cn, formatFecha, formatPrecio } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { crearTarea, editarTarea, completarTarea, reabrirTarea, eliminarTarea } from '@/app/actions/tareas';
-import type { Tarea, RecurrenciaTarea } from '@/lib/types/database';
+import type { Tarea, RecurrenciaTarea, Moneda } from '@/lib/types/database';
 
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
 const fadeUp  = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
@@ -37,9 +38,13 @@ const BLOQUES: { k: Bloque; label: string; color: string; borde: string }[] = [
   { k: 'proximas', label: 'Próximas',    color: 'text-foreground',  borde: 'border-white/15' },
 ];
 
-interface Props { tareas: Tarea[]; errorMsg: string | null }
+// Deuda del club con saldo pendiente
+export interface DeudaCuota { id: string; acreedor: string; moneda: Moneda; saldo: number }
+const fmtMonto = (moneda: Moneda, n: number) => moneda === 'USD' ? `US$ ${n.toLocaleString('es-AR')}` : formatPrecio(n);
 
-export function GestionClient({ tareas, errorMsg }: Props) {
+interface Props { tareas: Tarea[]; deudas: DeudaCuota[]; errorMsg: string | null }
+
+export function GestionClient({ tareas, deudas, errorMsg }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [modal, setModal] = useState<{ tarea?: Tarea } | null>(null);
@@ -89,6 +94,7 @@ export function GestionClient({ tareas, errorMsg }: Props) {
         {t.notas && <p className="text-muted-foreground text-xs mt-0.5 whitespace-pre-wrap">{t.notas}</p>}
         <p className="text-muted-foreground text-[11px] mt-1">
           Vence {formatFecha(t.vence_at, "EEEE d 'de' MMMM")}
+          {t.monto != null && <> · <span className="text-club-dorado">{fmtMonto(t.moneda, Number(t.monto))}</span></>}
           {hecha && t.hecha_at && <> · hecha el {formatFecha(t.hecha_at, 'dd/MM/yyyy')}</>}
         </p>
       </div>
@@ -108,6 +114,7 @@ export function GestionClient({ tareas, errorMsg }: Props) {
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
       <PageHeader icon={<ClipboardCheck className="w-5 h-5" />} title="Gestión" subtitle="Tareas del club con vencimiento · solo superadmin"
         action={<button onClick={() => setModal({})} className="btn-primary text-sm px-4 py-2.5 flex items-center gap-2"><Plus className="w-4 h-4" /> Nueva tarea</button>} />
+      <GestionTabs />
 
       {errorMsg && (
         <motion.div variants={fadeUp} className="glass-card p-5 flex items-center gap-3 text-red-300"><AlertTriangle className="w-5 h-5 shrink-0" /><p className="text-sm">{errorMsg}</p></motion.div>
@@ -145,7 +152,7 @@ export function GestionClient({ tareas, errorMsg }: Props) {
         </motion.div>
       )}
 
-      {modal && <TareaModal tarea={modal.tarea} onClose={() => { setModal(null); router.refresh(); }} />}
+      {modal && <TareaModal tarea={modal.tarea} deudas={deudas} onClose={() => { setModal(null); router.refresh(); }} />}
 
       {confirmar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setConfirmar(null)}>
@@ -167,20 +174,23 @@ export function GestionClient({ tareas, errorMsg }: Props) {
   );
 }
 
-function TareaModal({ tarea, onClose }: { tarea?: Tarea; onClose: () => void }) {
+function TareaModal({ tarea, deudas, onClose }: { tarea?: Tarea; deudas: DeudaCuota[]; onClose: () => void }) {
   const [titulo, setTitulo] = useState(tarea?.titulo ?? '');
   const [notas, setNotas] = useState(tarea?.notas ?? '');
   const [vence, setVence] = useState(tarea?.vence_at ?? hoyISO());
   const [recurrencia, setRecurrencia] = useState<RecurrenciaTarea>(tarea?.recurrencia ?? 'ninguna');
+  const [moneda, setMoneda] = useState<Moneda>(tarea?.moneda ?? 'ARS');
+  const [deudaId, setDeudaId] = useState(tarea?.deuda_id ?? '');
+  const deuda = deudas.find(d => d.id === deudaId);
+  const [monto, setMonto] = useState(tarea?.monto != null ? String(tarea.monto) : '');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPending(true); setError(null);
-    const res = tarea
-      ? await editarTarea(tarea.id, { titulo, notas, vence_at: vence, recurrencia })
-      : await crearTarea({ titulo, notas, vence_at: vence, recurrencia });
+    const datos = { titulo, notas, vence_at: vence, recurrencia, monto: parseFloat(monto) || null, moneda, deuda_id: deudaId || null };
+    const res = tarea ? await editarTarea(tarea.id, datos) : await crearTarea(datos);
     setPending(false);
     if (!res.ok) { setError(res.error); return; }
     onClose();
@@ -215,6 +225,34 @@ function TareaModal({ tarea, onClose }: { tarea?: Tarea; onClose: () => void }) 
               </select>
             </div>
           </div>
+          {recurrencia === 'mensual' && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Monto por mes</label>
+                  <input type="number" min="0" step="0.01" value={monto} onChange={e => setMonto(e.target.value)} className="input-club w-full" placeholder="Opcional" />
+                </div>
+                <div>
+                  <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Moneda</label>
+                  <select value={deuda?.moneda ?? moneda} disabled={Boolean(deuda)} onChange={e => setMoneda(e.target.value as Moneda)} className="input-club w-full bg-club-verde-medio appearance-none cursor-pointer disabled:opacity-60">
+                    <option value="ARS">Pesos</option>
+                    <option value="USD">Dólares</option>
+                  </select>
+                </div>
+              </div>
+              {(deudas.length > 0 || deudaId) && (
+                <div>
+                  <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Es la cuota de una deuda</label>
+                  <select value={deudaId} onChange={e => setDeudaId(e.target.value)} className="input-club w-full bg-club-verde-medio appearance-none cursor-pointer">
+                    <option value="">No</option>
+                    {deudaId && !deuda && <option value={deudaId}>Deuda saldada o anulada</option>}
+                    {deudas.map(d => <option key={d.id} value={d.id}>{d.acreedor} · debemos {fmtMonto(d.moneda, d.saldo)}</option>)}
+                  </select>
+                </div>
+              )}
+              <p className="text-muted-foreground text-[11px] mt-1">Si es un gasto fijo, cuenta en Objetivos. Los sueldos ya se cuentan solos.</p>
+            </div>
+          )}
           {recurrencia !== 'ninguna' && (
             <p className="text-muted-foreground text-[11px]">Al marcarla hecha se crea sola la del {recurrencia === 'mensual' ? 'mes' : 'año'} siguiente, mismo día.</p>
           )}

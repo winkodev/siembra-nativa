@@ -8,7 +8,7 @@ import {
   CheckCircle2, CalendarDays, MapPin, Tag, Search, ArrowRightLeft, MinusCircle,
 } from 'lucide-react';
 import { agregarStock, editarStock, eliminarStock, moverStockUbicacion, egresoManualStock } from '@/app/actions/inventario';
-import { cn, formatFecha, formatGramos, labelTipo } from '@/lib/utils';
+import { cn, formatFecha, formatGramos, formatPrecio, labelTipo } from '@/lib/utils';
 import type { Genetica, Stock, Ubicacion, ActionResponse, EgresoStock } from '@/lib/types/database';
 
 type StockConGenetica = Stock & { geneticas: { nombre: string; tipo: string } };
@@ -59,6 +59,14 @@ function StockModal({ stockItem, geneticas, ubicaciones, loteSugerido, onClose }
 
   const [state, formAction] = useFormState(action, initial);
 
+  // Costo: obligatorio en ingresos nuevos; los lotes anteriores no tienen
+  const conCosto = !isEdit || stockItem.costo_gramo != null;
+  const [gramos, setGramos]         = useState(String(stockItem?.cantidad_inicial ?? ''));
+  const [moneda, setMoneda]         = useState<'ARS' | 'USD'>(stockItem?.costo_moneda ?? 'ARS');
+  const [costo, setCosto]           = useState(String(stockItem?.costo_gramo ?? ''));
+  const [cotizacion, setCotizacion] = useState(String(stockItem?.costo_cotizacion ?? ''));
+  const total = (parseFloat(gramos) || 0) * (parseFloat(costo) || 0);
+
   if (state?.ok && state !== initial) {
     onClose();
     return null;
@@ -69,7 +77,7 @@ function StockModal({ stockItem, geneticas, ubicaciones, loteSugerido, onClose }
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="glass-card w-full max-w-md p-6"
+        className="glass-card w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-avigea text-xl text-foreground">
@@ -113,7 +121,8 @@ function StockModal({ stockItem, geneticas, ubicaciones, loteSugerido, onClose }
               step="0.1"
               min="0.1"
               required
-              defaultValue={stockItem?.cantidad_inicial ?? stockItem?.cantidad_gramos ?? ''}
+              value={gramos}
+              onChange={e => setGramos(e.target.value)}
               className="input-club w-full"
               placeholder="500"
             />
@@ -123,6 +132,57 @@ function StockModal({ stockItem, geneticas, ubicaciones, loteSugerido, onClose }
               </p>
             )}
           </div>
+
+          {/* Costo: solo lo pagado por gramo */}
+          {conCosto && (
+            <div className="space-y-3 rounded-xl border border-club-verde-claro/30 p-3">
+              <div className="space-y-1.5">
+                <label className="text-sm text-foreground/80 font-medium">Costo por gramo *</label>
+                <div className="flex gap-2">
+                  <input name="costo_moneda" type="hidden" value={moneda} />
+                  <div className="flex gap-1 p-1 glass-card rounded-lg shrink-0">
+                    {(['ARS', 'USD'] as const).map(m => (
+                      <button key={m} type="button" disabled={isEdit} onClick={() => setMoneda(m)}
+                        className={cn('px-3 rounded-md text-xs font-semibold transition-all',
+                          moneda === m ? 'bg-club-dorado text-club-verde' : 'text-muted-foreground hover:text-foreground')}>
+                        {m === 'ARS' ? 'Pesos' : 'Dólares'}
+                      </button>
+                    ))}
+                  </div>
+                  <input name="costo_gramo" type="number" step="0.0001" min="0.0001" required value={costo}
+                    onChange={e => setCosto(e.target.value)} className="input-club w-full" placeholder={moneda === 'ARS' ? '1500' : '1.20'} />
+                </div>
+              </div>
+              {moneda === 'USD' && (
+                <div className="space-y-1.5">
+                  <label className="text-sm text-foreground/80 font-medium">Cotización: pesos por dólar *</label>
+                  <input name="costo_cotizacion" type="number" step="0.01" min="0.01" required value={cotizacion}
+                    onChange={e => setCotizacion(e.target.value)} className="input-club w-full" />
+                </div>
+              )}
+              {!isEdit && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm text-foreground/80 font-medium">Comprado a *</label>
+                    <input name="proveedor" type="text" required className="input-club w-full" placeholder="Proveedor" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm text-foreground/80 font-medium">Pagar antes de</label>
+                    <input name="vence_at" type="date" className="input-club w-full" />
+                  </div>
+                </div>
+              )}
+              {total > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  El club queda debiendo{' '}
+                  <span className="text-club-dorado font-semibold">
+                    {moneda === 'USD' ? `US$ ${total.toLocaleString('es-AR', { maximumFractionDigits: 2 })}` : formatPrecio(total)}
+                  </span>
+                  {isEdit && stockItem.proveedor ? ` a ${stockItem.proveedor}` : ''}.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Lote + Ubicación */}
           <div className="grid grid-cols-2 gap-3">

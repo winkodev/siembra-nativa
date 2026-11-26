@@ -1,7 +1,7 @@
 import { createClient, getProfile } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { FinanzasClient } from './FinanzasClient';
-import type { FinanzasClub } from '@/lib/types/database';
+import type { FinanzasClub, GananciaFlores } from '@/lib/types/database';
 
 export const metadata = { title: 'Finanzas' };
 
@@ -39,16 +39,19 @@ export default async function FinanzasPage({ searchParams }: Props) {
   const filtroEstados: FiltroEstados = (searchParams.estados && searchParams.estados in PRESETS_ESTADOS) ? searchParams.estados : 'cobrados';
 
   const supabase = createClient();
-  const { data, error } = await supabase.rpc('finanzas_club', {
+  const [{ data, error }, { data: ganancia }] = await Promise.all([supabase.rpc('finanzas_club', {
     p_desde:      desde.toISOString(),
     p_hasta:      hasta.toISOString(),
     p_estados:    PRESETS_ESTADOS[filtroEstados],
     p_agrupacion: agrupacion,
-  });
+  }), supabase.rpc('ganancia_flores', {
+    p_desde: desde.toISOString(), p_hasta: hasta.toISOString(), p_estados: PRESETS_ESTADOS[filtroEstados],
+  })]);
 
   return (
     <FinanzasClient
       datos={error ? null : (data as FinanzasClub)}
+      ganancia={(ganancia ?? null) as GananciaFlores | null}
       desde={iso(desde)}
       hasta={iso(hasta)}
       agrupacion={agrupacion}

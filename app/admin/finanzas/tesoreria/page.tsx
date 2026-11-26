@@ -1,5 +1,6 @@
 import { createClient, getProfile } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { cargarPersonal } from '@/lib/personal-datos';
 import { getAppConfig } from '@/lib/supabase/config';
 import { TesoreriaClient, type MovimientoVista, type DeudaVista } from './TesoreriaClient';
 import type { TesCuenta, TesCategoria, TesSaldo, TesDeuda, TesMovimiento } from '@/lib/types/database';
@@ -28,7 +29,7 @@ export default async function TesoreriaPage({ searchParams }: Props) {
 
   const supabase = createClient();
   const [
-    { data: cuentas }, { data: saldos, error: errSaldos }, { data: categorias }, { data: deudas }, { data: pagos }, { data: movimientos }, config,
+    { data: cuentas }, { data: saldos, error: errSaldos }, { data: categorias }, { data: deudas }, { data: pagos }, { data: movimientos }, config, personal,
   ] = await Promise.all([
     supabase.from('tes_cuentas').select('*').order('orden').order('created_at'),
     supabase.rpc('tes_saldos'),
@@ -45,6 +46,7 @@ export default async function TesoreriaPage({ searchParams }: Props) {
       .order('created_at', { ascending: false })
       .limit(1000),
     getAppConfig(),
+    cargarPersonal(supabase),
   ]);
 
   // Saldo pendiente por deuda = monto − pagos
@@ -95,6 +97,7 @@ export default async function TesoreriaPage({ searchParams }: Props) {
       cuentaCobros={config.tes_cuenta_cobros}
       cobrosFaltantes={cobrosFaltantes}
       potencial={potencial}
+      personal={(personal ?? []).filter(p => p.tipo === 'empleado' && p.activo)}
       desde={desde}
       hasta={hasta}
       errorMsg={errSaldos ? 'No se pudo cargar Tesorería. ¿Se ejecutó tesoreria.sql en Supabase?' : null}

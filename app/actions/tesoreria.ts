@@ -172,6 +172,9 @@ export async function eliminarMovimiento(id: string): Promise<ActionResponse> {
   if (!s) return NO_AUTORIZADO;
   const { data: mov } = await s.supabase.from('tes_movimientos').select('tipo, concepto, moneda, monto, pedido_id').eq('id', id).single();
   if (!mov) return { ok: false, error: 'Movimiento no encontrado' };
+  // El pago de un sueldo se anula desde Personal (reabre los retiros descontados)
+  const { data: pago } = await s.supabase.from('personal_pagos').select('id').eq('movimiento_id', id).maybeSingle();
+  if (pago) return { ok: false, error: 'Es el pago de un sueldo: anulalo desde Gestión → Personal' };
   const { error } = await s.supabase.from('tes_movimientos').delete().eq('id', id);
   if (error) return { ok: false, error: 'Error al eliminar el movimiento' };
   await registrarAccion(s.supabase, 'tes_eliminar_movimiento', 'tesoreria', { tipo: mov.tipo, concepto: mov.concepto, moneda: mov.moneda, monto: mov.monto, pedido_id: mov.pedido_id });
@@ -204,6 +207,13 @@ export async function crearDeuda(input: { acreedor: string; sentido: 'a_pagar' |
 export async function anularDeuda(id: string): Promise<ActionResponse> {
   const s = await superadmin();
   if (!s) return NO_AUTORIZADO;
+  // Las deudas automáticas se anulan desde su origen, si no quedan desparejas
+  const [{ data: retiro }, { data: lote }] = await Promise.all([
+    s.supabase.from('personal_retiros').select('id').eq('deuda_id', id).maybeSingle(),
+    s.supabase.from('stock').select('id').eq('deuda_id', id).maybeSingle(),
+  ]);
+  if (retiro) return { ok: false, error: 'Viene de un retiro: anulalo desde Gestión → Personal' };
+  if (lote) return { ok: false, error: 'Viene de un ingreso de stock: eliminá el ingreso desde Inventario' };
   const { error } = await s.supabase.from('tes_deudas').update({ anulada: true }).eq('id', id);
   if (error) return { ok: false, error: 'Error al anular la deuda' };
   await registrarAccion(s.supabase, 'tes_anular_deuda', 'tesoreria', { deuda_id: id });

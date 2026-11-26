@@ -457,3 +457,15 @@ Decisiones: cuentas con saldo en ARS y USD; cobros de pedidos automáticos a cue
 - [x] Admin → Newsletter → pestaña Anuncios: publicar (título, mensaje, destinatarios, hasta), vista previa, vistos por anuncio, desactivar/reactivar
 - [x] Socio: popup "Aviso del club" al entrar, una vez por anuncio, "Entendido"; copia en la campana; orden anuncios → cupón (PopupsSocio)
 - [x] Desplegado
+
+## 🟡 2026-11-25 (solo local, sin commitear): Personal, costos y objetivos
+
+- [x] SQL `supabase/personal-costos-objetivos.sql` escrito y probado en Postgres descartable (PGlite)
+- [ ] SQL ejecutado en Supabase
+- [x] Gestión → Personal: alta desde usuarios admin, sueldos, aumentos en %, retiros, pagos e historial con anulación
+- [x] Tesorería: "Pagar sueldo" (sueldo o aguinaldo, extra, parcial, descuento de retiros)
+- [x] Inventario: costo por gramo obligatorio en ingresos nuevos; crea la deuda del club
+- [x] Salidas anotan el lote de origen; ganancia real por genética y pedido en Ventas
+- [x] Finanzas → Objetivos + tarjeta en el dashboard; monto en tareas mensuales
+- [ ] Prueba del usuario en local
+- [ ] Commit y despliegue (solo a pedido)

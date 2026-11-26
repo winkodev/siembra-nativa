@@ -11,7 +11,8 @@ import {
 import { cn, formatFecha, formatGramos, formatPrecio, formatNumeroPedido } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { FinanzasTabs } from './FinanzasTabs';
-import type { FinanzasClub } from '@/lib/types/database';
+import { GananciaFloresCard } from './GananciaFloresCard';
+import type { FinanzasClub, GananciaFlores } from '@/lib/types/database';
 import type { AgrupacionFin, FiltroEstados } from './page';
 
 // Colores de la marca sobre fondo verde oscuro (mismos que Estadísticas)
@@ -93,6 +94,7 @@ function Kpi({ icono, label, valor, sub }: { icono: React.ReactNode; label: stri
 
 interface Props {
   datos:         FinanzasClub | null;
+  ganancia:     GananciaFlores | null;   // solo flores de lotes con costo
   desde:         string;
   hasta:         string;
   agrupacion:    AgrupacionFin;
@@ -100,7 +102,7 @@ interface Props {
   errorMsg:      string | null;
 }
 
-export function FinanzasClient({ datos, desde: desdeInicial, hasta: hastaInicial, agrupacion, filtroEstados, errorMsg }: Props) {
+export function FinanzasClient({ datos, ganancia, desde: desdeInicial, hasta: hastaInicial, agrupacion, filtroEstados, errorMsg }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [desde, setDesde] = useState(desdeInicial);
@@ -341,6 +343,8 @@ export function FinanzasClient({ datos, desde: desdeInicial, hasta: hastaInicial
               )}
             </motion.div>
           </div>
+
+          {ganancia && ganancia.pedidos.length > 0 && <GananciaFloresCard ganancia={ganancia} />}
 
           {/* Pedidos del período */}
           <motion.div variants={fadeUp} className="glass-card p-5">

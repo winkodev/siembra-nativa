@@ -70,6 +70,7 @@ export interface Genetica {
   precio_gramo: number | null;
   banco: string | null;   // semillera (se muestra "Nombre by Banco")
   novedad: boolean;       // cinta "NOVEDAD" en el catálogo
+  reponer: boolean;       // cuenta para el objetivo de reposición
   activa: boolean;
   created_at: string;
   updated_at: string;
@@ -83,6 +84,13 @@ export interface Stock {
   ubicacion: string | null;
   lote: string | null;
   fecha_ingreso: string;
+  // Costo: solo lo pagado por gramo. NULL en los lotes cargados antes
+  costo_moneda: Moneda | null;
+  costo_gramo: number | null;
+  costo_cotizacion: number | null;   // pesos por dólar (solo compras en USD)
+  costo_gramo_ars: number | null;
+  proveedor: string | null;
+  deuda_id: string | null;           // deuda del club generada por la compra
   created_at: string;
   updated_at: string;
 }
@@ -511,6 +519,24 @@ export interface Database {
         Update: Partial<Omit<Tarea, 'id' | 'created_at'>>;
         Relationships: [];
       };
+      personal: {
+        Row: Personal;
+        Insert: Partial<Omit<Personal, 'id' | 'created_at'>> & { nombre: string; tipo: TipoPersonal; fecha_ingreso: string };
+        Update: Partial<Omit<Personal, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      personal_sueldos: {
+        Row: PersonalSueldo;
+        Insert: Partial<Omit<PersonalSueldo, 'id' | 'created_at'>> & { personal_id: string; desde: string; monto: number };
+        Update: Partial<Omit<PersonalSueldo, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      // Pagos, retiros y aplicaciones se escriben solo por RPC
+      personal_pagos: { Row: PersonalPago; Insert: Partial<PersonalPago>; Update: Partial<PersonalPago>; Relationships: [] };
+      personal_retiros: { Row: PersonalRetiro; Insert: Partial<PersonalRetiro>; Update: Partial<PersonalRetiro>; Relationships: [] };
+      personal_retiro_aplicaciones: {
+        Row: PersonalRetiroAplicacion; Insert: Partial<PersonalRetiroAplicacion>; Update: Partial<PersonalRetiroAplicacion>; Relationships: [];
+      };
       fechas_bloqueadas: {
         Row: FechaBloqueada;
         Insert: Partial<Omit<FechaBloqueada, 'id' | 'created_at'>> & { fecha: string };
@@ -573,6 +599,35 @@ export interface Database {
       egreso_manual_stock: {
         Args: { p_genetica_id: string; p_gramos: number; p_motivo: string };
         Returns: string;
+      };
+      ingresar_stock: {
+        Args: {
+          p_genetica_id: string; p_gramos: number; p_ubicacion: string | null; p_lote: string | null; p_fecha: string;
+          p_moneda: Moneda; p_costo_gramo: number; p_cotizacion: number | null; p_proveedor: string; p_vence: string | null;
+        };
+        Returns: string;
+      };
+      corregir_costo_lote: {
+        Args: { p_stock_id: string; p_gramos: number; p_costo_gramo: number; p_cotizacion: number | null };
+        Returns: void;
+      };
+      registrar_retiro_personal: {
+        Args: { p_personal_id: string; p_genetica_id: string; p_gramos: number; p_precio: number; p_fecha: string; p_nota: string | null };
+        Returns: string;
+      };
+      anular_retiro_personal: { Args: { p_retiro_id: string }; Returns: void };
+      pagar_personal: {
+        Args: {
+          p_personal_id: string; p_tipo: TipoPagoPersonal; p_periodo: string; p_base: number | null; p_extra: number;
+          p_retiros: number; p_monto: number; p_cuenta_id: string | null; p_fecha: string; p_nota: string | null;
+        };
+        Returns: string;
+      };
+      anular_pago_personal: { Args: { p_pago_id: string }; Returns: void };
+      objetivo_reposicion: { Args: Record<string, never>; Returns: ReposicionGenetica[] };
+      ganancia_flores: {
+        Args: { p_desde: string; p_hasta: string; p_estados: string[] };
+        Returns: GananciaFlores;
       };
       tes_saldos: {
         Args: Record<string, never>;
@@ -702,6 +757,9 @@ export interface Tarea {
   notas: string | null;
   vence_at: string;              // YYYY-MM-DD
   recurrencia: RecurrenciaTarea;
+  monto: number | null;          // gasto fijo estimado (tareas mensuales, para Objetivos)
+  moneda: Moneda;
+  deuda_id: string | null;       // cuota de una deuda del club
   serie_id: string | null;       // agrupa las ocurrencias de una tarea repetitiva
   hecha_at: string | null;
   created_by: string | null;
@@ -733,4 +791,83 @@ export interface AnuncioVisto {
   anuncio_id: string;
   socio_id: string;
   visto_at: string;
+}
+
+// ------------------------------------------------------------
+// Personal (solo superadmin)
+// ------------------------------------------------------------
+export type TipoPersonal = 'empleado' | 'socio_admin';
+export type TipoPagoPersonal = 'sueldo' | 'aguinaldo';
+
+export interface Personal {
+  id: string;
+  profile_id: string | null;
+  nombre: string;
+  tipo: TipoPersonal;
+  cargo: string | null;
+  fecha_ingreso: string;
+  activo: boolean;
+  created_by: string | null;
+  created_at: string;
+}
+export interface PersonalSueldo {
+  id: string;
+  personal_id: string;
+  desde: string;               // primer día del mes
+  monto: number;
+  porcentaje: number | null;   // null = sueldo inicial
+  created_by: string | null;
+  created_at: string;
+}
+export interface PersonalPago {
+  id: string;
+  personal_id: string;
+  tipo: TipoPagoPersonal;
+  periodo: string;             // primer día del mes (aguinaldo: junio o diciembre)
+  base: number;
+  extra: number;
+  retiros: number;             // descontado en flores
+  monto: number;               // plata que salió
+  fecha: string;
+  movimiento_id: string | null;
+  nota: string | null;
+  anulado_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+export interface PersonalRetiro {
+  id: string;
+  personal_id: string;
+  genetica_id: string;
+  gramos: number;
+  precio_gramo: number;
+  total: number;
+  fecha: string;
+  nota: string | null;
+  deuda_id: string | null;     // socio administrador: le debe al club
+  anulado_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+export interface PersonalRetiroAplicacion {
+  id: string;
+  pago_id: string;
+  retiro_id: string;
+  monto: number;
+}
+
+// ------------------------------------------------------------
+// Costos y objetivos
+// ------------------------------------------------------------
+export interface ReposicionGenetica {
+  genetica_id: string;
+  nombre: string;
+  reponer: boolean;
+  gramos: number;       // salidos y no repuestos
+  costo: number;        // último costo por gramo, en pesos
+  pendientes: number;   // gramos de pedidos pendientes que saldrían de lotes con costo
+}
+export interface GananciaFlores {
+  geneticas: { nombre: string; gramos: number; venta: number; costo: number }[];
+  pedidos: { id: string; numero: number; fecha: string; gramos: number; venta: number; costo: number }[];
 }

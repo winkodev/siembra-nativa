@@ -80,3 +80,11 @@
 ## 2026-11-03 — Acciones masivas sobre datos financieros: siempre con selección
 - **Error:** "Registrar ahora" metió 23 cobros que ya estaban en el saldo inicial. El usuario esperaba elegir.
 - **Regla:** cualquier acción que cree varios registros de plata muestra la lista con checks, todos desmarcados, y el total antes de confirmar. Nunca un botón de un clic que haga un lote.
+
+## 2026-11-25 — Reglas de plata: lo que pide la persona, no la ley
+- **Corrección:** el aguinaldo se paga entero sin importar cuánto trabajó cada uno; se había hecho proporcional.
+- **Regla:** al empezar a usar un módulo, contemplar lo ya pagado fuera de la app y mostrar el cálculo con un ejemplo en pesos antes de darlo por acordado.
+
+## 2026-11-25 — Finanzas solo en Finanzas; objetivos sin deudas
+- **Corrección:** no poner datos de finanzas en el Dashboard (es del superadmin, en su módulo). Objetivos no suma deudas: solo cuotas cargadas, sueldos y reposición por gramos vendidos.
+- **Regla:** no agregar accesos o resúmenes en otras pantallas sin pedido. No sumar a un objetivo algo que el usuario no nombró.

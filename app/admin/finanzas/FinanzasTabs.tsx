@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Landmark } from 'lucide-react';
+import { BarChart3, Landmark, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Submódulos de Finanzas: Ventas (pedidos) y Tesorería (plata del club)
+// Submódulos de Finanzas: Ventas (pedidos), Tesorería (plata del club) y Objetivos (cuánto hay que juntar)
 const tabs = [
   { href: '/admin/finanzas',           label: 'Ventas',    icon: <BarChart3 className="w-4 h-4" /> },
   { href: '/admin/finanzas/tesoreria', label: 'Tesorería', icon: <Landmark className="w-4 h-4" /> },
+  { href: '/admin/finanzas/objetivos', label: 'Objetivos', icon: <Target className="w-4 h-4" /> },
 ];
 
 export function FinanzasTabs() {
