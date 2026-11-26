@@ -7,7 +7,7 @@ import { AlertTriangle, Ban, ChevronDown, Leaf, Pencil, Plus, TrendingUp, Undo2,
 import { cn, formatFecha, formatGramos, formatPrecio } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Modal, Campo, BotonGuardar } from '@/components/admin/ModalForm';
-import { GestionTabs } from '../GestionTabs';
+import { FinanzasTabs } from '../../finanzas/FinanzasTabs';
 import {
   crearPersonal, editarPersonal, aplicarAumento, quitarUltimoAumento, anularPago, registrarRetiro, anularRetiro,
 } from '@/app/actions/personal';
@@ -36,6 +36,9 @@ export function PersonalClient({ personal, admins, geneticas, errorMsg }: Props)
   const [modal, setModal] = useState<ModalTipo>(null);
   const [abierta, setAbierta] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Filtro por tipo; por defecto, empleados
+  const [filtro, setFiltro] = useState<TipoPersonal | 'todos'>('empleado');
+  const visibles = filtro === 'todos' ? personal : personal.filter(p => p.tipo === filtro);
 
   const cerrar = () => { setModal(null); router.refresh(); };
   const libres = admins.filter(a => !personal.some(p => p.profile_id === a.id));
@@ -51,7 +54,7 @@ export function PersonalClient({ personal, admins, geneticas, errorMsg }: Props)
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
-      <PageHeader icon={<Users className="w-5 h-5" />} title="Gestión" subtitle="Personal, sueldos y retiros · solo superadmin"
+      <PageHeader icon={<Users className="w-5 h-5" />} title="Gestión y finanzas" subtitle="Personal, sueldos y retiros · solo superadmin"
         action={
           <div className="flex flex-wrap gap-2">
             <button onClick={() => setModal({ k: 'retiro' })} disabled={activos.length === 0} className="btn-secondary text-sm px-4 py-2.5 flex items-center gap-2 disabled:opacity-40"><Leaf className="w-4 h-4" /> Retiro</button>
@@ -59,7 +62,17 @@ export function PersonalClient({ personal, admins, geneticas, errorMsg }: Props)
             <button onClick={() => setModal({ k: 'alta' })} disabled={Boolean(errorMsg)} className="btn-primary text-sm px-4 py-2.5 flex items-center gap-2"><Plus className="w-4 h-4" /> Agregar</button>
           </div>
         } />
-      <GestionTabs />
+      <FinanzasTabs />
+      {personal.length > 0 && (
+        <div className="flex gap-1 p-1 glass-card rounded-lg w-fit">
+          {([['empleado', 'Empleados'], ['socio_admin', 'Socios administradores'], ['todos', 'Todos']] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setFiltro(k)}
+              className={cn('px-3 py-1.5 rounded-md text-sm font-semibold transition-all', filtro === k ? 'bg-club-dorado text-club-verde' : 'text-muted-foreground hover:text-foreground')}>
+              {label} <span className="text-xs opacity-70">{k === 'todos' ? personal.length : personal.filter(p => p.tipo === k).length}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {errorMsg && (
         <motion.div variants={fadeUp} className="glass-card p-5 flex items-center gap-3 text-red-300"><AlertTriangle className="w-5 h-5 shrink-0" /><p className="text-sm">{errorMsg}</p></motion.div>
@@ -71,7 +84,10 @@ export function PersonalClient({ personal, admins, geneticas, errorMsg }: Props)
         <motion.div variants={fadeUp} className="glass-card p-12 text-center text-muted-foreground text-sm">Todavía no hay personal cargado.</motion.div>
       )}
 
-      {personal.map(p => {
+      {personal.length > 0 && visibles.length === 0 && (
+        <motion.div variants={fadeUp} className="glass-card p-8 text-center text-muted-foreground text-sm">No hay nadie cargado con este filtro.</motion.div>
+      )}
+      {visibles.map(p => {
         const esEmpleado = p.tipo === 'empleado';
         const l = esEmpleado ? liquidacion(p, 'sueldo', mes) : null;
         const retPend = retirosPendientes(p);

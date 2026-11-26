@@ -32,7 +32,7 @@ export function ObjetivosClient({ objetivos: o, resumen }: { objetivos: Objetivo
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
-      <PageHeader icon={<Target className="w-5 h-5" />} title="Finanzas" subtitle="Objetivos: cuánta plata hay que juntar · solo superadmin" />
+      <PageHeader icon={<Target className="w-5 h-5" />} title="Gestión y finanzas" subtitle="Objetivos: cuánta plata hay que juntar · solo superadmin" />
       <FinanzasTabs />
 
       {error && <div className="px-4 py-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-sm flex items-center justify-between">{error}<button onClick={() => setError(null)}><X className="w-4 h-4" /></button></div>}

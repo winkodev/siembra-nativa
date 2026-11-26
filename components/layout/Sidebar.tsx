@@ -8,7 +8,7 @@ import { Logo } from '@/components/brand/Logo';
 import {
   LayoutDashboard, ShoppingBag, User, Newspaper,
   Users, Package, ClipboardList, LogOut, Menu, X, Shield, Settings, BarChart3,
-  HelpCircle, Activity, Wallet, ClipboardCheck,
+  HelpCircle, Activity, Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 import { logout } from '@/app/actions/auth';
@@ -40,9 +40,9 @@ const navAdmin: NavItem[] = [
   { href: '/admin/configuracion',  label: 'Configuración',  icon: <Settings className="w-5 h-5" /> },
 ];
 
-// Finanzas: solo la ve el superadmin
-const navFinanzas = { href: '/admin/finanzas', label: 'Finanzas', icon: <Wallet className="w-5 h-5" /> };
-const navGestion  = { href: '/admin/gestion',  label: 'Gestión',  icon: <ClipboardCheck className="w-5 h-5" /> };
+// Gestión y finanzas: solo la ve el superadmin. Incluye las pestañas de /admin/gestion.
+const navFinanzas = { href: '/admin/finanzas', label: 'Gestión y finanzas', icon: <Wallet className="w-5 h-5" /> };
+const rutasFinanzas = ['/admin/finanzas', '/admin/gestion'];
 
 interface SidebarProps {
   rol: 'socio' | 'admin';
@@ -53,7 +53,7 @@ interface SidebarProps {
 export function Sidebar({ rol, nombre, superadmin = false }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const items = rol === 'admin' ? (superadmin ? [...navAdmin, navFinanzas, navGestion] : navAdmin) : navSocio;
+  const items = rol === 'admin' ? (superadmin ? [...navAdmin, navFinanzas] : navAdmin) : navSocio;
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -66,7 +66,8 @@ export function Sidebar({ rol, nombre, superadmin = false }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 px-3 py-5 space-y-0.5 overflow-y-auto">
         {items.map((item) => {
-          const activo = pathname === item.href || pathname.startsWith(item.href + '/');
+          const rutas = item === navFinanzas ? rutasFinanzas : [item.href];
+          const activo = rutas.some(r => pathname === r || pathname.startsWith(r + '/'));
           return (
             <Link
               key={item.href}

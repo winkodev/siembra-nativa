@@ -125,12 +125,17 @@ export function FinanzasClient({ datos, ganancia, desde: desdeInicial, hasta: ha
 
   const r = datos?.resumen;
   const brutoFlores = (datos?.por_genetica ?? []).reduce((a, g) => a + g.bruto, 0);
+  // Promedios de flores: solo pedidos con flores; el gramo, cobrado sin envío ni productos
+  const pedidosConFlores = (datos?.pedidos ?? []).filter(p => p.gramos > 0).length;
+  const gramosTotal = datos?.resumen.gramos ?? 0;
+  const brutoProductos = (datos?.por_producto ?? []).reduce((a, p) => a + p.bruto, 0);
+  const netoFlores = (datos?.resumen.ingresos ?? 0) - (datos?.resumen.envios ?? 0) - brutoProductos;
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
       <PageHeader
         icon={<Wallet className="w-5 h-5" />}
-        title="Finanzas"
+        title="Gestión y finanzas"
         subtitle="Ingresos, gramos y detalle por genética, socio y pedido · solo superadmin"
       />
       <FinanzasTabs />
@@ -199,11 +204,14 @@ export function FinanzasClient({ datos, ganancia, desde: desdeInicial, hasta: ha
           )}
 
           {/* KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             <Kpi icono={<Wallet className="w-4 h-4" />}       label="Ingresos netos"  valor={formatPrecio(r.ingresos)} sub="lo cobrado, después de descuentos" />
             <Kpi icono={<Leaf className="w-4 h-4" />}         label="Flores"          valor={formatGramos(r.gramos)} sub={r.unidades > 0 ? `+ ${r.unidades} u. de productos` : undefined} />
             <Kpi icono={<ShoppingBag className="w-4 h-4" />}  label="Pedidos"         valor={String(r.pedidos)} />
             <Kpi icono={<Receipt className="w-4 h-4" />}      label="Ticket promedio" valor={formatPrecio(r.ticket_promedio)} />
+            <Kpi icono={<Leaf className="w-4 h-4" />}         label="Gramos por pedido" valor={pedidosConFlores > 0 ? formatGramos(Math.round(gramosTotal / pedidosConFlores * 10) / 10) : '—'} sub="promedio de los pedidos con flores" />
+            <Kpi icono={<Wallet className="w-4 h-4" />}       label="Valor del gramo" valor={gramosTotal > 0 ? formatPrecio(Math.round(netoFlores / gramosTotal)) : '—'}
+              sub={gramosTotal > 0 ? `promedio cobrado · lista ${formatPrecio(Math.round(brutoFlores / gramosTotal))}` : undefined} />
             <Kpi icono={<BadgePercent className="w-4 h-4" />} label="Descuentos"      valor={formatPrecio(r.descuentos)} sub="por cantidad + cupones" />
             <Kpi icono={<Truck className="w-4 h-4" />}        label="Envíos cobrados" valor={formatPrecio(r.envios)} />
           </div>

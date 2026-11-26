@@ -30,7 +30,7 @@ export function GananciaFloresCard({ ganancia }: { ganancia: GananciaFlores }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-[11px] uppercase tracking-widest text-muted-foreground border-b border-club-verde-claro/20">
-              {['', 'Gramos', 'Venta', 'Costo', 'Ganancia'].map((h, i) => <th key={i} className={cn('py-2 font-semibold', i === 0 ? 'text-left' : 'text-right')}>{h}</th>)}
+              {['', 'Gramos', 'Dispensa', 'Costo', 'Ganancia'].map((h, i) => <th key={i} className={cn('py-2 font-semibold', i === 0 ? 'text-left' : 'text-right')}>{h}</th>)}
             </tr>
           </thead>
           <tbody className="divide-y divide-club-verde-claro/10 tabular-nums">

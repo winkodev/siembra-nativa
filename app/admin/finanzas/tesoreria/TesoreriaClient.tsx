@@ -164,7 +164,7 @@ export function TesoreriaClient({ cuentas, saldos, categorias, deudas, movimient
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
-      <PageHeader icon={<Wallet className="w-5 h-5" />} title="Finanzas" subtitle="Tesorería: cuánta plata tiene el club, dónde está y a quién le debe · solo superadmin" />
+      <PageHeader icon={<Wallet className="w-5 h-5" />} title="Gestión y finanzas" subtitle="Tesorería: cuánta plata tiene el club, dónde está y a quién le debe · solo superadmin" />
       <FinanzasTabs />
 
       {errorMsg && (

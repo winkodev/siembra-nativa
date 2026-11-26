@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ClipboardCheck, Plus, X, Loader2, Check, Pencil, Trash2, Repeat, AlertTriangle, ChevronDown, RotateCcw } from 'lucide-react';
-import { GestionTabs } from './GestionTabs';
+import { FinanzasTabs } from '../finanzas/FinanzasTabs';
 import { cn, formatFecha, formatPrecio } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { crearTarea, editarTarea, completarTarea, reabrirTarea, eliminarTarea } from '@/app/actions/tareas';
@@ -112,9 +112,9 @@ export function GestionClient({ tareas, deudas, errorMsg }: Props) {
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
-      <PageHeader icon={<ClipboardCheck className="w-5 h-5" />} title="Gestión" subtitle="Tareas del club con vencimiento · solo superadmin"
+      <PageHeader icon={<ClipboardCheck className="w-5 h-5" />} title="Gestión y finanzas" subtitle="Tareas del club con vencimiento · solo superadmin"
         action={<button onClick={() => setModal({})} className="btn-primary text-sm px-4 py-2.5 flex items-center gap-2"><Plus className="w-4 h-4" /> Nueva tarea</button>} />
-      <GestionTabs />
+      <FinanzasTabs />
 
       {errorMsg && (
         <motion.div variants={fadeUp} className="glass-card p-5 flex items-center gap-3 text-red-300"><AlertTriangle className="w-5 h-5 shrink-0" /><p className="text-sm">{errorMsg}</p></motion.div>

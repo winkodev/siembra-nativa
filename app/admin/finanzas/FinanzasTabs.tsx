@@ -2,22 +2,26 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Landmark, Target } from 'lucide-react';
+import { BarChart3, ClipboardCheck, Landmark, Target, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Submódulos de Finanzas: Ventas (pedidos), Tesorería (plata del club) y Objetivos (cuánto hay que juntar)
+// Pestañas de Gestión y finanzas: Dispensa (pedidos), Tesorería (plata del club),
+// Objetivos (cuánto hay que juntar), Tareas y Personal (sueldos, aumentos y retiros)
 const tabs = [
-  { href: '/admin/finanzas',           label: 'Ventas',    icon: <BarChart3 className="w-4 h-4" /> },
+  { href: '/admin/finanzas',           label: 'Dispensa',  icon: <BarChart3 className="w-4 h-4" /> },
   { href: '/admin/finanzas/tesoreria', label: 'Tesorería', icon: <Landmark className="w-4 h-4" /> },
   { href: '/admin/finanzas/objetivos', label: 'Objetivos', icon: <Target className="w-4 h-4" /> },
+  { href: '/admin/gestion',            label: 'Tareas',    icon: <ClipboardCheck className="w-4 h-4" /> },
+  { href: '/admin/gestion/personal',   label: 'Personal',  icon: <Users className="w-4 h-4" /> },
 ];
 
 export function FinanzasTabs() {
   const pathname = usePathname();
   return (
-    <div className="flex gap-1.5 p-1 glass-card rounded-xl w-fit">
+    <div className="flex flex-wrap gap-1.5 p-1 glass-card rounded-xl w-fit max-w-full">
       {tabs.map(t => {
-        const activo = t.href === '/admin/finanzas' ? pathname === t.href : pathname.startsWith(t.href);
+        // Las pestañas raíz solo se marcan en su propia ruta
+        const activo = t.href === '/admin/finanzas' || t.href === '/admin/gestion' ? pathname === t.href : pathname.startsWith(t.href);
         return (
           <Link key={t.href} href={t.href}
             className={cn(
