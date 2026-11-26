@@ -2,14 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, ClipboardCheck, Landmark, Target, Users } from 'lucide-react';
+import { BarChart3, ClipboardCheck, Landmark, Scale, Target, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Pestañas de Gestión y finanzas: Dispensa (pedidos), Tesorería (plata del club),
-// Objetivos (cuánto hay que juntar), Tareas y Personal (sueldos, aumentos y retiros)
+// Balance (cuánto entró y salió), Objetivos (cuánto hay que juntar), Tareas y Personal (sueldos, aumentos y retiros)
 const tabs = [
   { href: '/admin/finanzas',           label: 'Dispensa',  icon: <BarChart3 className="w-4 h-4" /> },
   { href: '/admin/finanzas/tesoreria', label: 'Tesorería', icon: <Landmark className="w-4 h-4" /> },
+  { href: '/admin/finanzas/balance',   label: 'Balance',   icon: <Scale className="w-4 h-4" /> },
   { href: '/admin/finanzas/objetivos', label: 'Objetivos', icon: <Target className="w-4 h-4" /> },
   { href: '/admin/gestion',            label: 'Tareas',    icon: <ClipboardCheck className="w-4 h-4" /> },
   { href: '/admin/gestion/personal',   label: 'Personal',  icon: <Users className="w-4 h-4" /> },

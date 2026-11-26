@@ -26,7 +26,7 @@ const fadeUp  = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, tr
 function hoyISO(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-function presets(): { label: string; desde: string; hasta: string }[] {
+export function presets(): { label: string; desde: string; hasta: string }[] {
   const hoy = new Date();
   const inicioMes    = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
   const inicioMesAnt = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
