@@ -223,6 +223,10 @@ export interface Newsletter {
   titulo: string;
   contenido: string;
   imagen_url: string | null;
+  imagen_pos_x: number;          // encuadre de la imagen en la tarjeta (0 a 100, 50 = centro)
+  imagen_pos_y: number;
+  fijada: boolean;               // queda primera en el inicio del socio
+  vigente_hasta: string | null;  // último día en que se muestra (null = siempre)
   publicado: boolean;
   fecha_publicacion: string | null;
   created_at: string;
@@ -548,6 +552,12 @@ export interface Database {
         Row: Anuncio;
         Insert: Partial<Omit<Anuncio, 'id' | 'created_at'>> & { titulo: string; mensaje: string };
         Update: Partial<Omit<Anuncio, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      newsletter_vistos: {
+        Row: { newsletter_id: string; socio_id: string; visto_at: string };
+        Insert: { newsletter_id: string; socio_id: string; visto_at?: string };
+        Update: Partial<{ newsletter_id: string; socio_id: string; visto_at: string }>;
         Relationships: [];
       };
       anuncios_vistos: {

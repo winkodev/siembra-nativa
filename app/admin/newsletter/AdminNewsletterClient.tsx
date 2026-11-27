@@ -1,18 +1,20 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useRef, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import remarkBreaks from 'remark-breaks';
 import {
   Newspaper, Plus, Pencil, Trash2, X, Loader2, Upload, Search,
-  Eye, PenLine, Globe, GlobeLock,
+  Eye, PenLine, Globe, GlobeLock, ImageIcon, Pin, PinOff, Users,
+  Bold, Italic, Heading2, List, ListOrdered, Link2, Quote,
 } from 'lucide-react';
 import { cn, formatFecha } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { NewsletterTabs } from './NewsletterTabs';
-import { crearNewsletter, actualizarNewsletter, eliminarNewsletter, togglePublicado } from '@/app/actions/newsletter';
+import { NovedadTarjeta, NovedadModal, EncuadreImagen } from '@/components/newsletter/Novedad';
+import { crearNewsletter, actualizarNewsletter, eliminarNewsletter, togglePublicado, fijarNewsletter } from '@/app/actions/newsletter';
 import type { Newsletter } from '@/lib/types/database';
 
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.07 } } };
@@ -24,17 +26,42 @@ interface FormState {
   titulo: string;
   contenido: string;
   imagen: File | null;
+  pos_x: number;   // encuadre de la imagen en la tarjeta
+  pos_y: number;
+  vigente_hasta: string;  // '' = sin vencimiento
 }
 
-const formInicial: FormState = { titulo: '', contenido: '', imagen: null };
+// Un socio que abrió la novedad
+export interface Lectura { nombre: string; visto_at: string }
 
-export function AdminNewsletterClient({ articulos: inicial }: { articulos: Newsletter[] }) {
+const hoyAR = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+
+const formInicial: FormState = { titulo: '', contenido: '', imagen: null, pos_x: 50, pos_y: 50, vigente_hasta: '' };
+
+export function AdminNewsletterClient({ articulos: inicial, lecturas, sociosActivos }: { articulos: Newsletter[]; lecturas: Record<string, Lectura[]>; sociosActivos: number }) {
   const [articulos, setArticulos]   = useState(inicial);
   const [modalAbierto, setModal]    = useState(false);
   const [editando, setEditando]     = useState<Newsletter | null>(null);
   const [form, setForm]             = useState<FormState>(formInicial);
   const [preview, setPreview]       = useState<string | null>(null);
   const [tab, setTab]               = useState<'editar' | 'vista'>('editar');
+  const [verCompleta, setVerCompleta] = useState(false);
+  const [lectores, setLectores]     = useState<Newsletter | null>(null);
+  const texto = useRef<HTMLTextAreaElement>(null);
+
+  // Barra de formato: envuelve la selección (o inserta al principio de cada línea)
+  const formato = (antes: string, despues = '', porLinea = false) => {
+    const t = texto.current;
+    if (!t) return;
+    const { selectionStart: i, selectionEnd: j, value } = t;
+    const sel = value.slice(i, j);
+    const nuevo = porLinea
+      ? (sel || 'texto').split('\n').map((l, n) => `${antes.replace('1.', `${n + 1}.`)}${l}`).join('\n')
+      : `${antes}${sel || 'texto'}${despues}`;
+    const contenido = value.slice(0, i) + nuevo + value.slice(j);
+    setForm(f => ({ ...f, contenido }));
+    requestAnimationFrame(() => { t.focus(); t.setSelectionRange(i, i + nuevo.length); });
+  };
   const [pending, startTransition]  = useTransition();
   const [error, setError]           = useState<string | null>(null);
   const [confirmEliminar, setConfirmEliminar] = useState<string | null>(null);
@@ -55,15 +82,17 @@ export function AdminNewsletterClient({ articulos: inicial }: { articulos: Newsl
     setForm(formInicial);
     setPreview(null);
     setTab('editar');
+    setVerCompleta(false);
     setError(null);
     setModal(true);
   };
 
   const abrirEditar = (a: Newsletter) => {
     setEditando(a);
-    setForm({ titulo: a.titulo, contenido: a.contenido, imagen: null });
+    setForm({ titulo: a.titulo, contenido: a.contenido, imagen: null, pos_x: Number(a.imagen_pos_x ?? 50), pos_y: Number(a.imagen_pos_y ?? 50), vigente_hasta: a.vigente_hasta ?? '' });
     setPreview(a.imagen_url);
     setTab('editar');
+    setVerCompleta(false);
     setError(null);
     setModal(true);
   };
@@ -71,7 +100,7 @@ export function AdminNewsletterClient({ articulos: inicial }: { articulos: Newsl
   const handleImagenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setForm(f => ({ ...f, imagen: file }));
+    setForm(f => ({ ...f, imagen: file, pos_x: 50, pos_y: 50 }));
     setPreview(URL.createObjectURL(file));
   };
 
@@ -84,6 +113,9 @@ export function AdminNewsletterClient({ articulos: inicial }: { articulos: Newsl
       fd.append('titulo', form.titulo.trim());
       fd.append('contenido', form.contenido.trim());
       if (form.imagen) fd.append('imagen', form.imagen);
+      fd.append('imagen_pos_x', String(form.pos_x));
+      fd.append('imagen_pos_y', String(form.pos_y));
+      fd.append('vigente_hasta', form.vigente_hasta);
 
       if (editando) {
         fd.append('id', editando.id);
@@ -105,6 +137,14 @@ export function AdminNewsletterClient({ articulos: inicial }: { articulos: Newsl
       if (!res.ok) { setError(res.error); return; }
       setArticulos(prev => prev.filter(a => a.id !== id));
       setConfirmEliminar(null);
+    });
+  };
+
+  const handleFijar = (a: Newsletter) => {
+    startTransition(async () => {
+      const res = await fijarNewsletter(a.id, !a.fijada);
+      if (!res.ok) { setError(res.error); return; }
+      setArticulos(prev => prev.map(x => x.id === a.id ? res.data : x));
     });
   };
 
@@ -185,7 +225,7 @@ export function AdminNewsletterClient({ articulos: inicial }: { articulos: Newsl
               {/* Portada */}
               <div className="relative sm:w-48 h-36 sm:h-auto shrink-0 bg-club-verde-claro/20">
                 {a.imagen_url ? (
-                  <Image src={a.imagen_url} alt={a.titulo} fill className="object-cover" />
+                  <Image src={a.imagen_url} alt={a.titulo} fill className="object-cover" style={{ objectPosition: `${a.imagen_pos_x ?? 50}% ${a.imagen_pos_y ?? 50}%` }} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground/20">
                     <Newspaper className="w-12 h-12" />
@@ -206,10 +246,25 @@ export function AdminNewsletterClient({ articulos: inicial }: { articulos: Newsl
                   </span>
                 </div>
 
-                <p className="text-muted-foreground text-xs">
-                  {a.publicado && a.fecha_publicacion
+                <p className="text-muted-foreground text-xs flex flex-wrap gap-x-3 gap-y-1">
+                  <span>{a.publicado && a.fecha_publicacion
                     ? `Publicado el ${formatFecha(a.fecha_publicacion, "dd 'de' MMMM 'de' yyyy")}`
-                    : `Creado el ${formatFecha(a.created_at, "dd 'de' MMMM 'de' yyyy")}`}
+                    : `Creado el ${formatFecha(a.created_at, "dd 'de' MMMM 'de' yyyy")}`}</span>
+                  {a.fijada && <span className="flex items-center gap-1 text-club-dorado"><Pin className="w-3.5 h-3.5" /> Destacada</span>}
+                  {a.vigente_hasta && (
+                    <span className={cn(a.vigente_hasta < hoyAR() && 'text-red-400')}>
+                      {a.vigente_hasta < hoyAR() ? 'Vencida' : 'Se muestra hasta'} el {formatFecha(a.vigente_hasta, 'dd/MM/yyyy')}
+                    </span>
+                  )}
+                  {a.publicado && (() => {
+                    const n = lecturas[a.id]?.length ?? 0;
+                    return (
+                      <button onClick={() => setLectores(a)} disabled={n === 0} className="flex items-center gap-1 hover:text-foreground disabled:hover:text-muted-foreground">
+                        <Eye className="w-3.5 h-3.5" /> {n} socio{n === 1 ? '' : 's'} la {n === 1 ? 'leyó' : 'leyeron'}
+                        {sociosActivos > 0 && ` · ${Math.round((n / sociosActivos) * 100)}% de los activos`}
+                      </button>
+                    );
+                  })()}
                 </p>
 
                 <div className="prose prose-sm prose-invert max-w-none text-muted-foreground line-clamp-2 prose-headings:text-foreground prose-strong:text-foreground">
@@ -232,6 +287,11 @@ export function AdminNewsletterClient({ articulos: inicial }: { articulos: Newsl
                     {a.publicado
                       ? <><GlobeLock className="w-3.5 h-3.5" /> Despublicar</>
                       : <><Globe className="w-3.5 h-3.5" /> Publicar</>}
+                  </button>
+                  <button onClick={() => handleFijar(a)} disabled={pending} title={a.fijada ? 'Quitar de destacadas' : 'Destacar: queda primera en el inicio del socio'}
+                    className={cn('px-3 py-2 rounded-xl border text-xs transition-all flex items-center gap-1.5',
+                      a.fijada ? 'border-club-dorado/40 text-club-dorado' : 'border-club-verde-claro/30 text-muted-foreground hover:text-foreground')}>
+                    {a.fijada ? <><PinOff className="w-3.5 h-3.5" /> Quitar destacado</> : <><Pin className="w-3.5 h-3.5" /> Destacar</>}
                   </button>
                   <button onClick={() => setConfirmEliminar(a.id)}
                     className="px-3 py-2 rounded-xl border border-red-500/20 text-red-400/60 hover:text-red-400 hover:border-red-500/40 text-xs transition-all">
@@ -260,20 +320,49 @@ export function AdminNewsletterClient({ articulos: inicial }: { articulos: Newsl
               </div>
 
               <div className="p-5 space-y-4">
-                {/* Portada */}
+                {/* Escribir o ver como el socio */}
+                <div className="flex gap-1 p-1 glass-card rounded-lg w-fit">
+                  {([['editar', 'Escribir', <PenLine key="e" className="w-3.5 h-3.5" />], ['vista', 'Vista previa', <Eye key="v" className="w-3.5 h-3.5" />]] as const).map(([k, label, icono]) => (
+                    <button key={k} onClick={() => setTab(k)}
+                      className={cn('px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5',
+                        tab === k ? 'bg-club-dorado text-club-verde' : 'text-muted-foreground hover:text-foreground')}>
+                      {icono} {label}
+                    </button>
+                  ))}
+                </div>
+
+                {tab === 'vista' ? (
+                  <div className="space-y-3">
+                    <p className="text-muted-foreground text-xs">Así aparece en el inicio del socio. Tocá la tarjeta para verla completa, como cuando la abre.</p>
+                    <div className="max-w-sm">
+                      <NovedadTarjeta novedad={{ titulo: form.titulo, contenido: form.contenido, imagen_url: preview, imagen_pos_x: form.pos_x, imagen_pos_y: form.pos_y, fecha_publicacion: editando?.fecha_publicacion ?? new Date().toISOString(), fijada: editando?.fijada }} onClick={() => setVerCompleta(true)} />
+                    </div>
+                    {verCompleta && <NovedadModal novedad={{ titulo: form.titulo, contenido: form.contenido, imagen_url: preview, imagen_pos_x: form.pos_x, imagen_pos_y: form.pos_y, fecha_publicacion: editando?.fecha_publicacion ?? new Date().toISOString(), fijada: editando?.fijada }} onClose={() => setVerCompleta(false)} />}
+                  </div>
+                ) : (
+                <>
+                {/* Portada: se arrastra para elegir qué parte se ve en la tarjeta */}
                 <div>
-                  <label className="text-sm text-foreground/70 font-medium mb-2 block">Imagen de portada (opcional)</label>
-                  <label className="relative flex flex-col items-center justify-center h-36 border-2 border-dashed border-club-verde-claro/30 rounded-xl cursor-pointer hover:border-club-dorado/40 transition-all overflow-hidden">
-                    {preview ? (
-                      <Image src={preview} alt="preview" fill className="object-cover" />
-                    ) : (
-                      <>
-                        <Upload className="w-8 h-8 text-muted-foreground/40 mb-2" />
-                        <span className="text-muted-foreground text-xs">Subir imagen</span>
-                      </>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm text-foreground/70 font-medium">Imagen de portada (opcional)</label>
+                    {preview && (
+                      <label className="text-club-dorado text-xs font-semibold cursor-pointer flex items-center gap-1">
+                        <ImageIcon className="w-3.5 h-3.5" /> Cambiar imagen
+                        <input type="file" accept="image/*" className="sr-only" onChange={handleImagenChange} />
+                      </label>
                     )}
-                    <input type="file" accept="image/*" className="sr-only" onChange={handleImagenChange} />
-                  </label>
+                  </div>
+                  {preview ? (
+                    <div className="max-w-sm">
+                      <EncuadreImagen src={preview} x={form.pos_x} y={form.pos_y} onChange={(x, y) => setForm(f => ({ ...f, pos_x: x, pos_y: y }))} />
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-club-verde-claro/30 rounded-xl cursor-pointer hover:border-club-dorado/40 transition-all">
+                      <Upload className="w-8 h-8 text-muted-foreground/40 mb-2" />
+                      <span className="text-muted-foreground text-xs">Subir imagen</span>
+                      <input type="file" accept="image/*" className="sr-only" onChange={handleImagenChange} />
+                    </label>
+                  )}
                 </div>
 
                 {/* Título */}
@@ -283,48 +372,48 @@ export function AdminNewsletterClient({ articulos: inicial }: { articulos: Newsl
                     className="input-club w-full" placeholder="Ej: Novedades de agosto" />
                 </div>
 
-                {/* Contenido: tabs Editar / Vista previa */}
+                {/* Vencimiento */}
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-sm text-foreground/70 font-medium">Contenido (Markdown) *</label>
-                    <div className="flex gap-1 p-0.5 glass-card rounded-lg">
-                      <button onClick={() => setTab('editar')}
-                        className={cn(
-                          'px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1',
-                          tab === 'editar' ? 'bg-club-dorado text-club-verde' : 'text-muted-foreground hover:text-foreground'
-                        )}>
-                        <PenLine className="w-3 h-3" /> Escribir
-                      </button>
-                      <button onClick={() => setTab('vista')}
-                        className={cn(
-                          'px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1',
-                          tab === 'vista' ? 'bg-club-dorado text-club-verde' : 'text-muted-foreground hover:text-foreground'
-                        )}>
-                        <Eye className="w-3 h-3" /> Vista previa
-                      </button>
-                    </div>
+                  <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Se muestra hasta</label>
+                  <div className="flex items-center gap-3">
+                    <input type="date" value={form.vigente_hasta} min={hoyAR()} onChange={e => setForm(f => ({ ...f, vigente_hasta: e.target.value }))} className="input-club" />
+                    {form.vigente_hasta
+                      ? <button type="button" onClick={() => setForm(f => ({ ...f, vigente_hasta: '' }))} className="text-xs text-muted-foreground hover:text-foreground">Sin vencimiento</button>
+                      : <span className="text-xs text-muted-foreground">Vacío: se muestra siempre</span>}
                   </div>
-
-                  {tab === 'editar' ? (
-                    <textarea
-                      value={form.contenido}
-                      onChange={e => setForm(f => ({ ...f, contenido: e.target.value }))}
-                      rows={12}
-                      className="input-club w-full resize-y font-mono text-sm leading-relaxed"
-                      placeholder={'## Título de sección\n\nEscribí el contenido en **Markdown**...'}
-                    />
-                  ) : (
-                    <div className="min-h-[18rem] px-4 py-3 rounded-xl border border-club-verde-claro/30 bg-club-verde-claro/10">
-                      {form.contenido.trim() ? (
-                        <div className="prose prose-sm prose-invert max-w-none text-muted-foreground prose-headings:text-foreground prose-strong:text-foreground">
-                          <ReactMarkdown remarkPlugins={[remarkBreaks]}>{form.contenido}</ReactMarkdown>
-                        </div>
-                      ) : (
-                        <p className="text-muted-foreground/50 text-sm italic">Nada para previsualizar todavía.</p>
-                      )}
-                    </div>
-                  )}
                 </div>
+
+                {/* Contenido */}
+                <div>
+                  <label className="text-sm text-foreground/70 font-medium mb-1.5 block">Contenido *</label>
+                  {/* Barra de formato: seleccioná texto y tocá un botón */}
+                  <div className="flex flex-wrap gap-1 mb-1.5">
+                    {([
+                      ['Negrita', <Bold key="b" className="w-3.5 h-3.5" />, () => formato('**', '**')],
+                      ['Cursiva', <Italic key="i" className="w-3.5 h-3.5" />, () => formato('*', '*')],
+                      ['Subtítulo', <Heading2 key="h" className="w-3.5 h-3.5" />, () => formato('## ', '', true)],
+                      ['Lista', <List key="l" className="w-3.5 h-3.5" />, () => formato('- ', '', true)],
+                      ['Lista numerada', <ListOrdered key="n" className="w-3.5 h-3.5" />, () => formato('1. ', '', true)],
+                      ['Cita', <Quote key="q" className="w-3.5 h-3.5" />, () => formato('> ', '', true)],
+                      ['Link', <Link2 key="k" className="w-3.5 h-3.5" />, () => formato('[', '](https://)')],
+                    ] as const).map(([titulo, icono, accion]) => (
+                      <button key={titulo} type="button" title={titulo} onClick={accion}
+                        className="p-2 rounded-lg border border-club-verde-claro/30 text-muted-foreground hover:text-foreground hover:bg-club-verde-claro/10 transition-colors">
+                        {icono}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    ref={texto}
+                    value={form.contenido}
+                    onChange={e => setForm(f => ({ ...f, contenido: e.target.value }))}
+                    rows={12}
+                    className="input-club w-full resize-y font-mono text-sm leading-relaxed"
+                    placeholder={'Escribí la novedad. Seleccioná texto y usá los botones de arriba para darle formato.'}
+                  />
+                </div>
+                </>
+                )}
 
                 {error && (
                   <div className="px-4 py-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-sm">{error}</div>
@@ -341,6 +430,30 @@ export function AdminNewsletterClient({ articulos: inicial }: { articulos: Newsl
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Quiénes la leyeron */}
+      {lectores && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setLectores(null)}>
+          <div onClick={e => e.stopPropagation()} className="glass-card w-full max-w-md p-6 space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-avigea text-xl text-foreground flex items-center gap-2"><Users className="w-5 h-5 text-club-dorado" /> La leyeron</h2>
+                <p className="text-muted-foreground text-xs mt-0.5">{lectores.titulo}</p>
+              </div>
+              <button onClick={() => setLectores(null)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-foreground">{lecturas[lectores.id]?.length ?? 0} de {sociosActivos} socios activos</p>
+            <div className="divide-y divide-club-verde-claro/10 overflow-y-auto">
+              {(lecturas[lectores.id] ?? []).map((l, i) => (
+                <p key={i} className="py-2 flex justify-between gap-3 text-sm">
+                  <span className="text-foreground">{l.nombre}</span>
+                  <span className="text-muted-foreground text-xs">{formatFecha(l.visto_at, "dd/MM 'a las' HH:mm")}</span>
+                </p>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirm eliminar */}
       <AnimatePresence>

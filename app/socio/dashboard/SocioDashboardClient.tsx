@@ -4,14 +4,14 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
-import ReactMarkdown from 'react-markdown';
-import remarkBreaks from 'remark-breaks';
 import {
   Leaf, ShoppingBag, AlertTriangle, ArrowRight, Newspaper,
   FileText, Shield, CheckCircle2, Clock, XCircle, UserRound, ChevronDown,
   ScrollText,
 } from 'lucide-react';
 import type { Profile, Newsletter } from '@/lib/types/database';
+import { NovedadTarjeta, NovedadModal } from '@/components/newsletter/Novedad';
+import { marcarNewsletterVisto } from '@/app/actions/newsletter';
 import { formatFecha, diasHasta, cn, estadoEfectivoReprocann } from '@/lib/utils';
 
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.08 } } };
@@ -19,7 +19,8 @@ const fadeUp  = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, tr
 
 interface Props {
   profile:        Profile;
-  newsletter:     Newsletter | null;
+  novedades:      Newsletter[];   // publicadas, de la más nueva a la más vieja
+  vistas:         string[];       // ids que el socio ya abrió
 }
 
 function perfilCompleto(p: Profile) {
@@ -62,9 +63,15 @@ const estadoConfig = {
   },
 };
 
-export function SocioDashboardClient({ profile, newsletter }: Props) {
-  // Newsletter colapsado por defecto; "Ver más" muestra el texto completo
-  const [newsExpandido, setNewsExpandido] = useState(false);
+export function SocioDashboardClient({ profile, novedades, vistas }: Props) {
+  // Novedades: se muestran las últimas y al tocar una se abre completa
+  const [abierta, setAbierta] = useState<Newsletter | null>(null);
+  const [leidas, setLeidas] = useState(() => new Set(vistas));
+  const [verTodas, setVerTodas] = useState(false);
+  const abrir = (n: Newsletter) => {
+    setAbierta(n);
+    if (!leidas.has(n.id)) { setLeidas(s => new Set(s).add(n.id)); marcarNewsletterVisto(n.id); }
+  };
   // Credencial REPROCANN de fondo (se oculta sola si el archivo no existe)
   const [credencialOk, setCredencialOk] = useState(true);
 
@@ -284,50 +291,28 @@ export function SocioDashboardClient({ profile, newsletter }: Props) {
 
       {/* Las notificaciones viven en la campana del header (NotificacionesBell) */}
 
-      {/* Newsletter destacado */}
-      {newsletter && (
-        <motion.div variants={fadeUp} className="glass-card overflow-hidden">
-          {/* Franja superior dorada */}
-          <div className="h-1 bg-gradient-to-r from-club-dorado/60 via-club-dorado to-club-dorado/60" />
-
-          {/* Imagen de portada */}
-          {newsletter.imagen_url && (
-            <div className="relative h-48 sm:h-56">
-              <Image src={newsletter.imagen_url} alt={newsletter.titulo} fill className="object-cover" />
-            </div>
-          )}
-
-          <div className="p-6">
-            <div className="flex items-center gap-2 mb-3 text-club-dorado">
-              <Newspaper className="w-4 h-4" />
-              <span className="text-xs font-semibold uppercase tracking-widest">Novedades del club</span>
-            </div>
-
-            <h2 className="font-avigea text-2xl text-foreground mb-2">{newsletter.titulo}</h2>
-
-            {newsletter.fecha_publicacion && (
-              <p className="text-muted-foreground text-xs mb-4">
-                {formatFecha(newsletter.fecha_publicacion, "dd 'de' MMMM 'de' yyyy")}
-              </p>
+      {/* Novedades del club: las últimas publicadas; al tocar una se abre completa */}
+      {novedades.length > 0 && (
+        <motion.section variants={fadeUp} className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-club-dorado text-xs font-semibold uppercase tracking-widest">
+              <Newspaper className="w-4 h-4" /> Novedades del club
+            </h2>
+            {novedades.length > 3 && (
+              <button onClick={() => setVerTodas(v => !v)} className="text-club-dorado text-xs font-semibold hover:text-club-dorado/80 flex items-center gap-1">
+                {verTodas ? 'Ver menos' : `Ver todas (${novedades.length})`}
+                <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', verTodas && 'rotate-180')} />
+              </button>
             )}
-
-            <div className={cn(
-              'prose prose-sm prose-invert max-w-none text-muted-foreground prose-headings:text-foreground prose-strong:text-foreground',
-              !newsExpandido && 'line-clamp-4'
-            )}>
-              <ReactMarkdown remarkPlugins={[remarkBreaks]}>{newsletter.contenido}</ReactMarkdown>
-            </div>
-
-            <button
-              onClick={() => setNewsExpandido(v => !v)}
-              className="mt-3 flex items-center gap-1 text-club-dorado text-xs font-semibold hover:text-club-dorado/80 transition-colors"
-            >
-              {newsExpandido ? 'Ver menos' : 'Ver más'}
-              <ChevronDown className={cn('w-3.5 h-3.5 transition-transform duration-200', newsExpandido && 'rotate-180')} />
-            </button>
           </div>
-        </motion.div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(verTodas ? novedades : novedades.slice(0, 3)).map(n => (
+              <NovedadTarjeta key={n.id} novedad={n} nueva={!leidas.has(n.id)} onClick={() => abrir(n)} />
+            ))}
+          </div>
+        </motion.section>
       )}
+      {abierta && <NovedadModal novedad={abierta} onClose={() => setAbierta(null)} />}
 
     </motion.div>
   );

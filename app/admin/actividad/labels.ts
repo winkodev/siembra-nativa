@@ -69,6 +69,8 @@ export const ACCION_LABEL: Record<string, string> = {
   editar_articulo:       'Editó un artículo del newsletter',
   publicar_articulo:     'Publicó un artículo',
   despublicar_articulo:  'Despublicó un artículo',
+  fijar_articulo:        'Destacó una novedad',
+  desfijar_articulo:     'Quitó una novedad de destacadas',
   eliminar_articulo:     'Eliminó un artículo',
   aprobar_reprocann:     'Aprobó documentación REPROCANN',
   rechazar_reprocann:    'Rechazó documentación REPROCANN',

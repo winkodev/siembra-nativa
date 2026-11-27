@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { registrarAccion } from '@/lib/audit';
 import type { ActionResponse, Newsletter } from '@/lib/types/database';
@@ -28,6 +28,24 @@ async function subirPortada(
   return { url: data.publicUrl };
 }
 
+// Encuadre de la imagen: 0 a 100, 50 si no viene
+function posicion(fd: FormData, k: string): number {
+  const n = parseFloat(String(fd.get(k) ?? ''));
+  return isFinite(n) ? Math.min(100, Math.max(0, n)) : 50;
+}
+
+// Último día en que se muestra: YYYY-MM-DD o null
+function vigencia(fd: FormData): string | null {
+  const v = String(fd.get('vigente_hasta') ?? '');
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+}
+
+// Resumen corto del contenido para la campana
+function resumen(md: string): string {
+  const t = md.replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[#>*_`~-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return t.length > 160 ? `${t.slice(0, 157)}…` : t;
+}
+
 function revalidar() {
   revalidatePath('/admin/newsletter');
   revalidatePath('/socio/dashboard');
@@ -51,6 +69,9 @@ export async function crearNewsletter(fd: FormData): Promise<ActionResponse<News
       titulo:    (fd.get('titulo') as string).trim(),
       contenido: (fd.get('contenido') as string).trim(),
       imagen_url,
+      imagen_pos_x: posicion(fd, 'imagen_pos_x'),
+      imagen_pos_y: posicion(fd, 'imagen_pos_y'),
+      vigente_hasta: vigencia(fd),
       publicado: false,
     })
     .select()
@@ -80,6 +101,9 @@ export async function actualizarNewsletter(fd: FormData): Promise<ActionResponse
   const update: Record<string, any> = {
     titulo:    (fd.get('titulo') as string).trim(),
     contenido: (fd.get('contenido') as string).trim(),
+    imagen_pos_x: posicion(fd, 'imagen_pos_x'),
+    imagen_pos_y: posicion(fd, 'imagen_pos_y'),
+    vigente_hasta: vigencia(fd),
   };
   if (imagen_url !== undefined) update.imagen_url = imagen_url;
 
@@ -104,9 +128,11 @@ export async function togglePublicado(id: string, publicado: boolean): Promise<A
   const update: Record<string, any> = { publicado };
 
   // Al publicar por primera vez se fija la fecha de publicación (se conserva al republicar)
+  let primeraVez = false;
   if (publicado) {
     const { data: actual } = await supabase.from('newsletter').select('fecha_publicacion').eq('id', id).single();
-    if (!actual?.fecha_publicacion) update.fecha_publicacion = new Date().toISOString();
+    primeraVez = !actual?.fecha_publicacion;
+    if (primeraVez) update.fecha_publicacion = new Date().toISOString();
   }
 
   const { data, error } = await supabase
@@ -118,9 +144,43 @@ export async function togglePublicado(id: string, publicado: boolean): Promise<A
 
   if (error || !data) return { ok: false, error: 'Error al cambiar el estado de publicación' };
 
-  await registrarAccion(supabase, publicado ? 'publicar_articulo' : 'despublicar_articulo', 'newsletter', { titulo: data.titulo });
+  // Primera publicación: aviso en la campana de cada socio activo (al republicar no se repite)
+  let notificados = 0;
+  if (primeraVez) {
+    const service = createServiceClient();
+    const { data: socios } = await service.from('profiles').select('id').eq('rol', 'socio').eq('estado', 'activo');
+    if (socios && socios.length > 0) {
+      const { error: errNotif } = await service.from('notificaciones').insert(socios.map(s => ({
+        socio_id: s.id, tipo: 'newsletter', titulo: `Novedad: ${data.titulo}`, mensaje: `${resumen(data.contenido)} Leela completa en el inicio.`,
+      })));
+      if (!errNotif) notificados = socios.length;
+    }
+  }
+
+  await registrarAccion(supabase, publicado ? 'publicar_articulo' : 'despublicar_articulo', 'newsletter', { titulo: data.titulo, notificados });
   revalidar();
   return { ok: true, data };
+}
+
+// Fijar o desfijar: la fijada queda primera en el inicio del socio
+export async function fijarNewsletter(id: string, fijada: boolean): Promise<ActionResponse<Newsletter>> {
+  const supabase = await verificarAdmin();
+  if (!supabase) return { ok: false, error: 'No autorizado' };
+  const { data, error } = await supabase.from('newsletter').update({ fijada }).eq('id', id).select().single();
+  if (error || !data) return { ok: false, error: 'Error al fijar. ¿Se ejecutó newsletter-mejoras.sql?' };
+  await registrarAccion(supabase, fijada ? 'fijar_articulo' : 'desfijar_articulo', 'newsletter', { titulo: data.titulo });
+  revalidar();
+  return { ok: true, data };
+}
+
+// Socio: registra que abrió una novedad (una vez; para el conteo de lecturas)
+export async function marcarNewsletterVisto(id: string): Promise<ActionResponse> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const { error } = await supabase.from('newsletter_vistos')
+    .upsert({ newsletter_id: id, socio_id: user.id }, { onConflict: 'newsletter_id,socio_id', ignoreDuplicates: true });
+  return error ? { ok: false, error: 'Error al registrar' } : { ok: true, data: undefined };
 }
 
 export async function eliminarNewsletter(id: string): Promise<ActionResponse> {
