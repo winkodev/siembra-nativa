@@ -7,7 +7,7 @@ import {
   UserCheck, UserX, Store, X, ChevronRight, ExternalLink,
   Loader2, AlertCircle, Clock, Search, Users,
   ShoppingBag, Leaf, Scale, CalendarDays, Plus, Trash2, NotebookPen,
-  UserPlus, Mail, KeyRound, Copy, Check, Shield, ScrollText, Sparkles, Gift, Pencil,
+  UserPlus, Mail, KeyRound, Copy, Check, Shield, ScrollText, Sparkles, Gift, Pencil, BookCheck, BookX,
 } from 'lucide-react';
 import type { Profile, FichaSocio, TipoNotaSocio, RolUsuario } from '@/lib/types/database';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -26,10 +26,11 @@ import {
   actualizarVencimientoReprocann,
   leerVencimientoCertificado,
   habilitarCompraManual,
+  marcarLibroActas,
 } from '@/app/actions/socios';
 import { crearUsuario, cambiarPasswordAdmin, regenerarPasswordTemporal, cambiarRolUsuario, eliminarUsuario, editarCuentaUsuario, type ModoAlta } from '@/app/actions/usuarios';
 
-type LoadingKey = `reprocann-${string}` | `estado-${string}` | `tienda-${string}` | `notas-${string}` | `cert-${string}` | `rol-${string}`;
+type LoadingKey = `reprocann-${string}` | `estado-${string}` | `tienda-${string}` | `notas-${string}` | `cert-${string}` | `rol-${string}` | `libro-${string}`;
 
 // Tipos de nota del log interno
 const TIPO_NOTA: Record<TipoNotaSocio, { label: string; color: string }> = {
@@ -257,6 +258,16 @@ function SocioDrawer({
     await run(`tienda-${socio.id}`, async () => {
       const res = await habilitarCompraManual(socio.id, habilitar);
       if (res.ok) setSocio(s => ({ ...s, compra_habilitada: habilitar }));
+      return res;
+    });
+  }
+
+  // Libro de actas: se marca a mano
+  async function handleToggleLibro() {
+    const inscripto = !socio.libro_actas;
+    await run(`libro-${socio.id}`, async () => {
+      const res = await marcarLibroActas(socio.id, inscripto);
+      if (res.ok) setSocio(s => ({ ...s, libro_actas: inscripto }));
       return res;
     });
   }
@@ -578,6 +589,17 @@ function SocioDrawer({
               <p className="text-xs text-muted-foreground/60">
                 {socio.terminos_aceptados_at ? formatFecha(socio.terminos_aceptados_at) : 'Requerido para la tienda'}
               </p>
+            </div>
+
+            {/* Libro de actas: check manual */}
+            <div className="rounded-xl bg-white/5 p-3 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Libro de actas</p>
+              {socio.libro_actas ? <BookCheck className="w-5 h-5 text-green-400" /> : <BookX className="w-5 h-5 text-muted-foreground" />}
+              <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                <input type="checkbox" checked={Boolean(socio.libro_actas)} disabled={busy(`libro-${socio.id}`)} onChange={handleToggleLibro} />
+                <span className={socio.libro_actas ? 'text-green-400' : 'text-muted-foreground'}>{socio.libro_actas ? 'Inscripto' : 'No inscripto'}</span>
+                {busy(`libro-${socio.id}`) && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+              </label>
             </div>
           </section>
 
@@ -971,6 +993,10 @@ export function AdminSociosClient({ socios: initialSocios, superadmin = false }:
                       <span className="hidden sm:contents">
                         <Badge text={rep.label} color={rep.color} />
                         <Badge text={est.label} color={est.color} />
+                      </span>
+                      {/* Libro de actas */}
+                      <span title={socio.libro_actas ? 'Inscripto en el libro de actas' : 'No inscripto en el libro de actas'}>
+                        {socio.libro_actas ? <BookCheck className="w-4 h-4 text-green-400" /> : <BookX className="w-4 h-4 text-muted-foreground/50" />}
                       </span>
                       <SemaforoSocio socio={socio} />
                     </>

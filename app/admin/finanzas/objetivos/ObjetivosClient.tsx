@@ -57,7 +57,7 @@ export function ObjetivosClient({ objetivos: o, resumen }: { objetivos: Objetivo
           </div>
 
           <motion.div variants={fadeUp} className="glass-card divide-y divide-club-verde-claro/15">
-            <Grupo titulo="Reponer stock" total={o.reponer} detalle={[]} nota="Gramos vendidos de lotes con costo, al último costo. Detalle abajo" />
+            <Grupo titulo="Reponer stock" total={o.reponer} detalle={[]} nota={`Gramos vendidos de lotes con costo, al último costo${o.dolar ? `; lo comprado en dólares, al blue de hoy (${formatPrecio(o.dolar)})` : ''}. Detalle abajo`} />
             <Grupo titulo="Próximos sueldos" total={o.sueldos.total} detalle={o.sueldos.detalle} nota="Menos retiros y pagos hechos" />
             <Grupo titulo="Reserva de aguinaldo" total={o.aguinaldo.total} detalle={o.aguinaldo.detalle} nota="Se junta de a poco; entero desde el mes anterior al pago" />
             <Grupo titulo="Gastos fijos" total={o.fijos.total} detalle={o.fijos.detalle} nota="Tareas mensuales de Gestión con monto, hasta fin del mes que viene" />
@@ -92,7 +92,10 @@ export function ObjetivosClient({ objetivos: o, resumen }: { objetivos: Objetivo
                         <td className="py-2"><input type="checkbox" checked={r.reponer} disabled={pending} onChange={e => alternar(r.genetica_id, e.target.checked)} title="Incluir en la reposición" /></td>
                         <td className="py-2 text-foreground">{r.nombre}</td>
                         <td className="py-2 pr-3 text-right text-muted-foreground">{formatGramos(r.gramos)}</td>
-                        <td className="py-2 pr-3 text-right text-muted-foreground">{formatPrecio(r.costo)}</td>
+                        <td className="py-2 pr-3 text-right text-muted-foreground">
+                          {r.costo_usd != null && <span className="block text-foreground">{usd(r.costo_usd)}</span>}
+                          {pesos(r.costo)}
+                        </td>
                         <td className="py-2 pr-3 text-right text-club-dorado font-semibold">{pesos(r.gramos * r.costo)}</td>
                       </tr>
                     ))}

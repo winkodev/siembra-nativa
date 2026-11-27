@@ -42,12 +42,57 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
+// Descuentos por cantidad de Configuración (% sobre las flores)
+export interface DescuentosCantidad { d20: number; d40: number }
+
 interface ModalProps {
   genetica?: Genetica;
+  descuentos: DescuentosCantidad;
   onClose:   () => void;
 }
 
-function GeneticaModal({ genetica, onClose }: ModalProps) {
+const redondear = (n: number) => Math.round(n * 100) / 100;
+
+// Precio por gramo: se carga el de lista o el final con el máximo descuento, y se calcula el otro
+function PrecioGramo({ inicial, descuentos }: { inicial: number | null | undefined; descuentos: DescuentosCantidad }) {
+  const [lista, setLista] = useState(inicial != null ? String(inicial) : '');
+  const maximo = Math.max(descuentos.d20, descuentos.d40);
+  const factor = 1 - maximo / 100;
+  const listaNum = parseFloat(lista) || 0;
+  // Lo que se escribe en el final se respeta tal cual mientras se edita
+  const [finalTxt, setFinalTxt] = useState<string | null>(null);
+  const final = finalTxt ?? (listaNum > 0 ? String(Math.round(listaNum * factor)) : '');
+  const con = (pct: number) => formatPrecio(Math.round(listaNum * (1 - pct / 100)));
+
+  return (
+    <div className="space-y-1.5">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-sm text-foreground/80 font-medium">Precio de lista $/g</label>
+          <input name="precio_gramo" type="number" step="0.01" min="0" value={lista}
+            onChange={e => { setLista(e.target.value); setFinalTxt(null); }} className="input-club w-full" placeholder="1500" />
+        </div>
+        {maximo > 0 && maximo < 100 && (
+          <div className="space-y-1.5">
+            <label className="text-sm text-foreground/80 font-medium">Final con {maximo}% off $/g</label>
+            <input type="number" step="1" min="0" value={final}
+              onChange={e => { setFinalTxt(e.target.value); const f = parseFloat(e.target.value); setLista(f > 0 ? String(redondear(f / factor)) : ''); }}
+              className="input-club w-full" placeholder="9000" />
+          </div>
+        )}
+      </div>
+      {listaNum > 0 && (descuentos.d20 > 0 || descuentos.d40 > 0) && (
+        <p className="text-xs text-muted-foreground">
+          Menos de 20g {formatPrecio(listaNum)}
+          {descuentos.d20 > 0 && <> · 20g o más <span className="text-foreground">{con(descuentos.d20)}</span></>}
+          {descuentos.d40 > 0 && <> · 40g o más <span className="text-club-dorado font-semibold">{con(descuentos.d40)}</span></>}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function GeneticaModal({ genetica, descuentos, onClose }: ModalProps) {
   const isEdit = !!genetica;
   const action = isEdit
     ? editarGenetica.bind(null, genetica.id)
@@ -133,8 +178,8 @@ function GeneticaModal({ genetica, onClose }: ModalProps) {
             </select>
           </div>
 
-          {/* THC + CBD + Precio */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* THC + CBD */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm text-foreground/80 font-medium">THC %</label>
               <input name="thc" type="number" step="0.1" min="0" max="100" defaultValue={genetica?.thc ?? ''} className="input-club w-full" placeholder="22.5" />
@@ -143,11 +188,8 @@ function GeneticaModal({ genetica, onClose }: ModalProps) {
               <label className="text-sm text-foreground/80 font-medium">CBD %</label>
               <input name="cbd" type="number" step="0.1" min="0" max="100" defaultValue={genetica?.cbd ?? ''} className="input-club w-full" placeholder="0.5" />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-sm text-foreground/80 font-medium">Precio $/g</label>
-              <input name="precio_gramo" type="number" step="0.01" min="0" defaultValue={genetica?.precio_gramo ?? ''} className="input-club w-full" placeholder="1500" />
-            </div>
           </div>
+          <PrecioGramo inicial={genetica?.precio_gramo} descuentos={descuentos} />
 
           {/* Calidad + Cultivo */}
           <div className="grid grid-cols-2 gap-3">
@@ -207,7 +249,7 @@ const filtrosTipo = [
   { label: 'Híbrida',  value: 'hibrida' },
 ];
 
-export function GeneticasTab({ geneticas }: { geneticas: Genetica[] }) {
+export function GeneticasTab({ geneticas, descuentos }: { geneticas: Genetica[]; descuentos: DescuentosCantidad }) {
   const [modal, setModal]         = useState<'crear' | Genetica | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [error, setError]         = useState<string | null>(null);
@@ -379,6 +421,7 @@ export function GeneticasTab({ geneticas }: { geneticas: Genetica[] }) {
         {modal && (
           <GeneticaModal
             genetica={modal === 'crear' ? undefined : modal}
+            descuentos={descuentos}
             onClose={() => setModal(null)}
           />
         )}

@@ -76,6 +76,8 @@ export const ACCION_LABEL: Record<string, string> = {
   desactivar_socio:      'Desactivó un socio',
   habilitar_compra_manual:    'Habilitó la tienda a mano (sin REPROCANN)',
   deshabilitar_compra_manual: 'Deshabilitó la tienda a mano',
+  libro_actas_inscripto:      'Marcó al socio como inscripto en el libro de actas',
+  libro_actas_quitado:        'Quitó al socio del libro de actas',
   agregar_nota:          'Agregó una nota de socio',
   ver_certificado:       'Vio un certificado REPROCANN',
   ver_comprobante_pago:  'Vio un comprobante de pago',

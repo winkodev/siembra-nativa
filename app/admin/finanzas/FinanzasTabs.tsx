@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarChart3, ClipboardCheck, Landmark, Scale, Target, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CotizacionDolar } from '@/components/admin/CotizacionDolar';
 
 // Pestañas de Gestión y finanzas: Dispensa (pedidos), Tesorería (plata del club),
 // Balance (cuánto entró y salió), Objetivos (cuánto hay que juntar), Tareas y Personal (sueldos, aumentos y retiros)
@@ -19,6 +20,7 @@ const tabs = [
 export function FinanzasTabs() {
   const pathname = usePathname();
   return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
     <div className="flex flex-wrap gap-1.5 p-1 glass-card rounded-xl w-fit max-w-full">
       {tabs.map(t => {
         // Las pestañas raíz solo se marcan en su propia ruta
@@ -33,6 +35,9 @@ export function FinanzasTabs() {
           </Link>
         );
       })}
+    </div>
+    {/* Dólar del día, a la derecha de las pestañas */}
+    <CotizacionDolar />
     </div>
   );
 }

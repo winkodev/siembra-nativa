@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { agregarStock, editarStock, eliminarStock, moverStockUbicacion, egresoManualStock } from '@/app/actions/inventario';
 import { cn, formatFecha, formatGramos, formatPrecio, labelTipo } from '@/lib/utils';
+import { useCotizaciones } from '@/components/admin/CotizacionDolar';
 import type { Genetica, Stock, Ubicacion, ActionResponse, EgresoStock } from '@/lib/types/database';
 
 type StockConGenetica = Stock & { geneticas: { nombre: string; tipo: string } };
@@ -62,10 +63,11 @@ function StockModal({ stockItem, geneticas, ubicaciones, loteSugerido, onClose }
   // Costo: obligatorio en ingresos nuevos; los lotes anteriores no tienen
   const conCosto = !isEdit || stockItem.costo_gramo != null;
   const [gramos, setGramos]         = useState(String(stockItem?.cantidad_inicial ?? ''));
-  const [moneda, setMoneda]         = useState<'ARS' | 'USD'>(stockItem?.costo_moneda ?? 'ARS');
+  const [moneda, setMoneda]         = useState<'ARS' | 'USD'>(stockItem?.costo_moneda ?? 'USD');  // se compra en dólares
   const [costo, setCosto]           = useState(String(stockItem?.costo_gramo ?? ''));
   const [cotizacion, setCotizacion] = useState(String(stockItem?.costo_cotizacion ?? ''));
   const total = (parseFloat(gramos) || 0) * (parseFloat(costo) || 0);
+  const dolar = useCotizaciones();
 
   if (state?.ok && state !== initial) {
     onClose();
@@ -142,7 +144,7 @@ function StockModal({ stockItem, geneticas, ubicaciones, loteSugerido, onClose }
                   <input name="costo_moneda" type="hidden" value={moneda} />
                   <div className="flex gap-1 p-1 glass-card rounded-lg shrink-0">
                     {(['ARS', 'USD'] as const).map(m => (
-                      <button key={m} type="button" disabled={isEdit} onClick={() => setMoneda(m)}
+                      <button key={m} type="button" onClick={() => setMoneda(m)}
                         className={cn('px-3 rounded-md text-xs font-semibold transition-all',
                           moneda === m ? 'bg-club-dorado text-club-verde' : 'text-muted-foreground hover:text-foreground')}>
                         {m === 'ARS' ? 'Pesos' : 'Dólares'}
@@ -158,6 +160,18 @@ function StockModal({ stockItem, geneticas, ubicaciones, loteSugerido, onClose }
                   <label className="text-sm text-foreground/80 font-medium">Cotización: pesos por dólar *</label>
                   <input name="costo_cotizacion" type="number" step="0.01" min="0.01" required value={cotizacion}
                     onChange={e => setCotizacion(e.target.value)} className="input-club w-full" />
+                  {/* Cotización del día: un toque la completa */}
+                  {dolar && (dolar.oficial || dolar.blue) && (
+                    <div className="flex gap-2">
+                      {([['Oficial', dolar.oficial], ['Blue', dolar.blue]] as const).map(([nombre, c]) => c && (
+                        <button key={nombre} type="button" onClick={() => setCotizacion(String(c.venta))}
+                          className={cn('px-2.5 py-1 rounded-lg text-xs transition-colors',
+                            Number(cotizacion) === c.venta ? 'bg-club-dorado text-club-verde font-semibold' : 'bg-white/5 text-muted-foreground hover:text-foreground')}>
+                          {nombre} {formatPrecio(c.venta)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               {!isEdit && (

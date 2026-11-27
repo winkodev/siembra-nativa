@@ -1,12 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, ReposicionGenetica, TesSaldo, Moneda } from '@/lib/types/database';
 import { cargarPersonal } from '@/lib/personal-datos';
+import { obtenerCotizaciones } from '@/lib/dolar';
 import { aguinaldoSugerido, etiquetaPeriodo, hoyAR, liquidacion, primerDia, retirosPendientes, semestreDe } from '@/lib/personal';
 
 interface Grupo { total: number; detalle: { nombre: string; monto: number }[] }
 
 export interface Objetivos {
   reposicion: ReposicionGenetica[];
+  // Dólar blue de hoy: valúa la reposición de lo comprado en dólares (null si no se pudo traer)
+  dolar: number | null;
   // Pesos
   reponer: number;
   sueldos: { total: number; detalle: { nombre: string; monto: number }[] };
@@ -29,7 +32,7 @@ export async function cargarObjetivos(supabase: SupabaseClient<Database>): Promi
   const proxMes = new Date(Date.UTC(anio, nMes, 1)).toISOString().slice(0, 10);
   const hasta = new Date(Date.UTC(anio, nMes + 1, 0)).toISOString().slice(0, 10);
 
-  const [{ data: repo, error }, personal, { data: saldos }, { data: pend }, { data: deudas }, { data: pagosDeuda }, { data: tareas, error: errorTareas }] = await Promise.all([
+  const [{ data: repo, error }, personal, { data: saldos }, { data: pend }, { data: deudas }, { data: pagosDeuda }, { data: tareas, error: errorTareas }, cotizaciones] = await Promise.all([
     supabase.rpc('objetivo_reposicion'),
     cargarPersonal(supabase),
     supabase.rpc('tes_saldos'),
@@ -37,12 +40,19 @@ export async function cargarObjetivos(supabase: SupabaseClient<Database>): Promi
     supabase.from('tes_deudas').select('id, monto').eq('sentido', 'a_pagar').eq('anulada', false),
     supabase.from('tes_movimientos').select('deuda_id, monto').not('deuda_id', 'is', null),
     supabase.from('tareas').select('titulo, monto, moneda, deuda_id, vence_at').eq('recurrencia', 'mensual').is('hecha_at', null).not('monto', 'is', null).order('vence_at'),
+    obtenerCotizaciones(),
   ]);
   if (error || errorTareas || !personal) return null;
 
-  const reposicion = ((repo ?? []) as ReposicionGenetica[]).map(r => ({
-    ...r, gramos: Number(r.gramos), costo: Number(r.costo), pendientes: Number(r.pendientes),
-  }));
+  // Lo comprado en dólares se repone al dólar de hoy; si no hay cotización, al de la compra
+  const dolar = cotizaciones?.blue?.venta ?? null;
+  const reposicion = ((repo ?? []) as ReposicionGenetica[]).map(r => {
+    const costoUsd = r.costo_usd != null ? Number(r.costo_usd) : null;
+    return {
+      ...r, gramos: Number(r.gramos), pendientes: Number(r.pendientes), costo_usd: costoUsd,
+      costo: costoUsd != null && dolar ? costoUsd * dolar : Number(r.costo),
+    };
+  });
   const incluidas = reposicion.filter(r => r.reponer);
   const reponer = incluidas.reduce((a, r) => a + r.gramos * r.costo, 0);
 
@@ -86,7 +96,7 @@ export async function cargarObjetivos(supabase: SupabaseClient<Database>): Promi
   const grupo = (detalle: { nombre: string; monto: number }[]) => ({ total: suma(detalle), detalle });
 
   return {
-    reposicion, reponer,
+    reposicion, dolar, reponer,
     sueldos: grupo(detSueldos), aguinaldo: grupo(detAguinaldo), fijos: grupo(detFijos),
     necesario: reponer + suma(detSueldos) + suma(detAguinaldo) + suma(detFijos),
     real: disponible('ARS'),

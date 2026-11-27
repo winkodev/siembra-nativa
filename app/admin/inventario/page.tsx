@@ -1,5 +1,6 @@
 import { createClient, getProfile } from '@/lib/supabase/server';
 import { InventarioClient } from './InventarioClient';
+import { getAppConfig } from '@/lib/supabase/config';
 import type { Metadata } from 'next';
 import type { Genetica, Stock, Ubicacion } from '@/lib/types/database';
 
@@ -9,7 +10,7 @@ export default async function InventarioPage() {
   const supabase = createClient();
   const profile = await getProfile();
 
-  const [{ data: geneticas }, { data: stock }, { data: ubicaciones }, { data: pendientes }, { data: egresos }] = await Promise.all([
+  const [{ data: geneticas }, { data: stock }, { data: ubicaciones }, { data: pendientes }, { data: egresos }, config] = await Promise.all([
     supabase.from('geneticas').select('*').order('nombre'),
     supabase.from('stock').select('*, geneticas(nombre, tipo)').order('fecha_ingreso', { ascending: false }),
     supabase.from('ubicaciones').select('*').eq('activa', true).order('nombre'),
@@ -25,6 +26,7 @@ export default async function InventarioPage() {
       .select('*, geneticas(nombre), admin:profiles!admin_id(nombre)')
       .order('created_at', { ascending: false })
       .limit(50),
+    getAppConfig(),
   ]);
 
   // Gramos reservados por genética
@@ -43,6 +45,7 @@ export default async function InventarioPage() {
       reservas={reservas}
       superadmin={Boolean(profile?.superadmin)}
       egresos={(egresos ?? []) as any[]}
+      descuentos={{ d20: config.descuento_20, d40: config.descuento_40 }}
     />
   );
 }

@@ -52,6 +52,7 @@ export interface Profile {
   // Solo admin
   notas_admin: string | null;
   compra_habilitada: boolean;
+  libro_actas: boolean;          // inscripto en el libro de actas (lo marca un admin)
 
   created_at: string;
   updated_at: string;
@@ -608,7 +609,7 @@ export interface Database {
         Returns: string;
       };
       corregir_costo_lote: {
-        Args: { p_stock_id: string; p_gramos: number; p_costo_gramo: number; p_cotizacion: number | null };
+        Args: { p_stock_id: string; p_gramos: number; p_costo_gramo: number; p_cotizacion: number | null; p_moneda: 'ARS' | 'USD' };
         Returns: void;
       };
       registrar_retiro_personal: {
@@ -864,7 +865,8 @@ export interface ReposicionGenetica {
   nombre: string;
   reponer: boolean;
   gramos: number;       // salidos y no repuestos
-  costo: number;        // último costo por gramo, en pesos
+  costo: number;        // último costo por gramo, en pesos (al dólar del día si se compró en dólares)
+  costo_usd: number | null; // último costo por gramo en dólares, si se compró en dólares
   pendientes: number;   // gramos de pedidos pendientes que saldrían de lotes con costo
 }
 export interface GananciaFlores {

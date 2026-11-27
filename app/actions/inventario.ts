@@ -247,6 +247,7 @@ export async function editarStock(
     if (!costo.success) return { ok: false, error: costo.error.errors[0].message };
     const { error: errCosto } = await supabase.rpc('corregir_costo_lote', {
       p_stock_id: id, p_gramos: nuevoIngresado, p_costo_gramo: costo.data.costo_gramo, p_cotizacion: costo.data.costo_cotizacion,
+      p_moneda: costo.data.costo_moneda,
     });
     if (errCosto) return { ok: false, error: errCosto.message };
   }

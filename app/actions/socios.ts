@@ -272,6 +272,19 @@ export async function leerVencimientoCertificado(socioId: string): Promise<Actio
   return { ok: true, data: { vencimiento: res.vencimiento } };
 }
 
+// Admin: marca si el socio está inscripto en el libro de actas (se carga a mano)
+export async function marcarLibroActas(socioId: string, inscripto: boolean): Promise<ActionResponse> {
+  const adminId = await verificarAdmin();
+  if (!adminId) return { ok: false, error: 'No autorizado' };
+
+  const { error } = await createServiceClient().from('profiles').update({ libro_actas: inscripto }).eq('id', socioId);
+  if (error) return { ok: false, error: 'Error al guardar. ¿Se ejecutó dolar-precios-libro-actas.sql?' };
+
+  await registrarAccion(createClient(), inscripto ? 'libro_actas_inscripto' : 'libro_actas_quitado', 'socios', undefined, socioId);
+  revalidatePath('/admin/socios');
+  return { ok: true, data: undefined };
+}
+
 // Admin: habilita o deshabilita la tienda a mano, sin depender del REPROCANN.
 // Sirve para excepciones (socio sin certificado cargado todavía). El estado
 // REPROCANN no se toca: si después se aprueba/rechaza o vence, el automático manda.
